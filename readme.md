@@ -1,4 +1,3 @@
-```markdown
 # LaraFoundry
 
 > A production-proven SaaS engine for Laravel. Build your next SaaS 10x faster.
@@ -72,4 +71,3 @@ LaraFoundry will be released under the MIT License.
 - Twitter/X: [@d_isaenko_dev](https://twitter.com/d_isaenko_dev)
 - LinkedIn: [Dmitry Isaenko](https://linkedin.com/in/d-isaenko-dev)
 - Dev.to: [@d_isaenko_dev](https://dev.to/d_isaenko_dev)
-```
