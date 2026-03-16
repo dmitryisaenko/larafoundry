@@ -14,7 +14,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 |--------|--------|-------------|
 | [Registration](docs/modules/registration.md) | ✅ Ready | Multi-provider auth, OAuth2, avatars, session tracking, logging |
 | [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
-| Multi-tenancy | 🔧 In Progress | Company-based tenancy with team management |
+| [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
 | Roles & Permissions | 📋 Planned | Spatie-based RBAC with team scoping |
 | Activity Logging | 📋 Planned | Full audit trail system |
 | Subscriptions | 📋 Planned | Stripe/Paddle billing integration |
@@ -22,6 +22,19 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 ---
 
 ## 🔄 Latest Updates
+
+### February 2026 - Registration Module
+
+What's included:
+- **Multi-provider authentication**: Email/password + OAuth2 (Google, Facebook, Twitter) via Laravel Socialite
+- **Smart avatar system**: Automatic Gravatar detection with generated initials fallback (15 color themes)
+- **Session & device tracking**: Full device fingerprinting - browser, OS, device type, IP, geo location
+- **Auth event logging**: 7 authentication events logged automatically via Spatie Activity Log
+- **Team onboarding**: Company invitation system with auto-acceptance on registration
+- **Email verification**: Signed links with customizable email templates
+
+> [Detailed registration module documentation →](docs/modules/registration.md)
+
 
 ### March 2026 - Authentication Module
 
@@ -51,17 +64,42 @@ LaraFoundry ships with a production-grade, multi-method authentication system - 
 
 > [Detailed authentication module documentation →](docs/modules/authentication.md)
 
-### February 2026 - Registration Module
 
-What's included:
-- **Multi-provider authentication**: Email/password + OAuth2 (Google, Facebook, Twitter) via Laravel Socialite
-- **Smart avatar system**: Automatic Gravatar detection with generated initials fallback (15 color themes)
-- **Session & device tracking**: Full device fingerprinting - browser, OS, device type, IP, geo location
-- **Auth event logging**: 7 authentication events logged automatically via Spatie Activity Log
-- **Team onboarding**: Company invitation system with auto-acceptance on registration
-- **Email verification**: Signed links with customizable email templates
+### March 2026 - Multi-Tenancy & Authorization
 
-> [Detailed registration module documentation →](docs/modules/registration.md)
+LaraFoundry provides a complete multi-tenancy system with automatic data isolation, config-driven permissions, and a 5-level authorization hierarchy - purpose-built for SaaS where company owners manage their own teams.
+
+**Data Isolation:**
+- **BelongsToCompany trait** - Automatic Eloquent global scope filtering by active company. One trait per model, zero chance of cross-tenant data leaks
+- **Admin bypass** - `scopeForAdmin()` to query across all companies
+- **Company-scoped queries** - `scopeForCompany($id)` for cross-tenant reports
+
+**Permission System (100+ permissions, 20+ modules):**
+- **Config-driven** - All permissions defined in `config/roles-and-permissions.php`, auto-registered as Gates
+- **Dedicated Gate classes** - 8 module-specific Gate classes for complex business logic (CompanyGates, EmployeeGates, RoleGates, ContragentGates, WarehouseGates, ProductionGates...)
+- **5-level hierarchy** - Super admin > Owner > Revoked > Individual grant > Role-based
+- **Permission overrides** - Grant or revoke individual permissions per user, overriding role defaults
+- **Artisan sync** - `php artisan permissions:sync` with `--fresh` and `--cleanup` flags
+
+**Role Management:**
+- **5 role templates** auto-cloned to every new company (Manager, Accountant, Storekeeper, Logistician, Worker)
+- **Custom roles** - Company owners create, edit, and delete roles from the UI
+- **Multiple roles per user** - Assign any combination of roles to employees
+- **Company-scoped** - Same role slug can have different permissions in different companies
+
+**Middleware Stack:**
+- `SetActiveCompanyMiddleware` - Auto-resolves tenant context with ownership priority
+- `CheckAccessMiddleware` - User/owner ban status + subscription/trial checks
+- `CheckCompanyAccess` - Owner-only route protection
+
+**Navigation & Routing:**
+- **Permission-aware menu** - Menu items filtered by `checkUserAndCompanyPolicy()`, if you can't access it - you don't see it
+- **First Allowed Route (FAR)** - Smart redirects instead of 403 error pages
+- **User-configurable landing page** - Each user sets their default page per company, auto-resets if permissions change
+
+**Test Coverage:** 19 test files covering permission hierarchy, cross-company isolation, Gate authorization, menu visibility, middleware chain, role CRUD, and edge cases.
+
+> [Detailed module documentation ->](docs/modules/multi_tenancy.md)
 
 ---
 
