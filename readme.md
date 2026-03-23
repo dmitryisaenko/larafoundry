@@ -16,7 +16,15 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
 | [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
 | [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
-| Subscriptions | 📋 Planned | Stripe/Paddle billing integration |
+| Multilanguage (i18n) | 📋 Planned | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
+| Navigation & Menu System | 📋 Planned | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
+| Vue Frontend (Inertia v2 + Vue 3) | 📋 Planned | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
+| Traits & Middlewares | 📋 Planned | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
+| Admin Users | 📋 Planned | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
+| Admin Companies | 📋 Planned | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
+| Notifications | 📋 Planned | Dual notification system supporting admin broadcasts and automated system notifications. |
+| Tickets (Support System) | 📋 Planned | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
+| Payments & Promo Codes | 📋 Planned | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
 
 ---
 
