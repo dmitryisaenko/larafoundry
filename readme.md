@@ -15,7 +15,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Registration](docs/modules/registration.md) | ✅ Ready | Multi-provider auth, OAuth2, avatars, session tracking, logging |
 | [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
 | [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
-| [Activity Logging](docs/modules/logging.md) | 📋 Planned | Full audit trail system |
+| [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
 | Subscriptions | 📋 Planned | Stripe/Paddle billing integration |
 
 ---
