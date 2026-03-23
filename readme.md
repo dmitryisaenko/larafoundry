@@ -15,8 +15,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Registration](docs/modules/registration.md) | ✅ Ready | Multi-provider auth, OAuth2, avatars, session tracking, logging |
 | [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
 | [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
-| Roles & Permissions | 📋 Planned | Spatie-based RBAC with team scoping |
-| Activity Logging | 📋 Planned | Full audit trail system |
+| [Activity Logging](docs/modules/logging.md) | 📋 Planned | Full audit trail system |
 | Subscriptions | 📋 Planned | Stripe/Paddle billing integration |
 
 ---
@@ -101,6 +100,26 @@ LaraFoundry provides a complete multi-tenancy system with automatic data isolati
 
 > [Detailed module documentation ->](docs/modules/multi_tenancy.md)
 
+### March 2026 - Activity Logging & Monitoring
+
+Production-grade activity logging system with event-driven architecture, device fingerprinting, and async geolocation.
+
+**Key features:**
+- 60+ events mapped to structured activity logs via a single ServiceProvider
+- Zero manual log calls - fire an event, logging happens automatically
+- Device fingerprinting (browser, OS, device type) via `jenssegers/agent`
+- Async IP geolocation with queued jobs (cached 24h, graceful fallback)
+- Custom Activity model extending Spatie with 20+ queryable fields
+- Multi-channel admin notifications (Email + Telegram) for critical events
+- Admin UI with time-range filtering (Vue 3 + Inertia)
+- Three-layer observability: business logs, Telescope (dev), file logs (Log Viewer)
+- Monolog split channels: daily (14 days) + critical (30 days)
+- Full test coverage with Pest PHP
+
+**Packages:** `spatie/laravel-activitylog`, `jenssegers/agent`, `opcodesio/log-viewer`, `laravel/telescope`
+
+> [Detailed module documentation ->](docs/modules/logging.md)
+ 
 ---
 
 ## 🚀 Getting Started
