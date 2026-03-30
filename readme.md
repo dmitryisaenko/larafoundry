@@ -16,7 +16,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
 | [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
 | [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
-| Multilanguage (i18n) | 📋 Planned | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
+| [Multilanguage (i18n)](docs/modules/multilanguage.md) | ✅ Ready | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
 | Navigation & Menu System | 📋 Planned | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
 | Vue Frontend (Inertia v2 + Vue 3) | 📋 Planned | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
 | Traits & Middlewares | 📋 Planned | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
@@ -127,6 +127,21 @@ Production-grade activity logging system with event-driven architecture, device 
 **Packages:** `spatie/laravel-activitylog`, `jenssegers/agent`, `opcodesio/log-viewer`, `laravel/telescope`
 
 > [Detailed module documentation ->](docs/modules/logging.md)
+
+### March 2026 - Multilanguage (i18n)
+
+Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline.
+
+- **Automatic locale detection** - 5-step fallback chain: user preference -> session -> browser Accept-Language -> IP geolocation -> default
+- **4 languages ready** - English, Ukrainian, Polish, German (easily extensible)
+- **Zero-config frontend** - Translations passed via Inertia shared props, global `t()` function in Vue
+- **Separate auth/guest flows** - Authenticated users persist to DB, guests to long-lived cookies
+- **Content translation API** - Pluggable layer with DeepL and Google Translate providers
+- **IP geolocation** - Country-based language detection via ip-api.com
+- **1700+ translation strings** - Production-ready Ukrainian locale included
+- **Tested** - Full Pest test coverage for all detection paths and edge cases
+
+> [Detailed module documentation →](docs/modules/multilanguage.md)
  
 ---
 
