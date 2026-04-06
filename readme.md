@@ -17,7 +17,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
 | [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
 | [Multilanguage (i18n)](docs/modules/multilanguage.md) | ✅ Ready | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
-| Navigation & Menu System | 📋 Planned | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
+| [Navigation & Menu System](docs/modules/navigation.md) | ✅ Ready  | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
 | Vue Frontend (Inertia v2 + Vue 3) | 📋 Planned | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
 | Traits & Middlewares | 📋 Planned | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
 | Admin Users | 📋 Planned | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
@@ -142,7 +142,22 @@ Production-grade internationalization system with automatic language detection a
 - **Tested** - Full Pest test coverage for all detection paths and edge cases
 
 > [Detailed module documentation →](docs/modules/multilanguage.md)
- 
+
+### April 2026 - Navigation & Menu System
+
+Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions.
+
+- **Dynamic menu building** - LayoutDataService constructs 4 navigation contexts (desktop top/bottom, mobile, sidebar) on every request
+- **Permission filtering** - Every menu item checked via `checkUserAndCompanyPolicy()` with support for admin, owner, and employee roles
+- **Sub-menu routing** - Each module maps to a default sub-page with granular permission checks at sub-route level
+- **First Allowed Route (FAR)** - Zero 403 pages; users are always redirected to their first accessible page
+- **User-configurable defaults** - Set preferred landing page per company in profile settings
+- **Desktop** - Two-tier header (module tabs + sub-page tabs) with server-computed active states
+- **Mobile** - Hamburger menu with slide-out pullout, collapsible parent/child sections, and default page selector
+- **Tested** - Pest tests for all user types, permission combinations, and edge cases
+
+> [Detailed documentation →](docs/modules/navigation.md)
+
 ---
 
 ## 🚀 Getting Started
