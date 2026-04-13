@@ -18,7 +18,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
 | [Multilanguage (i18n)](docs/modules/multilanguage.md) | ✅ Ready | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
 | [Navigation & Menu System](docs/modules/navigation.md) | ✅ Ready  | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
-| Vue Frontend (Inertia v2 + Vue 3) | 📋 Planned | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
+| [Vue Frontend (Inertia v2 + Vue 3)](docs/modules/vue_frontend.md) | ✅ Ready | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
 | Traits & Middlewares | 📋 Planned | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
 | Admin Users | 📋 Planned | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
 | Admin Companies | 📋 Planned | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
@@ -156,9 +156,24 @@ Dynamic, permission-aware navigation that builds menus per request based on user
 - **Mobile** - Hamburger menu with slide-out pullout, collapsible parent/child sections, and default page selector
 - **Tested** - Pest tests for all user types, permission combinations, and edge cases
 
-> [Detailed documentation →](docs/modules/navigation.md)
+> [Detailed module documentation →](docs/modules/navigation.md)
+
 
 ---
+
+### April 2026 - Vue Frontend (Inertia v2 + Vue 3)
+
+Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia.
+
+- **LayoutSwitcher** - One component routes to 5 layouts (Guest, Auth, Admin, Blocked, Deleted) based on server-sent `visitor_status` prop
+- **Overlay system** - 7 pullout panels (mobile menu, notifications, filters, etc.) with double-layer stacking and ESC dismissal
+- **Pagination** - `HasPagination` backend trait + auto-rendering `PagePaginator` component with smart page range and filter preservation
+- **Filter architecture** - Auto-discovery pattern where request params map to filter class methods. Alphabetical nav, quick presets, whitelisted sorting
+- **Modal system** - Custom modals for forms (useForm) and data views (async loading + tabs), SweetAlert2 for confirmations
+- **State management** - Reactive refs + provide/inject pattern. No external state library
+- **Tested** - Pest feature tests asserting Inertia prop contracts for layouts, pagination, filters, and modal data
+
+> [Detailed module documentation ->](docs/modules/vue_frontend.md)
 
 ## 🚀 Getting Started
 
