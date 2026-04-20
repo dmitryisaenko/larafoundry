@@ -19,7 +19,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Multilanguage (i18n)](docs/modules/multilanguage.md) | ✅ Ready | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
 | [Navigation & Menu System](docs/modules/navigation.md) | ✅ Ready  | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
 | [Vue Frontend (Inertia v2 + Vue 3)](docs/modules/vue_frontend.md) | ✅ Ready | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
-| Traits & Middlewares | 📋 Planned | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
+| [Traits & Middlewares](docs/modules/traits_middlewares.md) | ✅ Ready | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
 | Admin Users | 📋 Planned | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
 | Admin Companies | 📋 Planned | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
 | Notifications | 📋 Planned | Dual notification system supporting admin broadcasts and automated system notifications. |
@@ -158,7 +158,6 @@ Dynamic, permission-aware navigation that builds menus per request based on user
 
 > [Detailed module documentation →](docs/modules/navigation.md)
 
-
 ---
 
 ### April 2026 - Vue Frontend (Inertia v2 + Vue 3)
@@ -174,6 +173,26 @@ Server-driven frontend architecture with dynamic layout switching, overlay manag
 - **Tested** - Pest feature tests asserting Inertia prop contracts for layouts, pagination, filters, and modal data
 
 > [Detailed module documentation ->](docs/modules/vue_frontend.md)
+
+---
+
+###  April 2026 - Traits & Middlewares
+
+The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse.
+
+- **Middleware stack** - 11 middlewares with explicit execution order: company context → activity tracking → locale detection → email verification → PIN lock → access control → session validation
+- **PIN lock** - Database-backed inactivity screen lock (configurable timeout, HTTP 423 for APIs)
+- **3-level access control** - User ban → company owner ban → payment status, each with specific route whitelists
+- **Session validation** - Anti-hijacking via database session tracking with device fingerprinting
+- **Locale detection** - 5-step chain: profile → session → browser → IP geolocation → default
+- **HasPagination** - Consistent pagination data extraction for any paginator type
+- **Filter auto-discovery** - Request params auto-map to filter class methods via `method_exists()`
+- **NotificationDataHandler** - Centralized data mapping for targeted notification delivery
+- **Tested** - Behavior-driven Pest tests: real HTTP requests asserting middleware responses
+
+> [Detailed documentation ->](docs/modules/traits_middlewares.md)
+
+---
 
 ## 🚀 Getting Started
 
