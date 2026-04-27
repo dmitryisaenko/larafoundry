@@ -20,7 +20,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Navigation & Menu System](docs/modules/navigation.md) | ✅ Ready  | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
 | [Vue Frontend (Inertia v2 + Vue 3)](docs/modules/vue_frontend.md) | ✅ Ready | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
 | [Traits & Middlewares](docs/modules/traits_middlewares.md) | ✅ Ready | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
-| Admin Users | 📋 Planned | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
+| [Admin Users](docs/modules/admin_users.md) | ✅ Ready | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
 | Admin Companies | 📋 Planned | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
 | Notifications | 📋 Planned | Dual notification system supporting admin broadcasts and automated system notifications. |
 | Tickets (Support System) | 📋 Planned | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
@@ -191,6 +191,23 @@ The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict executio
 - **Tested** - Behavior-driven Pest tests: real HTTP requests asserting middleware responses
 
 > [Detailed documentation ->](docs/modules/traits_middlewares.md)
+
+---
+
+### April 2026 - Admin Users
+
+The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters.
+
+- **CRUD** - FormRequest validation, Eloquent Attribute mutators for password hashing, social links in database transactions, UserResource for consistent API responses
+- **Ban system** - Config-driven reason codes, `UserBlocked`/`UserUnblocked` events, queued notification jobs, banned users keep access to support tickets
+- **Ban cascade** - Blocking a company owner automatically blocks all employees with a separate message
+- **Impersonation** - One-click "Follow" via lab404/laravel-impersonate, 2FA required, frontend awareness, activity-logged
+- **Activity logging** - 30+ event types, device fingerprinting (type, name, OS, browser), async geo lookup, time range selector (1h-72h)
+- **Search** - Multi-field search across ID, name, lastname, email, phone, and full name combinations
+- **Filters** - 8 auto-discovered filters (age, country, registration date, verification, activity, gender)
+- **Tested** - Behavior-driven Pest tests: ban cascade, access whitelists, impersonation, CRUD validation
+
+> [Detailed documentation ->](docs/modules/admin_users.md)
 
 ---
 
