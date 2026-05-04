@@ -21,7 +21,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Vue Frontend (Inertia v2 + Vue 3)](docs/modules/vue_frontend.md) | ✅ Ready | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
 | [Traits & Middlewares](docs/modules/traits_middlewares.md) | ✅ Ready | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
 | [Admin Users](docs/modules/admin_users.md) | ✅ Ready | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
-| Admin Companies | 📋 Planned | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
+| [Admin Companies](docs/modules/admin_companies.md) | ✅ Ready | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
 | Notifications | 📋 Planned | Dual notification system supporting admin broadcasts and automated system notifications. |
 | Tickets (Support System) | 📋 Planned | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
 | Payments & Promo Codes | 📋 Planned | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
@@ -210,6 +210,22 @@ The command center for managing users in a multi-tenant SaaS: CRUD, banning with
 > [Detailed documentation ->](docs/modules/admin_users.md)
 
 ---
+
+### May 2026 - Admin Companies
+
+The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages.
+
+- **Company Dashboard** - Full overview with owner info, subscription status, payment history, employee count - single query with subqueries for aggregates
+- **Subscription Engine** - 5 states (active, expiring, expired, trial, never_activated) with priority-based calculation
+- **Blocking System** - 3 block reasons (owner_banned, first_payment_required, payment_expired) with owner/employee split
+- **Ban Cascade** - Blocking a company owner automatically blocks all employees with a dedicated message
+- **Expiry Notifications** - Automated warnings at 10 days and 3 days before subscription ends, unique codes prevent duplicates
+- **Payment Model** - Full lifecycle (pending/success/failed), discount tracking, promo codes, CompanyPaymentProcessed event
+- **Frontend** - CompanyBlocked.vue handles all 3 scenarios, block_status shared via Inertia on every page
+- **Filtering** - Auto-discovered filters (subscription status, plan, country, date range, search) + sorting
+- **Tested** - Subscription status, ban cascade, payment events, expiry notifications, admin filtering
+
+> [Detailed documentation ->](docs/modules/admin_companies.md)
 
 ## 🚀 Getting Started
 
