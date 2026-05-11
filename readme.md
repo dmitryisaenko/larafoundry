@@ -22,7 +22,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Traits & Middlewares](docs/modules/traits_middlewares.md) | ✅ Ready | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
 | [Admin Users](docs/modules/admin_users.md) | ✅ Ready | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
 | [Admin Companies](docs/modules/admin_companies.md) | ✅ Ready | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
-| Notifications | 📋 Planned | Dual notification system supporting admin broadcasts and automated system notifications. |
+| [Notifications](docs/modules/notifications.md) | ✅ Ready | Dual notification system supporting admin broadcasts and automated system notifications. |
 | Tickets (Support System) | 📋 Planned | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
 | Payments & Promo Codes | 📋 Planned | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
 
@@ -190,7 +190,7 @@ The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict executio
 - **NotificationDataHandler** - Centralized data mapping for targeted notification delivery
 - **Tested** - Behavior-driven Pest tests: real HTTP requests asserting middleware responses
 
-> [Detailed documentation ->](docs/modules/traits_middlewares.md)
+> [Detailed module documentation ->](docs/modules/traits_middlewares.md)
 
 ---
 
@@ -207,7 +207,7 @@ The command center for managing users in a multi-tenant SaaS: CRUD, banning with
 - **Filters** - 8 auto-discovered filters (age, country, registration date, verification, activity, gender)
 - **Tested** - Behavior-driven Pest tests: ban cascade, access whitelists, impersonation, CRUD validation
 
-> [Detailed documentation ->](docs/modules/admin_users.md)
+> [Detailed module documentation ->](docs/modules/admin_users.md)
 
 ---
 
@@ -225,7 +225,33 @@ The financial control center for managing companies in a multi-tenant SaaS: subs
 - **Filtering** - Auto-discovered filters (subscription status, plan, country, date range, search) + sorting
 - **Tested** - Subscription status, ban cascade, payment events, expiry notifications, admin filtering
 
-> [Detailed documentation ->](docs/modules/admin_companies.md)
+> [Detailed module documentation ->](docs/modules/admin_companies.md)
+
+### May 2026 - Notifications
+
+Dual notification system supporting admin broadcasts and automated system notifications.
+
+**Admin notifications:**
+- Multilingual content (JSON translations per language)
+- Recipient segmentation: country, sex, age range, registration date, activity, verification status
+- Draft → Sent workflow with visibility scheduling (visible_from / visible_until)
+- Delivery and read statistics with progress bars
+- Auto-translate across languages
+
+**System notifications:**
+- Event-driven via queued jobs (company events, invitations, payments, security)
+- Laravel translation keys with dynamic parameters
+- 30-day auto-expiry
+- Dual delivery: in-app + email
+
+**Shared:**
+- Unified user notification panel (both types in one list)
+- Per-user read tracking via pivot table (read_at timestamp)
+- Real-time unread count with 30-second polling
+- Mark all as read (bulk operation)
+- Expandable notification items with auto-mark-as-read
+
+> [Detailed module documentation](docs/modules/notifications.md)
 
 ## 🚀 Getting Started
 
