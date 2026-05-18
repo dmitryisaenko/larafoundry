@@ -23,7 +23,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Admin Users](docs/modules/admin_users.md) | ✅ Ready | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
 | [Admin Companies](docs/modules/admin_companies.md) | ✅ Ready | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
 | [Notifications](docs/modules/notifications.md) | ✅ Ready | Dual notification system supporting admin broadcasts and automated system notifications. |
-| Tickets (Support System) | 📋 Planned | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
+| [Tickets (Support System)](docs/modules/tickets.md) | ✅ Ready | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
 | Payments & Promo Codes | 📋 Planned | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
 
 ---
@@ -252,6 +252,36 @@ Dual notification system supporting admin broadcasts and automated system notifi
 - Expandable notification items with auto-mark-as-read
 
 > [Detailed module documentation](docs/modules/notifications.md)
+
+### May 2026 - Tickets (Support System)
+
+Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel.
+
+**User side:**
+- Create tickets with title, message, priority, categories
+- View own tickets only via UUID-based URLs (no sequential ID exposure)
+- Reply to tickets (auto-updates status to wait-moderator)
+- Old resolved tickets auto-hidden after 7 days
+
+**Admin side:**
+- Full CRUD with 12 endpoints: create, read, update, reply, close, priority change, category/label toggle
+- Statistics dashboard: open, high priority, standard priority, total
+- 5-level smart sorting: unresolved → new → high priority → wait-moderator → most recent
+- Grid/list display modes with search, status, and priority filters
+- Toggle categories and labels on the fly (no form submission required)
+
+**Status workflow (automatic):**
+- User creates → wait-moderator → Admin replies → wait-customer → User replies → wait-moderator
+- Admin closes → resolved → User replies → auto-reopen
+
+**Architecture:**
+- Built on coderflex/laravel-ticket with custom model, filters, events, policies
+- Separate controllers, form requests, and API resources for user and admin
+- Categories (general, billing, feature request, bug report) + Labels (quick, complex) via pivot tables
+- Events: TicketCreate, TicketAnswerCreate (audit trail integration)
+- Conversation thread with is_agent flag for sender identification
+
+> [Detailed module documentation](docs/modules/tickets.md)
 
 ## 🚀 Getting Started
 
