@@ -24,7 +24,7 @@ LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://koha
 | [Admin Companies](docs/modules/admin_companies.md) | ✅ Ready | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
 | [Notifications](docs/modules/notifications.md) | ✅ Ready | Dual notification system supporting admin broadcasts and automated system notifications. |
 | [Tickets (Support System)](docs/modules/tickets.md) | ✅ Ready | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
-| Payments & Promo Codes | 📋 Planned | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
+| [Payments & Promo Codes](docs/modules/payments.md) | ✅ Ready | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
 
 ---
 
@@ -282,6 +282,42 @@ Dual-interface support ticket system where users create and track tickets, while
 - Conversation thread with is_agent flag for sender identification
 
 > [Detailed module documentation](docs/modules/tickets.md)
+
+### May 2026 - Payments & Promo Codes
+
+Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail.
+
+**Payment Tracking:**
+- View all company payments with user, company, plan, and gateway data
+- Revenue statistics: totals by currency with automatic conversion to admin display currencies
+- Period filtering: this month, last month, year, all time, custom range (uses COALESCE for pending payments)
+- Filter by status, country, plan, promo code, email, company name
+- Latest payment per company detection - shows which subscriptions expire soon
+- Payment gateway response stored as JSON for debugging
+
+**Promo Code System:**
+- Two discount types: percentage (0-100%) and fixed amount (capped at payment total)
+- Four constraint levels: active flag, expiration date, global max uses, single-use-per-user
+- Personal promo codes tied to specific users via user_id FK
+- Code and discount_type immutable after creation (audit trail protection)
+- Failed payments don't consume single-use-per-user quota
+
+**Admin Management:**
+- Full CRUD with 7 endpoints for promo codes + 1 for payments
+- Toggle active status with one click (dedicated PATCH endpoint)
+- User search autocomplete for personal promo codes
+- Status badges: Active, Inactive, Expired, Exhausted
+- Usage counter: current/max with "Unlimited" fallback
+
+**Architecture:**
+- 2 models: CompanyPayment (BelongsToCompany trait), PromoCode (validation chain + discount calculation)
+- 2 filter classes with method-per-filter pattern
+- 4 form request classes with type-specific validation
+- AdminPaymentResource with formatted dates, currency symbols, latest-payment flag
+- Events: CompanyPaymentProcessed + queued notification jobs (success/failed)
+- Responsive frontend: desktop table + mobile cards
+
+> [Detailed module documentation](docs/modules/payments.md)
 
 ## 🚀 Getting Started
 
