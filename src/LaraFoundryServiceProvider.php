@@ -17,6 +17,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -26,6 +27,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/larafoundry.php' => config_path('larafoundry.php'),
             ], 'larafoundry-config');
+
+            $this->publishes([
+                __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),
+            ], 'larafoundry-pages');
         }
     }
 }
