@@ -1,0 +1,31 @@
+{
+    "name": "@dmitryisaenko/larafoundry",
+    "version": "0.0.0",
+    "description": "LaraFoundry core — frontend primitives (Inertia + Vue 3 + Tailwind): i18n, form UI-kit, flash, layout.",
+    "type": "module",
+    "private": true,
+    "files": [
+        "resources/js",
+        "resources/css"
+    ],
+    "exports": {
+        ".": "./resources/js/index.js",
+        "./i18n": "./resources/js/i18n/index.js",
+        "./composables/*": "./resources/js/composables/*.js",
+        "./components/*": "./resources/js/components/*.vue",
+        "./components/ui/*": "./resources/js/components/ui/*.vue",
+        "./components/layouts/*": "./resources/js/layouts/*.vue",
+        "./theme.css": "./resources/css/theme.css"
+    },
+    "peerDependencies": {
+        "@inertiajs/vue3": "^2.0",
+        "vue": "^3.4",
+        "vue-i18n": "^11.0",
+        "ziggy-js": "^2.0"
+    },
+    "peerDependenciesMeta": {
+        "ziggy-js": {
+            "optional": true
+        }
+    }
+}

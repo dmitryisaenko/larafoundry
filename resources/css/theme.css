@@ -1,0 +1,104 @@
+/*
+|------------------------------------------------------------------------------
+| LaraFoundry core theme (Tailwind v4)
+|------------------------------------------------------------------------------
+| Design tokens for the core, ported from the legacy SCSS `_variables.scss`
+| and de-branded. Host apps import this right after Tailwind:
+|
+|     @import 'tailwindcss';
+|     @import '../../vendor/dmitryisaenko/larafoundry/resources/css/theme.css';
+|
+| Tokens declared in `@theme` become Tailwind utilities automatically
+| (e.g. `--color-brand-500` → `bg-brand-500`, `text-brand-500`, `border-brand-500`).
+| Breakpoints are overridden to the project scale (they differ from Tailwind's
+| defaults). Component-level sizing that is not part of a Tailwind scale lives
+| in plain custom properties under `:root` at the bottom.
+*/
+
+@theme {
+    /* --- Brand (accent-1, blue) ----------------------------------------- */
+    --color-brand-50: #eff6ff;
+    --color-brand-100: #dbeafe;
+    --color-brand-200: #bfdbfe;
+    --color-brand-300: #93c5fd;
+    --color-brand-400: #60a5fa;
+    --color-brand-500: #3b82f6;
+    --color-brand-600: #2563eb;
+    --color-brand-900: #1e3a8a;
+    --color-brand-950: #10255e;
+
+    /* --- Semantic ------------------------------------------------------- */
+    --color-success: #065f46;
+    --color-success-strong: #059669;
+    --color-attention: #af5602;
+    --color-warning: #dc2626;
+    --color-warning-soft: #fbbf24;
+    --color-info: #3b82f6;
+    --color-danger: #dc2626;
+    --color-danger-700: #b91c1c;
+    --color-danger-50: #fef2f2;
+    --color-danger-100: #fee2e2;
+    --color-danger-200: #fecaca;
+    --color-muted: #8e95a3;
+
+    /* --- Text ----------------------------------------------------------- */
+    --color-ink: #27272a;
+    --color-ink-soft: #71717a;
+    --color-ink-faint: #b4b4c0;
+
+    /* --- Surfaces & borders -------------------------------------------- */
+    --color-surface: #ffffff;
+    --color-surface-muted: #f9fafb;
+    --color-surface-subtle: #f3f4f6;
+    --color-border: #d4d6d8;
+    --color-border-light: #e5e7eb;
+    --color-row-stripe: #f3f4f6;
+    --color-row-hover: #e6e8ed;
+
+    /* --- Tag palette (contragent tags, badges) ------------------------- */
+    --color-tag-blue: #3b82f6;
+    --color-tag-red: #dc2626;
+    --color-tag-green: #065f46;
+    --color-tag-yellow: #fbbf24;
+    --color-tag-orange: #af5602;
+    --color-tag-teal: #2dd4bf;
+    --color-tag-gray: #71717a;
+
+    /* --- Typography ----------------------------------------------------- */
+    --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+    /* --- Radii ---------------------------------------------------------- */
+    --radius-xs: 5px;
+    --radius-sm: 7px;
+    --radius-md: 12px;
+    --radius-lg: 15px;
+    --radius-pill: 30px;
+
+    /* --- Breakpoints (project scale — override Tailwind defaults) -------- */
+    --breakpoint-sm: 36rem; /* 576px */
+    --breakpoint-md: 62rem; /* 992px */
+    --breakpoint-lg: 80rem; /* 1280px */
+    --breakpoint-xl: 96rem; /* 1536px */
+}
+
+/*
+| Brand gradient and component-level sizing. Not part of any Tailwind scale,
+| so kept as plain custom properties; reference them with `var(--…)` or the
+| Tailwind arbitrary-value syntax, e.g. `h-[var(--lf-input-height)]`.
+*/
+:root {
+    --lf-gradient-brand: linear-gradient(
+        90deg,
+        rgba(30, 58, 138, 1) 0%,
+        rgba(59, 130, 246, 1) 50%,
+        rgba(30, 58, 138, 1) 100%
+    );
+
+    --lf-input-height: 55px;
+    --lf-button-size: 55px;
+    --lf-social-button-size: 45px;
+
+    --lf-max-width: 96rem;
+    --lf-transition: 0.2s;
+    --lf-transition-slow: 0.6s;
+}
