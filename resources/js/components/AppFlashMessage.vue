@@ -1,6 +1,6 @@
 <script setup>
 import { usePage } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 
 /**
  * Toast notifications driven by Inertia flash props.
@@ -13,39 +13,65 @@ import { ref, watch } from 'vue';
 const page = usePage();
 
 const messages = ref([]);
+
+// Pending auto-dismiss timers, keyed by message `id` (slot + content). Keying
+// on the content-derived id — not the bare slot — means a replacement message
+// gets its own timer; a stale timer can never close the message that took its
+// slot. Cleared in buildMessages() for messages that no longer exist.
 const timeouts = {};
 
 const AUTO_DISMISS_MS = 2500;
 
+// Maps a message slot to its source key in the flash payload.
+const FLASH_KEY = {
+    info: 'info',
+    error: 'error',
+    'disappear-info': 'disappear_info',
+    'disappear-error': 'disappear_error',
+};
+
+const clearTimer = (id) => {
+    if (timeouts[id]) {
+        clearTimeout(timeouts[id]);
+        delete timeouts[id];
+    }
+};
+
 const buildMessages = () => {
     const flash = page.props.flash ?? {};
 
-    messages.value = [
-        { key: 'info', content: flash.info, type: 'info' },
-        { key: 'error', content: flash.error, type: 'error' },
-        { key: 'disappear-info', content: flash.disappear_info, type: 'disappear-info' },
-        { key: 'disappear-error', content: flash.disappear_error, type: 'disappear-error' },
-    ].filter((m) => m.content);
+    const next = [
+        { slot: 'info', content: flash.info, type: 'info' },
+        { slot: 'error', content: flash.error, type: 'error' },
+        { slot: 'disappear-info', content: flash.disappear_info, type: 'disappear-info' },
+        { slot: 'disappear-error', content: flash.disappear_error, type: 'disappear-error' },
+    ]
+        .filter((m) => m.content)
+        // id ties the timer to this exact message, so a new message in the same
+        // slot can't inherit the previous one's pending timer.
+        .map((m) => ({ ...m, id: `${m.slot}:${m.content}` }));
+
+    // Drop timers whose message is gone (dismissed or replaced).
+    const live = new Set(next.map((m) => m.id));
+    Object.keys(timeouts).forEach((id) => {
+        if (!live.has(id)) {
+            clearTimer(id);
+        }
+    });
+
+    messages.value = next;
 };
 
-const closeMessage = (key) => {
-    const map = {
-        info: 'info',
-        error: 'error',
-        'disappear-info': 'disappear_info',
-        'disappear-error': 'disappear_error',
-    };
+const closeMessage = (message) => {
+    const flashKey = FLASH_KEY[message.slot];
 
-    if (page.props.flash && map[key]) {
-        page.props.flash[map[key]] = null;
+    if (page.props.flash && flashKey) {
+        page.props.flash[flashKey] = null;
     }
 
-    messages.value = messages.value.filter((m) => m.key !== key);
+    messages.value = messages.value.filter((m) => m.id !== message.id);
 
-    if (timeouts[key]) {
-        clearTimeout(timeouts[key]);
-        delete timeouts[key];
-    }
+    clearTimer(message.id);
 };
 
 const isDisappearType = (type) => type === 'disappear-error' || type === 'disappear-info';
@@ -67,13 +93,18 @@ watch(
         buildMessages();
 
         messages.value.forEach((m) => {
-            if (isDisappearType(m.type) && !timeouts[m.key]) {
-                timeouts[m.key] = setTimeout(() => closeMessage(m.key), AUTO_DISMISS_MS);
+            if (isDisappearType(m.type) && !timeouts[m.id]) {
+                timeouts[m.id] = setTimeout(() => closeMessage(m), AUTO_DISMISS_MS);
             }
         });
     },
     { deep: true, immediate: true },
 );
+
+// Don't leak pending timers when the layout unmounts.
+onBeforeUnmount(() => {
+    Object.keys(timeouts).forEach(clearTimer);
+});
 </script>
 
 <template>
@@ -81,10 +112,10 @@ watch(
         <TransitionGroup name="flash" tag="div" class="flex flex-col gap-2">
             <div
                 v-for="m in messages"
-                :key="m.key"
+                :key="m.id"
                 class="pointer-events-auto flex items-start gap-3 rounded-md border px-4 py-3 shadow-md"
                 :class="[toneClass(m.type), isDisappearType(m.type) ? 'cursor-pointer' : '']"
-                @click="isDisappearType(m.type) && closeMessage(m.key)"
+                @click="isDisappearType(m.type) && closeMessage(m)"
             >
                 <p class="flex-1 text-sm">{{ m.content }}</p>
 
@@ -93,7 +124,7 @@ watch(
                     type="button"
                     class="shrink-0 leading-none opacity-60 transition hover:opacity-100"
                     aria-label="Close"
-                    @click.stop="closeMessage(m.key)"
+                    @click.stop="closeMessage(m)"
                 >
                     <svg class="h-3.5 w-3.5" viewBox="0 0 26 26" fill="none">
                         <path

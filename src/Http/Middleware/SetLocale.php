@@ -26,12 +26,17 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Every candidate is validated against the `available` whitelist before use.
  *
+ * The resolved locale is applied inline to the current request via
+ * App::setLocale(); there is no redirect or page reload. The choice is
+ * persisted (session always, plus a year-long cookie when it was detected
+ * rather than read back from session/cookie) so the next request is stable.
+ *
  * Deliberately dropped from the legacy version:
  *   - synchronous `Http::get('ip-api.com')` on every guest request — moved
  *     behind the optional, opt-in {@see LocaleGeoResolver} contract;
  *   - injecting `<script>window.location.reload()</script>` into the response
- *     body — fragile and breaks Inertia. A real redirect is used when the
- *     resolved locale differs from what the cookie already holds.
+ *     body — fragile and breaks Inertia. The locale now takes effect on the
+ *     same request, so no client-side reload is needed.
  *
  * Config: `larafoundry.locale`.
  */
