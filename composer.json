@@ -1,0 +1,54 @@
+{
+    "name": "dmitryisaenko/larafoundry",
+    "description": "LaraFoundry — reusable SaaS/CRM core for Laravel (auth, multi-tenancy, RBAC, admin, helpdesk, i18n).",
+    "type": "library",
+    "keywords": ["laravel", "saas", "crm", "multi-tenancy", "boilerplate", "starter-kit"],
+    "homepage": "https://larafoundry.com",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Dmitry Isaenko",
+            "email": "isaenkodmitry@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "pestphp/pest": "^3.0 || ^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dmitryisaenko\\LaraFoundry\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dmitryisaenko\\LaraFoundry\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Dmitryisaenko\\LaraFoundry\\LaraFoundryServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "pest",
+        "lint": "pint",
+        "lint:test": "pint --test"
+    }
+}
