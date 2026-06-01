@@ -1,354 +1,156 @@
 # LaraFoundry
 
-> A production-proven SaaS engine for Laravel. Build your next SaaS 10x faster.
+> A reusable SaaS/CRM core for Laravel, extracted in public from a production system.
 
-LaraFoundry is a modular SaaS foundation extracted from [Kohana.io](https://kohana.io) - a real, production CRM/ERP system. It provides everything you need to launch a SaaS product without rebuilding the boring parts.
+LaraFoundry is a modular SaaS foundation being extracted from [Kohana.io](https://kohana.io) — a real, production CRM/ERP. The goal is to package the cross-cutting parts every SaaS rebuilds from scratch — auth, multi-tenancy, i18n, admin, billing — as a clean, tested Composer package, so you don't write them again.
 
-**Tech Stack:** Laravel 12 · PHP 8.3 · Vue 3 · Inertia v2 · Tailwind CSS
+This is built **in public** and **by extraction, not rewrite**: each piece is pulled from battle-tested production code, modernized, hardened, covered with Pest, reviewed, and only then tagged. The README tracks what is *actually in the package*, not what is planned — see the roadmap for what's coming.
 
----
+**Tech stack:** Laravel 12 / 13 · PHP 8.2+ · Inertia 2 / 3 · Vue 3 · Tailwind CSS 4 · Ziggy · Pest
 
-## 📦 Modules
+```bash
+composer require dmitryisaenko/larafoundry
+```
 
-| Module | Status | Description |
-|--------|--------|-------------|
-| [Registration](docs/modules/registration.md) | ✅ Ready | Multi-provider auth, OAuth2, avatars, session tracking, logging |
-| [Authentication](docs/modules/authentication.md) | ✅ Ready | Email/Password, OAuth, QR Code Login, PIN Code Lock, 2FA (TOTP), IP Whitelisting |
-| [Multi-tenancy](docs/modules/multi_tenancy.md) | ✅ Ready | Company-based tenancy with team management |
-| [Activity Logging](docs/modules/logging.md) | ✅ Ready | Full audit trail system |
-| [Multilanguage (i18n)](docs/modules/multilanguage.md) | ✅ Ready | Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline. |
-| [Navigation & Menu System](docs/modules/navigation.md) | ✅ Ready  | Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions. |
-| [Vue Frontend (Inertia v2 + Vue 3)](docs/modules/vue_frontend.md) | ✅ Ready | Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia. |
-| [Traits & Middlewares](docs/modules/traits_middlewares.md) | ✅ Ready | The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse. |
-| [Admin Users](docs/modules/admin_users.md) | ✅ Ready | The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters. |
-| [Admin Companies](docs/modules/admin_companies.md) | ✅ Ready | The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages. |
-| [Notifications](docs/modules/notifications.md) | ✅ Ready | Dual notification system supporting admin broadcasts and automated system notifications. |
-| [Tickets (Support System)](docs/modules/tickets.md) | ✅ Ready | Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel. |
-| [Payments & Promo Codes](docs/modules/payments.md) | ✅ Ready | Stripe/Paddle billing integration. Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail. |
+> ⚠️ **Status: early. Current release is `v0.1.0` — the foundation layer.**
+> Auth, multi-tenancy, admin, billing and the other domain modules are not in the package yet; they are being extracted phase by phase. Don't `composer require` this expecting a finished SaaS engine — expect the primitives those modules will stand on.
 
 ---
 
-## 🔄 Latest Updates
+## What's in `v0.1.0`
 
-### February 2026 - Registration Module
+The foundation layer: the cross-cutting primitives every later module depends on. 14 PHP classes, a small Inertia/Vue frontend, **39 Pest tests**, green CI on PHP 8.2 / 8.3 / 8.4.
 
-What's included:
-- **Multi-provider authentication**: Email/password + OAuth2 (Google, Facebook, Twitter) via Laravel Socialite
-- **Smart avatar system**: Automatic Gravatar detection with generated initials fallback (15 color themes)
-- **Session & device tracking**: Full device fingerprinting - browser, OS, device type, IP, geo location
-- **Auth event logging**: 7 authentication events logged automatically via Spatie Activity Log
-- **Team onboarding**: Company invitation system with auto-acceptance on registration
-- **Email verification**: Signed links with customizable email templates
+### Backend
 
-> [Detailed registration module documentation →](docs/modules/registration.md)
+| Component | What it does |
+|-----------|--------------|
+| `SetLocale` middleware | One resolution chain (user preference → session → cookie → `Accept-Language` → optional geo-IP → default). **Every** source validated against a single allow-list before it's applied — no junk locale codes can reach the app or the DB. |
+| `ValidLocale` rule | Validation rule backing the same single source of truth for locales. |
+| `HandleInertiaRequests` | Base Inertia middleware sharing flash, active locale, the translation bag, Ziggy and appearance. Host apps extend it and merge their own props. |
+| `Filter` + `Filterable` | Query-filter base: one method per request parameter. Hardened against mass-method-invocation — only public methods declared on the concrete subclass are callable from request input. |
+| `EnsureEmailIsVerified` | Email-verification gate with a config-driven allow-list of routes/prefixes and a `shouldBypass()` hook for host-specific overrides. |
+| `RestrictAuthByIp` | IP allow-list for the admin/auth zone in production. |
+| `StoreIntendedUrl` | Captures full-page Inertia visits as the post-login redirect target. |
+| `HandleAppearance` | Light/dark/system preference, read from a cookie, shared to views. |
+| `HasPagination` | Normalizes any paginator into a flat Inertia-friendly payload. |
 
+### Frontend (Inertia + Vue 3 + Tailwind 4)
 
-### March 2026 - Authentication Module
-
-LaraFoundry ships with a production-grade, multi-method authentication system - far beyond the standard login/register flow.
-
-**6 Authentication Methods:**
-- **Email/Password** - Rate-limited login (5 attempts), session regeneration, device fingerprinting
-- **OAuth** - Google, Facebook, Twitter via Laravel Socialite v5 with auto-verified emails
-- **QR Code Login** - WhatsApp-style cross-device authentication with UUID tokens and encrypted verification
-- **PIN Code Lock** - 4-digit screen lock for shared workstations with configurable inactivity timeout
-- **2FA (TOTP)** - Google Authenticator for admin accounts, enforced via middleware
-- **IP Whitelisting** - Admin access restricted to configured IPs with instant force-logout
-
-**Security Features:**
-- Real-time admin alert system (Email + Telegram) on every failed login attempt
-- Session tracking with full device info (type, name, OS, browser, IP)
-- Visitor status system with 6 states (guest, auth, admin, blocked, deleted, forcelogout)
-- BCrypt-hashed PINs and passwords
-- Signed URLs for email verification
-- Per-session independent PIN lock with DB-persisted state
-
-**Middleware Stack:**
-- `CheckPinLockMiddleware` - Auto-locks inactive sessions
-- `Require2FA` - Enforces 2FA on all admin routes
-- `AdminAccess` - Gates admin panel access
-- `GetVisitorStatusAction` - Centralized user role determination
-
-> [Detailed authentication module documentation →](docs/modules/authentication.md)
-
-
-### March 2026 - Multi-Tenancy & Authorization
-
-LaraFoundry provides a complete multi-tenancy system with automatic data isolation, config-driven permissions, and a 5-level authorization hierarchy - purpose-built for SaaS where company owners manage their own teams.
-
-**Data Isolation:**
-- **BelongsToCompany trait** - Automatic Eloquent global scope filtering by active company. One trait per model, zero chance of cross-tenant data leaks
-- **Admin bypass** - `scopeForAdmin()` to query across all companies
-- **Company-scoped queries** - `scopeForCompany($id)` for cross-tenant reports
-
-**Permission System (100+ permissions, 20+ modules):**
-- **Config-driven** - All permissions defined in `config/roles-and-permissions.php`, auto-registered as Gates
-- **Dedicated Gate classes** - 8 module-specific Gate classes for complex business logic (CompanyGates, EmployeeGates, RoleGates, ContragentGates, WarehouseGates, ProductionGates...)
-- **5-level hierarchy** - Super admin > Owner > Revoked > Individual grant > Role-based
-- **Permission overrides** - Grant or revoke individual permissions per user, overriding role defaults
-- **Artisan sync** - `php artisan permissions:sync` with `--fresh` and `--cleanup` flags
-
-**Role Management:**
-- **5 role templates** auto-cloned to every new company (Manager, Accountant, Storekeeper, Logistician, Worker)
-- **Custom roles** - Company owners create, edit, and delete roles from the UI
-- **Multiple roles per user** - Assign any combination of roles to employees
-- **Company-scoped** - Same role slug can have different permissions in different companies
-
-**Middleware Stack:**
-- `SetActiveCompanyMiddleware` - Auto-resolves tenant context with ownership priority
-- `CheckAccessMiddleware` - User/owner ban status + subscription/trial checks
-- `CheckCompanyAccess` - Owner-only route protection
-
-**Navigation & Routing:**
-- **Permission-aware menu** - Menu items filtered by `checkUserAndCompanyPolicy()`, if you can't access it - you don't see it
-- **First Allowed Route (FAR)** - Smart redirects instead of 403 error pages
-- **User-configurable landing page** - Each user sets their default page per company, auto-resets if permissions change
-
-**Test Coverage:** 19 test files covering permission hierarchy, cross-company isolation, Gate authorization, menu visibility, middleware chain, role CRUD, and edge cases.
-
-> [Detailed module documentation ->](docs/modules/multi_tenancy.md)
-
-### March 2026 - Activity Logging & Monitoring
-
-Production-grade activity logging system with event-driven architecture, device fingerprinting, and async geolocation.
-
-**Key features:**
-- 60+ events mapped to structured activity logs via a single ServiceProvider
-- Zero manual log calls - fire an event, logging happens automatically
-- Device fingerprinting (browser, OS, device type) via `jenssegers/agent`
-- Async IP geolocation with queued jobs (cached 24h, graceful fallback)
-- Custom Activity model extending Spatie with 20+ queryable fields
-- Multi-channel admin notifications (Email + Telegram) for critical events
-- Admin UI with time-range filtering (Vue 3 + Inertia)
-- Three-layer observability: business logs, Telescope (dev), file logs (Log Viewer)
-- Monolog split channels: daily (14 days) + critical (30 days)
-- Full test coverage with Pest PHP
-
-**Packages:** `spatie/laravel-activitylog`, `jenssegers/agent`, `opcodesio/log-viewer`, `laravel/telescope`
-
-> [Detailed module documentation ->](docs/modules/logging.md)
-
-### March 2026 - Multilanguage (i18n)
-
-Production-grade internationalization system with automatic language detection and seamless Laravel-to-Vue translation pipeline.
-
-- **Automatic locale detection** - 5-step fallback chain: user preference -> session -> browser Accept-Language -> IP geolocation -> default
-- **4 languages ready** - English, Ukrainian, Polish, German (easily extensible)
-- **Zero-config frontend** - Translations passed via Inertia shared props, global `t()` function in Vue
-- **Separate auth/guest flows** - Authenticated users persist to DB, guests to long-lived cookies
-- **Content translation API** - Pluggable layer with DeepL and Google Translate providers
-- **IP geolocation** - Country-based language detection via ip-api.com
-- **1700+ translation strings** - Production-ready Ukrainian locale included
-- **Tested** - Full Pest test coverage for all detection paths and edge cases
-
-> [Detailed module documentation →](docs/modules/multilanguage.md)
-
-### April 2026 - Navigation & Menu System
-
-Dynamic, permission-aware navigation that builds menus per request based on user type, company role, and granted permissions.
-
-- **Dynamic menu building** - LayoutDataService constructs 4 navigation contexts (desktop top/bottom, mobile, sidebar) on every request
-- **Permission filtering** - Every menu item checked via `checkUserAndCompanyPolicy()` with support for admin, owner, and employee roles
-- **Sub-menu routing** - Each module maps to a default sub-page with granular permission checks at sub-route level
-- **First Allowed Route (FAR)** - Zero 403 pages; users are always redirected to their first accessible page
-- **User-configurable defaults** - Set preferred landing page per company in profile settings
-- **Desktop** - Two-tier header (module tabs + sub-page tabs) with server-computed active states
-- **Mobile** - Hamburger menu with slide-out pullout, collapsible parent/child sections, and default page selector
-- **Tested** - Pest tests for all user types, permission combinations, and edge cases
-
-> [Detailed module documentation →](docs/modules/navigation.md)
+- **`createLaraFoundry(app, pageProps)`** — single bootstrap call. Installs vue-i18n wired from the backend's shared props (`{{ $t('key') }}` works in any template, no import) and registers the shared components.
+- **Form UI kit** — `InputField`, `TextareaField`, `SelectField`, `DateField` with inline validation errors.
+- **`AppFlashMessage`** — toast notifications driven by the flash contract.
+- **`PagePaginator`** — page-number paginator consuming the `HasPagination` payload.
+- **`AppBaseLayout`** — minimal base layout.
+- **`theme.css`** — Tailwind v4 `@theme` design tokens, importable straight from `vendor/`.
 
 ---
 
-### April 2026 - Vue Frontend (Inertia v2 + Vue 3)
+## Installation
 
-Server-driven frontend architecture with dynamic layout switching, overlay management, pagination, filters, and a hybrid modal system - all without Vuex or Pinia.
+Add the package:
 
-- **LayoutSwitcher** - One component routes to 5 layouts (Guest, Auth, Admin, Blocked, Deleted) based on server-sent `visitor_status` prop
-- **Overlay system** - 7 pullout panels (mobile menu, notifications, filters, etc.) with double-layer stacking and ESC dismissal
-- **Pagination** - `HasPagination` backend trait + auto-rendering `PagePaginator` component with smart page range and filter preservation
-- **Filter architecture** - Auto-discovery pattern where request params map to filter class methods. Alphabetical nav, quick presets, whitelisted sorting
-- **Modal system** - Custom modals for forms (useForm) and data views (async loading + tabs), SweetAlert2 for confirmations
-- **State management** - Reactive refs + provide/inject pattern. No external state library
-- **Tested** - Pest feature tests asserting Inertia prop contracts for layouts, pagination, filters, and modal data
+```bash
+composer require dmitryisaenko/larafoundry
+```
 
-> [Detailed module documentation ->](docs/modules/vue_frontend.md)
+The service provider auto-registers (config merge, routes, migrations, console commands). Publish the config:
 
----
+```bash
+php artisan larafoundry:install
+```
 
-###  April 2026 - Traits & Middlewares
+### Wiring the middleware (host `bootstrap/app.php`)
 
-The invisible backbone of a multi-tenant SaaS: 11 middlewares in strict execution order and 6 custom traits for business logic reuse.
+```php
+use Dmitryisaenko\LaraFoundry\Http\Middleware\HandleAppearance;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
+use App\Http\Middleware\HandleInertiaRequests; // extends the core one
 
-- **Middleware stack** - 11 middlewares with explicit execution order: company context → activity tracking → locale detection → email verification → PIN lock → access control → session validation
-- **PIN lock** - Database-backed inactivity screen lock (configurable timeout, HTTP 423 for APIs)
-- **3-level access control** - User ban → company owner ban → payment status, each with specific route whitelists
-- **Session validation** - Anti-hijacking via database session tracking with device fingerprinting
-- **Locale detection** - 5-step chain: profile → session → browser → IP geolocation → default
-- **HasPagination** - Consistent pagination data extraction for any paginator type
-- **Filter auto-discovery** - Request params auto-map to filter class methods via `method_exists()`
-- **NotificationDataHandler** - Centralized data mapping for targeted notification delivery
-- **Tested** - Behavior-driven Pest tests: real HTTP requests asserting middleware responses
+->withMiddleware(function (Middleware $middleware): void {
+    $middleware->web(append: [
+        HandleAppearance::class,
+        SetLocale::class,
+        HandleInertiaRequests::class,
+    ]);
+})
+```
 
-> [Detailed module documentation ->](docs/modules/traits_middlewares.md)
+### Extending the Inertia middleware
 
----
+```php
+use Dmitryisaenko\LaraFoundry\Http\Middleware\HandleInertiaRequests as CoreHandleInertiaRequests;
 
-### April 2026 - Admin Users
+class HandleInertiaRequests extends CoreHandleInertiaRequests
+{
+    public function share(Request $request): array
+    {
+        return [
+            ...parent::share($request),
+            'auth' => fn () => $request->user(),
+            // your own props…
+        ];
+    }
+}
+```
 
-The command center for managing users in a multi-tenant SaaS: CRUD, banning with cascade, impersonation, activity logging, and auto-discovery filters.
+### Frontend bootstrap (host `app.js`)
 
-- **CRUD** - FormRequest validation, Eloquent Attribute mutators for password hashing, social links in database transactions, UserResource for consistent API responses
-- **Ban system** - Config-driven reason codes, `UserBlocked`/`UserUnblocked` events, queued notification jobs, banned users keep access to support tickets
-- **Ban cascade** - Blocking a company owner automatically blocks all employees with a separate message
-- **Impersonation** - One-click "Follow" via lab404/laravel-impersonate, 2FA required, frontend awareness, activity-logged
-- **Activity logging** - 30+ event types, device fingerprinting (type, name, OS, browser), async geo lookup, time range selector (1h-72h)
-- **Search** - Multi-field search across ID, name, lastname, email, phone, and full name combinations
-- **Filters** - 8 auto-discovered filters (age, country, registration date, verification, activity, gender)
-- **Tested** - Behavior-driven Pest tests: ban cascade, access whitelists, impersonation, CRUD validation
+```js
+import { createLaraFoundry } from '@dmitryisaenko/larafoundry';
 
-> [Detailed module documentation ->](docs/modules/admin_users.md)
+createInertiaApp({
+    setup({ el, App, props, plugin }) {
+        const app = createApp({ render: () => h(App, props) }).use(plugin);
+        createLaraFoundry(app, props.initialPage.props);
+        app.mount(el);
+    },
+});
+```
 
----
-
-### May 2026 - Admin Companies
-
-The financial control center for managing companies in a multi-tenant SaaS: subscription tracking, payment history, ban cascade, automated expiry notifications, and context-aware blocked pages.
-
-- **Company Dashboard** - Full overview with owner info, subscription status, payment history, employee count - single query with subqueries for aggregates
-- **Subscription Engine** - 5 states (active, expiring, expired, trial, never_activated) with priority-based calculation
-- **Blocking System** - 3 block reasons (owner_banned, first_payment_required, payment_expired) with owner/employee split
-- **Ban Cascade** - Blocking a company owner automatically blocks all employees with a dedicated message
-- **Expiry Notifications** - Automated warnings at 10 days and 3 days before subscription ends, unique codes prevent duplicates
-- **Payment Model** - Full lifecycle (pending/success/failed), discount tracking, promo codes, CompanyPaymentProcessed event
-- **Frontend** - CompanyBlocked.vue handles all 3 scenarios, block_status shared via Inertia on every page
-- **Filtering** - Auto-discovered filters (subscription status, plan, country, date range, search) + sorting
-- **Tested** - Subscription status, ban cascade, payment events, expiry notifications, admin filtering
-
-> [Detailed module documentation ->](docs/modules/admin_companies.md)
-
-### May 2026 - Notifications
-
-Dual notification system supporting admin broadcasts and automated system notifications.
-
-**Admin notifications:**
-- Multilingual content (JSON translations per language)
-- Recipient segmentation: country, sex, age range, registration date, activity, verification status
-- Draft → Sent workflow with visibility scheduling (visible_from / visible_until)
-- Delivery and read statistics with progress bars
-- Auto-translate across languages
-
-**System notifications:**
-- Event-driven via queued jobs (company events, invitations, payments, security)
-- Laravel translation keys with dynamic parameters
-- 30-day auto-expiry
-- Dual delivery: in-app + email
-
-**Shared:**
-- Unified user notification panel (both types in one list)
-- Per-user read tracking via pivot table (read_at timestamp)
-- Real-time unread count with 30-second polling
-- Mark all as read (bulk operation)
-- Expandable notification items with auto-mark-as-read
-
-> [Detailed module documentation](docs/modules/notifications.md)
-
-### May 2026 - Tickets (Support System)
-
-Dual-interface support ticket system where users create and track tickets, while admins manage, categorize, and respond through a separate admin panel.
-
-**User side:**
-- Create tickets with title, message, priority, categories
-- View own tickets only via UUID-based URLs (no sequential ID exposure)
-- Reply to tickets (auto-updates status to wait-moderator)
-- Old resolved tickets auto-hidden after 7 days
-
-**Admin side:**
-- Full CRUD with 12 endpoints: create, read, update, reply, close, priority change, category/label toggle
-- Statistics dashboard: open, high priority, standard priority, total
-- 5-level smart sorting: unresolved → new → high priority → wait-moderator → most recent
-- Grid/list display modes with search, status, and priority filters
-- Toggle categories and labels on the fly (no form submission required)
-
-**Status workflow (automatic):**
-- User creates → wait-moderator → Admin replies → wait-customer → User replies → wait-moderator
-- Admin closes → resolved → User replies → auto-reopen
-
-**Architecture:**
-- Built on coderflex/laravel-ticket with custom model, filters, events, policies
-- Separate controllers, form requests, and API resources for user and admin
-- Categories (general, billing, feature request, bug report) + Labels (quick, complex) via pivot tables
-- Events: TicketCreate, TicketAnswerCreate (audit trail integration)
-- Conversation thread with is_agent flag for sender identification
-
-> [Detailed module documentation](docs/modules/tickets.md)
-
-### May 2026 - Payments & Promo Codes
-
-Admin payment dashboard with multi-currency revenue tracking, flexible promo code system, and full discount audit trail.
-
-**Payment Tracking:**
-- View all company payments with user, company, plan, and gateway data
-- Revenue statistics: totals by currency with automatic conversion to admin display currencies
-- Period filtering: this month, last month, year, all time, custom range (uses COALESCE for pending payments)
-- Filter by status, country, plan, promo code, email, company name
-- Latest payment per company detection - shows which subscriptions expire soon
-- Payment gateway response stored as JSON for debugging
-
-**Promo Code System:**
-- Two discount types: percentage (0-100%) and fixed amount (capped at payment total)
-- Four constraint levels: active flag, expiration date, global max uses, single-use-per-user
-- Personal promo codes tied to specific users via user_id FK
-- Code and discount_type immutable after creation (audit trail protection)
-- Failed payments don't consume single-use-per-user quota
-
-**Admin Management:**
-- Full CRUD with 7 endpoints for promo codes + 1 for payments
-- Toggle active status with one click (dedicated PATCH endpoint)
-- User search autocomplete for personal promo codes
-- Status badges: Active, Inactive, Expired, Exhausted
-- Usage counter: current/max with "Unlimited" fallback
-
-**Architecture:**
-- 2 models: CompanyPayment (BelongsToCompany trait), PromoCode (validation chain + discount calculation)
-- 2 filter classes with method-per-filter pattern
-- 4 form request classes with type-specific validation
-- AdminPaymentResource with formatted dates, currency symbols, latest-payment flag
-- Events: CompanyPaymentProcessed + queued notification jobs (success/failed)
-- Responsive frontend: desktop table + mobile cards
-
-> [Detailed module documentation](docs/modules/payments.md)
-
-## 🚀 Getting Started
-
-> LaraFoundry is currently in active development. Join the waitlist to be notified when it's ready.
-
-**Waitlist:** [larafoundry.com](https://larafoundry.com)
+```css
+/* host app.css */
+@import 'tailwindcss';
+@import '../../vendor/dmitryisaenko/larafoundry/resources/css/theme.css';
+```
 
 ---
 
-## 🛠️ Built With
+## Roadmap
 
-- [Laravel 12](https://laravel.com) - PHP framework
-- [Vue 3](https://vuejs.org) - Frontend framework
-- [Inertia.js v2](https://inertiajs.com) - SPA without the complexity
-- [Laravel Socialite](https://laravel.com/docs/socialite) - OAuth authentication
-- [Spatie Activity Log](https://spatie.be/docs/laravel-activitylog) - Activity logging
-- [Laravolt Avatar](https://github.com/laravolt/avatar) - Avatar generation
-- [Intervention Image](https://image.intervention.io) - Image processing
+LaraFoundry is extracted phase by phase. Domain modules below are **planned**, being lifted from the production source — not yet shipped in the package. Module docs describe the production implementation they're extracted from; package APIs may differ as they're modernized.
 
----
+| Phase | Area | Status |
+|-------|------|--------|
+| 0.x | Foundation primitives (locale, filters, middleware, UI kit) | ✅ Shipped (`v0.1.0`) |
+| 1.x | [Authentication](docs/modules/authentication.md) & [Users / Registration](docs/modules/registration.md) | 🔜 Next |
+| 2.x | [Multi-tenancy](docs/modules/multi_tenancy.md) & authorization | 📋 Planned |
+| — | [Activity logging](docs/modules/logging.md) · [Navigation](docs/modules/navigation.md) · [Admin users](docs/modules/admin_users.md) · [Admin companies](docs/modules/admin_companies.md) | 📋 Planned |
+| — | [Notifications](docs/modules/notifications.md) · [Tickets](docs/modules/tickets.md) · [Payments](docs/modules/payments.md) | 📋 Planned |
 
-## 📝 License
-
-LaraFoundry will be released under the MIT License.
+Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
 ---
 
-## 👤 Author
+## Quality
 
-**Dmitry Isaenko** - Full-stack Laravel developer building SaaS tools.
+- **Pest** on every piece of the core. 39 tests in `v0.1.0` (two of them caught real bugs during extraction: a broken default-locale fallback and a mass-method-invocation gap in the filter dispatcher).
+- **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 on every push.
+- Every module passes `/security-review` + `/code-review` before its tag.
 
-- Twitter/X: [@d_isaenko_dev](https://twitter.com/d_isaenko_dev)
-- LinkedIn: [Dmitry Isaenko](https://linkedin.com/in/d-isaenko-dev)
+---
+
+## License
+
+LaraFoundry is **source-available** and **dual-licensed**: free for non-commercial use, paid for commercial use. See [LICENSE.md](LICENSE.md) for the full terms.
+
+---
+
+## Author
+
+**Dmitry Isaenko** — full-stack Laravel developer building SaaS tools.
+
+- Website: [larafoundry.com](https://larafoundry.com)
 - Dev.to: [@d_isaenko_dev](https://dev.to/d_isaenko_dev)
+- LinkedIn: [Dmitry Isaenko](https://linkedin.com/in/d-isaenko-dev)
+- X: [@d_isaenko_dev](https://twitter.com/d_isaenko_dev)
