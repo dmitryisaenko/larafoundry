@@ -9,9 +9,7 @@
  */
 import { ref, nextTick } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 const useRecovery = ref(false);
 

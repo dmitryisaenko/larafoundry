@@ -6,9 +6,7 @@
  * On success Fortify logs the user in and redirects.
  */
 import { useForm, Link } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 const form = useForm({
     name: '',

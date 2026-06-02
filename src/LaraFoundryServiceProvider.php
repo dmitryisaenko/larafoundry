@@ -9,14 +9,12 @@ use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Contracts\DeviceFingerprintResolver;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
-use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\ReconcileTrackedSession;
+use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
-use Dmitryisaenko\LaraFoundry\Auth\Listeners\RecordUserSession;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
-use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
@@ -66,23 +64,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
      * Register the core's auth middleware aliases.
      *
      * `larafoundry.account.active` enforces blocked/deleted gating;
-     * `larafoundry.session.reconcile` evicts revoked sessions. The host applies
-     * both to its authenticated route group.
+     * `larafoundry.session.track` records and refreshes the tracked session row
+     * each request. The host applies both to its authenticated route group.
      */
     protected function registerAuthMiddleware(): void
     {
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('larafoundry.account.active', EnsureAccountIsActive::class);
-        $router->aliasMiddleware('larafoundry.session.reconcile', ReconcileTrackedSession::class);
+        $router->aliasMiddleware('larafoundry.session.track', TrackSessionActivity::class);
     }
 
     protected function registerAuthEventListeners(): void
     {
-        // Session tracking rides the framework Login event, so it captures every
-        // login path — native, OAuth, registration auto-login, remember-me, 2FA
-        // — through one writer, leaving Fortify's default pipeline untouched.
-        Event::listen(Login::class, [RecordUserSession::class, 'handle']);
-
+        // Session tracking is a per-request middleware (TrackSessionActivity),
+        // not a Login listener — the login pipeline regenerates the session id
+        // several times, so only a per-request pass sees the final, live id.
         Event::listen(Failed::class, [LogFailedLoginAttempt::class, 'handleFailed']);
         Event::listen(Lockout::class, [LogFailedLoginAttempt::class, 'handleLockout']);
     }

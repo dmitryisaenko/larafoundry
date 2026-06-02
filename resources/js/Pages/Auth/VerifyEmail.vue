@@ -12,8 +12,7 @@
  */
 import { router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     status: { type: String, default: null },

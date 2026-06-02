@@ -24,6 +24,7 @@ export { installI18n, createAppI18n } from './i18n/index.js';
 // Shared components
 export { default as AppFlashMessage } from './components/AppFlashMessage.vue';
 export { default as PagePaginator } from './components/PagePaginator.vue';
+export { default as AuthCard } from './components/AuthCard.vue';
 
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';

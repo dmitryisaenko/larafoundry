@@ -21,9 +21,7 @@
  */
 import { ref, onMounted } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 const props = defineProps({
     twoFactorEnabled: { type: Boolean, default: false },

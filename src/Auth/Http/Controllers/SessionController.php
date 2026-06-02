@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Http\Controllers;
 
-use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\ReconcileTrackedSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -14,13 +13,15 @@ use Illuminate\Support\Facades\DB;
  * Manages the user's own tracked login sessions.
  *
  * "Log out other devices" deletes every UserSession row except the caller's
- * current one (the request's own session is preserved so the user stays logged
- * in here). On the database session driver it also drops the framework session
- * rows immediately, evicting other devices on the spot. On other drivers the
- * framework sessions cannot be reached directly, so eviction happens on the
- * other device's next request via
- * {@see ReconcileTrackedSession},
- * which logs out any request whose UserSession row has vanished.
+ * current one (the caller's own session is preserved so they stay logged in
+ * here) and, on the database session driver, drops the other devices' framework
+ * session rows too — which is what actually evicts them.
+ *
+ * NOTE: genuine remote eviction requires the `database` session driver. On the
+ * file/cookie driver the framework session lives outside our reach, so a revoked
+ * device stays authenticated (and TrackSessionActivity simply re-creates its
+ * tracking row on its next request). Hosts that need this feature should run the
+ * database session driver — the kohana.io reference host does.
  */
 class SessionController extends Controller
 {
@@ -38,8 +39,10 @@ class SessionController extends Controller
         $currentId = $request->session()->getId();
 
         // Best-effort immediate eviction: on the database driver we can delete
-        // other devices' framework sessions now. On other drivers the
-        // ReconcileTrackedSession middleware evicts them on their next request.
+        // other devices' framework sessions now, so they are killed at once. On
+        // other drivers we cannot reach those sessions, so "log out other
+        // devices" is a documented limitation there — the framework session
+        // itself is not destroyed, only the tracked UserSession rows below.
         if (config('session.driver') === 'database') {
             DB::table(config('session.table', 'sessions'))
                 ->where('user_id', $user->getAuthIdentifier())

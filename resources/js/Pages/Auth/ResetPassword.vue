@@ -12,9 +12,7 @@
  *  - token {string} the signed password-reset token
  */
 import { useForm } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 const props = defineProps({
     email: { type: String, default: '' },

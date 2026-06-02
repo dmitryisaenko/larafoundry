@@ -10,9 +10,7 @@
  *  - status {string|null} session status flash ("we have emailed your link")
  */
 import { useForm, Link } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     status: { type: String, default: null },

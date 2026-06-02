@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Http\Controllers;
 
-use Dmitryisaenko\LaraFoundry\Auth\Listeners\RecordUserSession;
+use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\RedirectResponse;
@@ -22,10 +22,9 @@ use Throwable;
  * `redirect` hands off to the provider, `callback` receives the verified
  * profile and resolves it to a local user.
  *
- * Session tracking is NOT done here: `Auth::login()` fires the framework `Login`
- * event, which {@see RecordUserSession} handles for every login path. Before
- * logging in we drop a method hint into the session so that listener records the
- * provider name (not 'native') as the login method.
+ * Session tracking is NOT done here: the TrackSessionActivity middleware records
+ * it per request. Before logging in we drop a method hint into the session so
+ * that middleware records the provider name (not 'native') as the login method.
  *
  * SECURITY — account-takeover guard. The legacy donor did
  * `User::updateOrCreate(['email' => $social->email], [...])`, which silently
@@ -82,13 +81,12 @@ class OAuthController extends Controller
             return $this->fail(__('larafoundry::auth.oauth.email_taken'));
         }
 
-        // Tell the Login-event listener which provider authenticated this device.
-        $request->session()->put(RecordUserSession::METHOD_HINT, $provider);
-
         Auth::login($resolution['user'], $remember);
 
-        // Regenerate before the listener records — no session fixation.
+        // Regenerate first (no session fixation), then leave the provider hint on
+        // the fresh session for TrackSessionActivity to pick up this request.
         $request->session()->regenerate();
+        $request->session()->put(TrackSessionActivity::METHOD_HINT, $provider);
 
         return redirect()->intended(config('larafoundry.auth.oauth.redirect_after_login', '/'));
     }

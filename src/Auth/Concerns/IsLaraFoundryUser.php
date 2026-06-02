@@ -117,35 +117,43 @@ trait IsLaraFoundryUser
     }
 
     /**
-     * Record (or refresh) the tracked session row for the current device.
+     * Record or refresh the tracked session row for the current request.
      *
-     * The single write path for session tracking, shared by every login flow
-     * (native, OAuth, register, remember-me, 2FA) via the Login-event listener.
-     * Keyed to the framework session id, so repeated calls within one device
-     * update in place rather than duplicating. Also stamps the user's
-     * login/activity timestamps.
+     * Called once per authenticated request by the TrackSessionActivity
+     * middleware against the FINAL, live session id. On the first sighting of a
+     * session id (i.e. just after login) it creates the row with the device
+     * fingerprint and login method, and stamps last_login_at. On every request
+     * it refreshes last_activity (and last_route_name for page visits) plus the
+     * user's last_activity_at.
+     *
+     * @param  string|null  $loginMethodHint  provider name when the login was
+     *                                        via OAuth; null defaults to 'native'
      */
-    public function recordSession(
+    public function recordSessionActivity(
         string $sessionId,
         DeviceFingerprint $device,
-        string $loginMethod = 'native',
-        ?string $ip = null,
-        ?string $userAgent = null,
+        ?string $loginMethodHint = null,
+        ?string $routeName = null,
     ): void {
-        $this->sessions()->updateOrCreate(
-            ['session_id' => $sessionId],
-            array_merge([
-                'login_method' => $loginMethod,
-                'ip_address' => $ip,
-                'user_agent' => $userAgent,
-                'last_activity' => now(),
-            ], $device->toSessionAttributes()),
-        );
+        $session = $this->sessions()->firstOrNew(['session_id' => $sessionId]);
 
-        $this->forceFill([
-            'last_login_at' => now(),
-            'last_activity_at' => now(),
+        if (! $session->exists) {
+            // First request on this session — capture the device and method.
+            $session->fill(array_merge([
+                'login_method' => $loginMethodHint ?: 'native',
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ], $device->toSessionAttributes()));
+
+            $this->forceFill(['last_login_at' => now()])->save();
+        }
+
+        $session->fill([
+            'last_activity' => now(),
+            'last_route_name' => $routeName ?? $session->last_route_name,
         ])->save();
+
+        $this->forceFill(['last_activity_at' => now()])->saveQuietly();
     }
 
     /**

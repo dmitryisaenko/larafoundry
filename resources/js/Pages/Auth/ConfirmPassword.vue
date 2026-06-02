@@ -7,9 +7,7 @@
  * marks the session confirmed and redirects to the intended destination.
  */
 import { useForm } from '@inertiajs/vue3';
-import InputField from '../../components/ui/InputField.vue';
-import AuthCard from '../../components/AuthCard.vue';
-import AppBaseLayout from '../../layouts/AppBaseLayout.vue';
+import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 
 const form = useForm({
     password: '',
