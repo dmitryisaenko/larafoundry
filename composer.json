@@ -16,6 +16,8 @@
         "illuminate/contracts": "^12.0 || ^13.0",
         "illuminate/support": "^12.0 || ^13.0",
         "inertiajs/inertia-laravel": "^2.0 || ^3.0",
+        "laravel/fortify": "^1.25 || ^2.0",
+        "laravel/socialite": "^5.0",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

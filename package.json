@@ -17,6 +17,17 @@
         "./components/layouts/*": "./resources/js/layouts/*.vue",
         "./theme.css": "./resources/css/theme.css"
     },
+    "scripts": {
+        "test:js": "vitest run",
+        "test:js:watch": "vitest"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.2.0",
+        "@vue/test-utils": "^2.4.6",
+        "jsdom": "^25.0.1",
+        "vitest": "^3.0.0",
+        "vue": "^3.5.0"
+    },
     "peerDependencies": {
         "@inertiajs/vue3": "^2.0 || ^3.0",
         "vue": "^3.4",
