@@ -6,20 +6,24 @@ namespace Dmitryisaenko\LaraFoundry\Tests\Fixtures;
 
 use Dmitryisaenko\LaraFoundry\Auth\Concerns\IsLaraFoundryUser;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
+use Dmitryisaenko\LaraFoundry\Tenancy\Concerns\BelongsToTenancy;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 /**
- * Concrete authenticatable model used by the auth test-suite.
+ * Concrete authenticatable model used by the auth + tenancy test-suites.
  *
  * Mirrors how a host model is expected to compose the core: extend Laravel's
  * Authenticatable, implement the locale/verify contracts and pull in the
- * {@see IsLaraFoundryUser} identity trait. `$guarded = []` keeps the tests
- * terse (OAuth/registration paths mass-assign provider + profile columns); the
- * trait's hidden/casts/fillable helpers are still exercised directly.
+ * {@see IsLaraFoundryUser} identity trait plus the {@see BelongsToTenancy}
+ * tenancy trait, exactly as the trait-slot idiom prescribes (one `use` per
+ * phase). `$guarded = []` keeps the tests terse (OAuth/registration paths
+ * mass-assign provider + profile columns); the trait helpers are still
+ * exercised directly.
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
+    use BelongsToTenancy;
     use IsLaraFoundryUser;
 
     protected $table = 'users';

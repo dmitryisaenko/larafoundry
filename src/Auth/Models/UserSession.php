@@ -16,12 +16,13 @@ use Illuminate\Foundation\Auth\User;
  * keyed to the framework session id, letting us reconcile it against the
  * `sessions` table.
  *
- * Company binding (`active_company_id`) and PIN lock from the legacy donor are
- * intentionally absent here: tenancy arrives in phase 1.2 with a real FK, and
- * PIN is deferred. `login_method` is kept — it is identity-level (which provider
- * the device authenticated through).
+ * `active_company_id` (phase 1.2) binds the tracked session to its currently
+ * active company — this is what makes "active company is per-device". PIN lock
+ * from the legacy donor stays deferred. `login_method` is identity-level (which
+ * provider the device authenticated through).
  *
  * @property string $login_method
+ * @property int|null $active_company_id
  */
 class UserSession extends Model
 {
@@ -31,6 +32,7 @@ class UserSession extends Model
     protected $fillable = [
         'user_id',
         'session_id',
+        'active_company_id',
         'login_method',
         'ip_address',
         'user_agent',

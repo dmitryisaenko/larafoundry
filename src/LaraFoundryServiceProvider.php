@@ -13,6 +13,11 @@ use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
+use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
+use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\EnsureActiveTenant;
+use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\SetActiveTenant;
+use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
+use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -38,6 +43,25 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->app->singleton(CreatesNewUsers::class, CreateNewUser::class);
         $this->app->singleton(ResetsUserPasswords::class, ResetUserPassword::class);
         $this->app->singleton(UpdatesUserPasswords::class, UpdateUserPassword::class);
+
+        $this->registerTenantResolver();
+    }
+
+    /**
+     * Bind the active-tenant resolver to match the configured tenancy mode.
+     *
+     * `teams` reads the active company from the tracked session; `personal`
+     * treats the user as its own tenant. Everything else depends on the
+     * TenantResolver contract, so this binding is the only mode-aware seam (phase
+     * 6 adds a token resolver here without touching call sites).
+     */
+    protected function registerTenantResolver(): void
+    {
+        $resolver = config('larafoundry.tenancy.mode') === 'personal'
+            ? PersonalTenantResolver::class
+            : SessionTenantResolver::class;
+
+        $this->app->scoped(TenantResolver::class, $resolver);
     }
 
     public function boot(): void
@@ -50,6 +74,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerAuthMiddleware();
         $this->registerAuthEventListeners();
         $this->localizeAuthMail();
+        $this->registerTenancy();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -72,6 +97,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('larafoundry.account.active', EnsureAccountIsActive::class);
         $router->aliasMiddleware('larafoundry.session.track', TrackSessionActivity::class);
+    }
+
+    /**
+     * Wire tenancy: middleware aliases (both modes) and the company routes
+     * (teams only — in personal mode there are no companies to manage).
+     */
+    protected function registerTenancy(): void
+    {
+        $router = $this->app->make(Router::class);
+        $router->aliasMiddleware('larafoundry.tenant.set', SetActiveTenant::class);
+        $router->aliasMiddleware('larafoundry.tenant.required', EnsureActiveTenant::class);
+
+        if (config('larafoundry.tenancy.mode') !== 'personal') {
+            $this->loadRoutesFrom(__DIR__.'/../routes/tenancy.php');
+        }
     }
 
     protected function registerAuthEventListeners(): void

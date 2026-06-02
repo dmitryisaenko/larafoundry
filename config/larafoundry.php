@@ -1,21 +1,44 @@
 <?php
 
 declare(strict_types=1);
+use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | Tenancy
+    | Tenancy (phase 1.2)
     |--------------------------------------------------------------------------
     | mode:
-    |   'teams'    — мультикомпании, тенант = Company (как kohana.io)
-    |   'personal' — тенант = сам User (без компаний)
-    | tenant_model — конкретная модель тенанта в host-приложении.
+    |   'teams'    — мультикомпании, тенант = Company (как kohana.io). Включает
+    |                company-creation визард, приглашения, переключение компании.
+    |   'personal' — тенант = сам User (без компаний). Company-флоу не
+    |                регистрируется; BelongsToTenant фильтрует по user_id.
+    |
+    | company_model — модель компании. Host наследует базовую и подставляет свою
+    |                 (`App\Models\Company extends ...\Tenancy\Models\Company`).
+    | foreign_key   — имя FK-колонки тенанта на доменных моделях. В teams это
+    |                 'company_id'; BelongsToTenant читает его отсюда. В personal
+    |                 трейт фильтрует по user_id независимо от этого значения.
+    | invitation_expiry_days — срок жизни приглашения сотрудника.
+    | routes_without_active_tenant — имена роутов (fnmatch), доступные company-
+    |                 пользователю БЕЗ выбранной активной компании (напр. запрос
+    |                 на удаление себя из компании). Используется EnsureActiveTenant.
     */
     'tenancy' => [
         'mode' => env('LARAFOUNDRY_TENANCY_MODE', 'teams'),
-        'tenant_model' => null,
+        'company_model' => Company::class,
+        'foreign_key' => 'company_id',
+        'invitation_expiry_days' => 7,
+        'routes_without_active_tenant' => [
+            'tenancy.employees.request-removal',
+            'tenancy.employees.cancel-removal',
+        ],
+
+        // Where to land after a company is set up / an invite is accepted. The
+        // dashboard is host territory, so the core only knows a route name (or
+        // path) to redirect to; default '/' keeps the package self-contained.
+        'home_route' => env('LARAFOUNDRY_TENANCY_HOME', '/'),
     ],
 
     /*
