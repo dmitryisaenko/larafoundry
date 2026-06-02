@@ -17,8 +17,11 @@ class InstallCommand extends Command
         $this->info('LaraFoundry: installing…');
 
         $this->call('vendor:publish', ['--tag' => 'larafoundry-config']);
+        $this->call('vendor:publish', ['--tag' => 'larafoundry-permissions']);
 
-        $this->info('LaraFoundry: config published. Next: `php artisan migrate`.');
+        $this->info('LaraFoundry: config published. Next steps:');
+        $this->line('  1. php artisan migrate');
+        $this->line('  2. php artisan larafoundry:permissions:sync   (seeds permissions, the `authenticated` role and role templates)');
 
         return self::SUCCESS;
     }

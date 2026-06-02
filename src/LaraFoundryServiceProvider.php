@@ -12,14 +12,23 @@ use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
+use Dmitryisaenko\LaraFoundry\Authorization\Console\Commands\SyncPermissionsCommand;
+use Dmitryisaenko\LaraFoundry\Authorization\Gates\PermissionGateRegistrar;
+use Dmitryisaenko\LaraFoundry\Authorization\Gates\RoleGates;
+use Dmitryisaenko\LaraFoundry\Authorization\Listeners\AssignAuthenticatedRole;
+use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
+use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\EnsureActiveTenant;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\SetActiveTenant;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
@@ -34,6 +43,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry.php', 'larafoundry');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-permissions.php', 'larafoundry-permissions');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -75,13 +85,37 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerAuthEventListeners();
         $this->localizeAuthMail();
         $this->registerTenancy();
+        $this->registerAuthorization();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
 
             $this->commands([
                 InstallCommand::class,
+                SyncPermissionsCommand::class,
             ]);
+        }
+    }
+
+    /**
+     * Wire authorization (phase 1.3): turn every catalog permission into a gate,
+     * register the role-management gates, hook the lifecycle listeners and load
+     * the role routes (teams only — roles are a company concept).
+     *
+     * Gates are always registered (global roles work in personal mode too); the
+     * routes are not (no companies to manage there).
+     */
+    protected function registerAuthorization(): void
+    {
+        $this->app->make(PermissionGateRegistrar::class)->register();
+        RoleGates::register();
+
+        Event::listen(Registered::class, AssignAuthenticatedRole::class);
+        Event::listen(CompanyCreated::class, CloneCompanyRoles::class);
+        Event::listen(EmployeeRemoved::class, RevokeAccessOnEmployeeRemoval::class);
+
+        if (config('larafoundry.tenancy.mode') !== 'personal') {
+            $this->loadRoutesFrom(__DIR__.'/../routes/authorization.php');
         }
     }
 
@@ -147,6 +181,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry.php' => config_path('larafoundry.php'),
         ], 'larafoundry-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-permissions.php' => config_path('larafoundry-permissions.php'),
+        ], 'larafoundry-permissions');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),
