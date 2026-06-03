@@ -170,6 +170,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Operator console (phase 2.3)
+    |--------------------------------------------------------------------------
+    | Settings for the super-admin console (user management, impersonation).
+    |
+    | users_per_page — page size for the admin user list.
+    */
+    'admin' => [
+        'users_per_page' => 21,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Inertia shared props
     |--------------------------------------------------------------------------
     | Управляет core-частью Inertia::share (flash/locale/translations/…).

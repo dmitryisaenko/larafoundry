@@ -71,9 +71,11 @@ class ActivityLogService
     /**
      * Log a one-off custom activity (manual API).
      *
-     * Geo is resolved SYNCHRONOUSLY here (parity with the donor's manual path);
-     * callers using this on the request path opt into the lookup cost. The
-     * caller is the causer; an explicit domain object may be the subject.
+     * Geo defaults to SYNCHRONOUS (parity with the donor's manual path); callers
+     * on an interactive request path that must not block on an outbound geo HTTP
+     * call pass `geoSync: false` to enqueue it instead (the admin console does
+     * this, so a slow geo provider never delays an operator action). The caller
+     * is the causer; an explicit domain object may be the subject.
      *
      * @param  array<string, mixed>  $properties
      */
@@ -84,6 +86,7 @@ class ActivityLogService
         ?Model $subject = null,
         bool $isSuccessful = true,
         int $responseCode = 200,
+        bool $geoSync = true,
     ): Model {
         $causer = Auth::user();
 
@@ -99,7 +102,7 @@ class ActivityLogService
             emails: $this->resolveEmails(new \stdClass, $causer),
         );
 
-        $this->dispatchGeo($activity, sync: true);
+        $this->dispatchGeo($activity, sync: $geoSync);
 
         return $activity;
     }

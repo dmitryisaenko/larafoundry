@@ -12,12 +12,26 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.6.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, and multilanguage.**
-> Billing, the full operator console, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions and domain events are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> ⚠️ **Status: early but growing. Current release is `v0.7.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, and the navigation engine + first operator-console screen (Admin Users + impersonation).**
+> Billing, admin companies / dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.7.x` Navigation engine + operator console (Admin Users)
+
+A permission-aware navigation engine, and the first real screen of the operator console built on top of it. The menu is built **and filtered on the backend**, so links a user may not follow never reach the browser.
+
+| Component | What it does |
+|-----------|--------------|
+| `MenuItem` + `MenuBuilder` + `MenuProviderInterface` | The engine. Providers contribute `MenuItem`s for a level (`admin` / `tenant`); the builder merges them, filters by RBAC (and `visible`), sorts by `order`, and emits the tree already pruned. Labels are i18n **keys**, translated in Vue, so a language switch re-paints the menu without a reload. Icons are names resolved to inline SVG (no published assets). The core ships an admin menu (Users, Activity log) and a tenant menu (Employees, Roles); a host adds its own via a provider. |
+| `RbacPolicyChecker` | Bridges menu visibility to `hasPermissionTo($slug, $activeCompany)` (the same rule that guards the routes), and fails closed. |
+| `LayoutSwitcher` + `AppLayout` | A persistent layout that picks the shell from a single backend signal (`nav_level`): super-admin gets the operator console, a tenant member gets the app shell with the filtered sidebar, everyone else gets the bare base shell. `MobileNav` reuses the same tree in a drawer. |
+| Admin Users console | `Admin/Users/{Index,Edit,Create}` behind `larafoundry.admin`: list with filters (search / status / verification) + pagination, create / edit, block / unblock, soft-delete / restore. Blocking also invalidates the user's tracked sessions; every action is written to the activity log. Privilege/state columns are never mass-assigned. The resource omits social links (PII). |
+| Impersonation | "Follow into a user", super-admin only. The policy refuses impersonating another admin, a blocked/deleted account, or yourself; take and leave are both audited and the session id is rotated on each identity swap. `leave` lives outside the admin gate (while impersonating you are not an admin). |
+
+> Admin Companies and the admin Dashboard are intentionally **not** here: they are ~80% billing data, so they ship with the billing phase to avoid a double extract.
 
 ### `v0.6.x` Multilanguage (i18n)
 
@@ -221,6 +235,7 @@ use App\Http\Middleware\HandleInertiaRequests; // extends the core one
 use Dmitryisaenko\LaraFoundry\Http\Middleware\HandleInertiaRequests as CoreHandleInertiaRequests;
 use Dmitryisaenko\LaraFoundry\Tenancy\LaraFoundryTenancy;
 use Dmitryisaenko\LaraFoundry\Authorization\LaraFoundryAuthorization;
+use Dmitryisaenko\LaraFoundry\Navigation\LaraFoundryNavigation;
 
 class HandleInertiaRequests extends CoreHandleInertiaRequests
 {
@@ -230,6 +245,7 @@ class HandleInertiaRequests extends CoreHandleInertiaRequests
             ...parent::share($request),
             ...LaraFoundryTenancy::sharedProps(),       // activeCompany + companies (CompanySwitcher)
             ...LaraFoundryAuthorization::sharedProps(), // the user's permission map
+            ...LaraFoundryNavigation::sharedProps(),    // navigation tree + nav_level (LayoutSwitcher)
             'auth' => fn () => $request->user(),
             // your own props
         ];
@@ -237,7 +253,36 @@ class HandleInertiaRequests extends CoreHandleInertiaRequests
 }
 ```
 
-> The tenancy and authorization shared props are required for the `CompanySwitcher` and the permission-aware UI to receive their data; omit them and those components render empty.
+> The tenancy and authorization shared props are required for the `CompanySwitcher` and the permission-aware UI to receive their data; the navigation props feed the sidebar and the `LayoutSwitcher`. Omit them and those components render empty.
+
+#### Adding your own menu items (host menu provider)
+
+The core only ships its own screens in the menu. To add yours, implement `MenuProviderInterface` and register it on the shared `MenuBuilder` (e.g. in a service provider's `boot`):
+
+```php
+use Dmitryisaenko\LaraFoundry\Navigation\Contracts\MenuProviderInterface;
+use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
+use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
+
+class OrdersMenuProvider implements MenuProviderInterface
+{
+    public function getMenuItems(string $level): array
+    {
+        return $level === 'tenant' ? [
+            new MenuItem(labelKey: 'Orders', route: 'orders.index', policy: 'orders.view', icon: 'orders', order: 50),
+        ] : [];
+    }
+
+    public function supports(string $level): bool { return $level === 'tenant'; }
+
+    public function priority(): int { return 50; }
+}
+
+// In a host service provider's boot():
+$this->app->make(MenuBuilder::class)->addProvider($this->app->make(OrdersMenuProvider::class));
+```
+
+> Labels are i18n keys (translated in Vue), `policy` is an RBAC permission slug the builder filters on, and `icon` is a name your `NavIcon` set resolves. The builder filters server-side, so an item the user lacks the permission for is never sent to the browser.
 
 ### Frontend bootstrap (host `app.js`)
 
@@ -273,8 +318,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 1.3 | Roles & permissions (RBAC) | ✅ Shipped (`v0.4.x`) |
 | 2.1 | [Activity logging](docs/modules/logging.md) (platform audit) | ✅ Shipped (`v0.5.x`) |
 | 2.2 | [Multilanguage](docs/modules/multilanguage.md) (i18n, language switcher) | ✅ Shipped (`v0.6.x`) |
-| 2.x | [Navigation](docs/modules/navigation.md), [Admin users](docs/modules/admin_users.md), [Admin companies](docs/modules/admin_companies.md) (operator console) | 📋 Planned |
-| 3.x | [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md), [Payments](docs/modules/payments.md) | 📋 Planned |
+| 2.3 | [Navigation](docs/modules/navigation.md) engine + [Admin users](docs/modules/admin_users.md) console (+ impersonation) | ✅ Shipped (`v0.7.x`) |
+| 3.x | [Payments](docs/modules/payments.md) / billing, [Admin companies](docs/modules/admin_companies.md) + dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -282,8 +327,8 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 248 tests across foundation, auth, tenancy, RBAC, the activity log and multilanguage, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, and an open redirect on the language switch).
-- **Frontend tests** with Vitest + Vue Test Utils on the UI kit and pages, including a stored-XSS guard on the activity-log table.
+- **Pest** on every piece of the core: 290 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage and the navigation/operator-console layer, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, and the donor's wide-open impersonation, where any admin could impersonate anyone including other admins with no audit, now policy-gated, audited and session-rotated).
+- **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages and navigation components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.
 

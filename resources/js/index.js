@@ -31,6 +31,17 @@ export { default as PermissionsSelector } from './components/PermissionsSelector
 export { default as ActivityLogTable } from './components/activitylog/ActivityLogTable.vue';
 export { default as HoursFilter } from './components/activitylog/HoursFilter.vue';
 
+// Navigation (phase 2.3)
+export { default as SidebarNav } from './components/navigation/SidebarNav.vue';
+export { default as NavItem } from './components/navigation/NavItem.vue';
+export { default as NavIcon } from './components/navigation/NavIcon.vue';
+export { default as MobileNav } from './components/navigation/MobileNav.vue';
+
+// Admin console (phase 2.3)
+export { default as UsersTable } from './components/admin/UsersTable.vue';
+export { default as UsersTableActions } from './components/admin/UsersTableActions.vue';
+export { default as ImpersonationBanner } from './components/admin/ImpersonationBanner.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';
@@ -39,7 +50,9 @@ export { default as DateField } from './components/ui/DateField.vue';
 
 // Layouts
 export { default as AppBaseLayout } from './layouts/AppBaseLayout.vue';
+export { default as AppLayout } from './layouts/AppLayout.vue';
 export { default as AdminLayout } from './layouts/AdminLayout.vue';
+export { default as LayoutSwitcher } from './layouts/LayoutSwitcher.vue';
 
 /**
  * Install the LaraFoundry core into a Vue app instance.

@@ -47,7 +47,7 @@ class ActivityLogResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'formatted_date' => $this->created_at?->format('d.m.Y H:i:s'),
             'human_date' => $this->created_at
-                ?->locale((string) config('app.locale'))
+                ?->locale(app()->getLocale())
                 ->diffForHumans(),
             'user' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user?->getKey(),

@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Dmitryisaenko\LaraFoundry\Navigation\Providers;
+
+use Dmitryisaenko\LaraFoundry\Navigation\Contracts\MenuProviderInterface;
+use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
+
+/**
+ * Core menu for the super-admin operator console (phase 2.3).
+ *
+ * Populates the 'admin' level with the platform surfaces the core ships:
+ * Users (this phase) and the Activity Log (phase 2.1). The whole zone already
+ * sits behind the `larafoundry.admin` gate (super-admin via VisitorStatus), so
+ * these items carry NO permission slug — the zone gate is the authority. Admin
+ * Companies / Dashboard arrive with their own phases (Ф3.3 / Ф3.4, with
+ * billing) and will be added here then.
+ *
+ * Labels are i18n keys (decision D-nav-c), translated in Vue.
+ */
+class AdminMenuProvider implements MenuProviderInterface
+{
+    public function getMenuItems(string $level): array
+    {
+        if (! $this->supports($level)) {
+            return [];
+        }
+
+        return [
+            new MenuItem(
+                labelKey: 'Users',
+                route: 'admin.users.index',
+                icon: 'users',
+                order: 10,
+                activePatterns: ['admin.users.*'],
+            ),
+            new MenuItem(
+                labelKey: 'Activity log',
+                route: 'admin.activity-log.index',
+                icon: 'activity',
+                order: 20,
+                activePatterns: ['admin.activity-log.*'],
+            ),
+        ];
+    }
+
+    public function supports(string $level): bool
+    {
+        return $level === 'admin';
+    }
+
+    public function priority(): int
+    {
+        return 0;
+    }
+}

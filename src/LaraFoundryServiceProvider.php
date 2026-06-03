@@ -26,6 +26,11 @@ use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
+use Dmitryisaenko\LaraFoundry\Navigation\Contracts\PolicyChecker;
+use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
+use Dmitryisaenko\LaraFoundry\Navigation\Providers\TenantMenuProvider;
+use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
+use Dmitryisaenko\LaraFoundry\Navigation\Support\RbacPolicyChecker;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -65,6 +70,28 @@ class LaraFoundryServiceProvider extends ServiceProvider
 
         $this->registerTenantResolver();
         $this->registerActivityLog();
+        $this->registerNavigation();
+    }
+
+    /**
+     * Wire navigation (phase 2.3): one shared MenuBuilder with the RBAC policy
+     * checker and the core's own menu providers.
+     *
+     * The builder is a singleton so its per-request memo and the registered
+     * providers persist across the request; a host adds its providers by
+     * resolving the builder and calling addProvider (documented in the README).
+     * Decision D-nav-a: building and filtering happen here, on the backend.
+     */
+    protected function registerNavigation(): void
+    {
+        $this->app->bind(PolicyChecker::class, RbacPolicyChecker::class);
+
+        $this->app->singleton(MenuBuilder::class, function ($app) {
+            return (new MenuBuilder)
+                ->setPolicyChecker($app->make(PolicyChecker::class))
+                ->addProvider($app->make(AdminMenuProvider::class))
+                ->addProvider($app->make(TenantMenuProvider::class));
+        });
     }
 
     /**
@@ -134,6 +161,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerTenancy();
         $this->registerAuthorization();
         $this->bootActivityLog();
+        $this->bootAdmin();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -186,6 +214,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
         Event::subscribe(LogRegisteredEvents::class);
 
         Gate::policy(ActivityModel::class, ActivityLogPolicy::class);
+    }
+
+    /**
+     * Boot the operator console (phase 2.3): the admin user-management and
+     * impersonation routes.
+     *
+     * Most routes sit behind the same `larafoundry.admin` gate as the activity
+     * log; `impersonate.leave` is intentionally outside it (while impersonating
+     * the actor is the target, not an admin — see routes/admin.php). The
+     * impersonation policy is a plain injectable class the controller calls
+     * directly, so there is nothing to register in the Gate here.
+     */
+    protected function bootAdmin(): void
+    {
+        $this->loadRoutesFrom(__DIR__.'/../routes/admin.php');
     }
 
     /**

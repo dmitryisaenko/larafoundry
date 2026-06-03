@@ -1,28 +1,42 @@
 <script setup>
-import AppFlashMessage from '../components/AppFlashMessage.vue';
-
 /**
- * Minimal super-admin (operator console) shell — the first admin surface
- * (phase 2.1).
+ * Super-admin (operator console) shell.
  *
- * Deliberately bare: a header band with a "Super-admin" marker and the page
- * body. The full operator navigation (Users / Companies / Payments /
- * Statistics …) arrives with its own phases and will grow this layout; until
- * then it only frames the activity log. The `title` prop labels the current
- * section; the `nav` slot lets later phases inject console links.
+ * Born minimal in phase 2.1 (a header band framing the activity log); phase 2.3
+ * fills it out with the console sidebar. The menu tree comes pre-filtered from
+ * the backend via the `navigation` shared prop (decision D-nav-a) — the whole
+ * zone is already behind the `larafoundry.admin` gate, so the admin menu items
+ * carry no per-item policy.
+ *
+ * Chosen by {@see LayoutSwitcher} for the super-admin visitor status. The
+ * `title` prop labels the current section; the `nav` slot is kept for ad-hoc
+ * header links (back-compat with the 2.1 shape).
  */
+import { computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import AppFlashMessage from '../components/AppFlashMessage.vue';
+import SidebarNav from '../components/navigation/SidebarNav.vue';
+import MobileNav from '../components/navigation/MobileNav.vue';
+import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
+
 defineProps({
     title: { type: String, default: '' },
 });
+
+const page = usePage();
+
+const navigation = computed(() => page.props.navigation ?? []);
 </script>
 
 <template>
     <div class="flex min-h-screen flex-col bg-surface-muted text-ink">
+        <ImpersonationBanner />
         <AppFlashMessage />
 
         <header class="border-b border-border bg-surface">
             <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
+                    <MobileNav :items="navigation" />
                     <span class="rounded-sm bg-brand-700 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white">
                         {{ $t('Super-admin') }}
                     </span>
@@ -34,8 +48,14 @@ defineProps({
             </div>
         </header>
 
-        <main class="mx-auto w-full max-w-[var(--lf-max-width)] flex-1 px-4 py-6">
-            <slot />
-        </main>
+        <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] flex-1 gap-6 px-4 py-6">
+            <aside class="hidden w-60 shrink-0 md:block">
+                <SidebarNav :items="navigation" />
+            </aside>
+
+            <main class="min-w-0 flex-1">
+                <slot />
+            </main>
+        </div>
     </div>
 </template>
