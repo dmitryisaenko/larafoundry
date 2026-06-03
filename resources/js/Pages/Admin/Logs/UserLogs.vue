@@ -1,9 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { AdminLayout, PagePaginator } from '@dmitryisaenko/larafoundry';
-import ActivityLogTable from '../../../components/activitylog/ActivityLogTable.vue';
-import HoursFilter from '../../../components/activitylog/HoursFilter.vue';
+import { AdminLayout, PagePaginator, ActivityLogTable, HoursFilter } from '@dmitryisaenko/larafoundry';
 
 /**
  * Activity for a single user, scoped to that user as causer (phase 2.1).

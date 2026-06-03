@@ -27,6 +27,8 @@ export { default as PagePaginator } from './components/PagePaginator.vue';
 export { default as AuthCard } from './components/AuthCard.vue';
 export { default as CompanySwitcher } from './components/CompanySwitcher.vue';
 export { default as PermissionsSelector } from './components/PermissionsSelector.vue';
+export { default as ActivityLogTable } from './components/activitylog/ActivityLogTable.vue';
+export { default as HoursFilter } from './components/activitylog/HoursFilter.vue';
 
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';

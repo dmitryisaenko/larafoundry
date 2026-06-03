@@ -1,8 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { AdminLayout, PagePaginator } from '@dmitryisaenko/larafoundry';
-import ActivityLogTable from '../../../components/activitylog/ActivityLogTable.vue';
-import HoursFilter from '../../../components/activitylog/HoursFilter.vue';
+import { AdminLayout, PagePaginator, ActivityLogTable, HoursFilter } from '@dmitryisaenko/larafoundry';
 
 /**
  * The whole-platform activity log (phase 2.1) — the operator console's first
