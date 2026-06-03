@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry;
 
+use Dmitryisaenko\LaraFoundry\ActivityLog\Contracts\GeoResolver;
+use Dmitryisaenko\LaraFoundry\ActivityLog\Geo\IpApiGeoResolver;
+use Dmitryisaenko\LaraFoundry\ActivityLog\Http\Middleware\LogActivity;
+use Dmitryisaenko\LaraFoundry\ActivityLog\Listeners\LogRegisteredEvents;
+use Dmitryisaenko\LaraFoundry\ActivityLog\Models\Activity as ActivityModel;
+use Dmitryisaenko\LaraFoundry\ActivityLog\Policies\ActivityLogPolicy;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
@@ -19,6 +25,7 @@ use Dmitryisaenko\LaraFoundry\Authorization\Listeners\AssignAuthenticatedRole;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -33,6 +40,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
@@ -44,6 +52,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry.php', 'larafoundry');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-permissions.php', 'larafoundry-permissions');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-activitylog.php', 'larafoundry-activitylog');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -55,6 +64,44 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->app->singleton(UpdatesUserPasswords::class, UpdateUserPassword::class);
 
         $this->registerTenantResolver();
+        $this->registerActivityLog();
+    }
+
+    /**
+     * Wire the activity log (phase 2.1) container bindings.
+     *
+     * Two bindings the donor forgot: point spatie's `activity_model` at the
+     * core's Activity (so its custom columns are honoured by the package's own
+     * helpers and the LogsActivity trait), and resolve the geo contract from the
+     * configured implementation (so a host can swap providers).
+     */
+    protected function registerActivityLog(): void
+    {
+        // Spatie's own provider normally merges its config; in a bare package
+        // test harness it may not have, so guarantee the keys spatie reads exist
+        // (CauserResolver needs default_auth_driver). Existing values are kept —
+        // only missing keys are filled — then activity_model points at the core
+        // model so spatie writes the core's custom columns.
+        config(array_merge([
+            'activitylog.enabled' => config('activitylog.enabled', true),
+            'activitylog.default_log_name' => config('activitylog.default_log_name', 'default'),
+            'activitylog.default_auth_driver' => config('activitylog.default_auth_driver'),
+            'activitylog.subject_returns_soft_deleted_models' => config('activitylog.subject_returns_soft_deleted_models', false),
+            'activitylog.table_name' => config('activitylog.table_name', 'activity_log'),
+            'activitylog.database_connection' => config('activitylog.database_connection'),
+        ], [
+            'activitylog.activity_model' => ActivityModel::class,
+            // Make `retention_days` the single source of truth: spatie's
+            // `activitylog:clean` reads `delete_records_older_than_days`, so map
+            // our config key onto it (otherwise the documented key is inert).
+            'activitylog.delete_records_older_than_days' => config('larafoundry-activitylog.retention_days', 365),
+        ]));
+
+        $this->app->bind(GeoResolver::class, function ($app) {
+            $resolver = config('larafoundry-activitylog.geo.resolver', IpApiGeoResolver::class);
+
+            return $app->make($resolver);
+        });
     }
 
     /**
@@ -86,6 +133,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->localizeAuthMail();
         $this->registerTenancy();
         $this->registerAuthorization();
+        $this->bootActivityLog();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -117,6 +165,27 @@ class LaraFoundryServiceProvider extends ServiceProvider
         if (config('larafoundry.tenancy.mode') !== 'personal') {
             $this->loadRoutesFrom(__DIR__.'/../routes/authorization.php');
         }
+    }
+
+    /**
+     * Boot the activity log (phase 2.1): admin routes behind the super-admin
+     * gate, the route-access middleware (opt-in), the event-registry subscriber
+     * and the viewing policy.
+     *
+     * The first admin surface of the platform: `larafoundry.admin` gates the
+     * operator console; the activity log is its first section.
+     */
+    protected function bootActivityLog(): void
+    {
+        $router = $this->app->make(Router::class);
+        $router->aliasMiddleware('larafoundry.admin', EnsureSuperAdmin::class);
+        $router->aliasMiddleware('larafoundry.activity.route', LogActivity::class);
+
+        $this->loadRoutesFrom(__DIR__.'/../routes/activitylog.php');
+
+        Event::subscribe(LogRegisteredEvents::class);
+
+        Gate::policy(ActivityModel::class, ActivityLogPolicy::class);
     }
 
     /**
@@ -185,6 +254,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-permissions.php' => config_path('larafoundry-permissions.php'),
         ], 'larafoundry-permissions');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-activitylog.php' => config_path('larafoundry-activitylog.php'),
+        ], 'larafoundry-activitylog');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

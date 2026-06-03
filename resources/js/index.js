@@ -36,6 +36,7 @@ export { default as DateField } from './components/ui/DateField.vue';
 
 // Layouts
 export { default as AppBaseLayout } from './layouts/AppBaseLayout.vue';
+export { default as AdminLayout } from './layouts/AdminLayout.vue';
 
 /**
  * Install the LaraFoundry core into a Vue app instance.
