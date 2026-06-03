@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'flash' => fn () => $this->flash($request),
             'locale' => fn () => App::getLocale(),
+            'available_locales' => fn () => $this->availableLocales(),
             'translations' => fn () => $this->translations(),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
@@ -79,24 +80,32 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Translation bag for the active locale.
+     * Translation bag for the active locale, sent to vue-i18n.
      *
-     * Merges `lang/{locale}.json` with every `lang/{locale}/*.php` group,
-     * matching Laravel's own loader layout so existing translation files work
-     * unchanged.
+     * Layered so a host always wins over the core:
+     *   1. the core's bundled frontend dictionary (`lang/frontend/{locale}.json`),
+     *      shipping the core pages' UI strings (English text as the key) out of
+     *      the box for the locales the core supports (en, uk);
+     *   2. the host's `lang/{locale}.json` (overrides core strings, adds its own);
+     *   3. the host's `lang/{locale}/*.php` groups, matching Laravel's loader
+     *      layout so existing files work unchanged.
+     *
+     * Later layers overwrite earlier ones on key collision, so a host can retune
+     * any core string without touching the package.
      *
      * @return array<string, mixed>
      */
     protected function translations(): array
     {
         $locale = App::getLocale();
-        $data = [];
+
+        $data = $this->coreFrontendStrings($locale);
 
         $jsonPath = base_path("lang/{$locale}.json");
         if (File::exists($jsonPath)) {
             $json = json_decode((string) File::get($jsonPath), true);
             if (is_array($json)) {
-                $data = $json;
+                $data = [...$data, ...$json];
             }
         }
 
@@ -109,5 +118,66 @@ class HandleInertiaRequests extends Middleware
         }
 
         return $data;
+    }
+
+    /**
+     * Per-locale memo of the core's bundled frontend dictionary, so the file is
+     * read and decoded at most once per locale per request rather than on every
+     * shared-prop evaluation.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    protected static array $coreFrontendCache = [];
+
+    /**
+     * The core's bundled frontend dictionary for a locale, or an empty array
+     * when the core does not ship one (the host then supplies everything).
+     *
+     * The bundled file is immutable for the life of a deploy, so the decoded
+     * result is memoized per locale (see {@see $coreFrontendCache}).
+     *
+     * @return array<string, mixed>
+     */
+    protected function coreFrontendStrings(string $locale): array
+    {
+        if (isset(static::$coreFrontendCache[$locale])) {
+            return static::$coreFrontendCache[$locale];
+        }
+
+        $path = __DIR__."/../../../lang/frontend/{$locale}.json";
+
+        if (! File::exists($path)) {
+            return static::$coreFrontendCache[$locale] = [];
+        }
+
+        $json = json_decode((string) File::get($path), true);
+
+        return static::$coreFrontendCache[$locale] = is_array($json) ? $json : [];
+    }
+
+    /**
+     * The locales offered to the language switcher: each available code paired
+     * with its display metadata (native name, flag). Codes without metadata fall
+     * back to the bare code, so the switcher never hides a usable locale.
+     *
+     * Non-string entries in `available` are dropped rather than fatalled: this is
+     * a shared prop on every response, so a host typo must degrade the switcher,
+     * not 500 the whole app (the same tolerance SetLocale applies to the list).
+     *
+     * @return array<int, array{code: string, native: string, flag: ?string}>
+     */
+    protected function availableLocales(): array
+    {
+        $available = array_filter(
+            (array) config('larafoundry.locale.available', ['en']),
+            'is_string',
+        );
+        $meta = (array) config('larafoundry.locale.locales', []);
+
+        return array_map(static fn (string $code): array => [
+            'code' => $code,
+            'native' => $meta[$code]['native'] ?? $code,
+            'flag' => $meta[$code]['flag'] ?? null,
+        ], array_values($available));
     }
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Http\Controllers\LanguageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,5 +14,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('web')->group(function () {
-    //
+    // Language switch. POST (it changes state) so it carries CSRF protection,
+    // and open to guests and authenticated users alike — visitors pick a
+    // language before they ever sign in.
+    Route::post('larafoundry/language', [LanguageController::class, 'switch'])
+        ->name('larafoundry.language.switch');
 });

@@ -12,12 +12,24 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.5.x`: foundation, authentication, multi-tenancy, RBAC, and the platform activity log.**
+> ⚠️ **Status: early but growing. Current release is `v0.6.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, and multilanguage.**
 > Billing, the full operator console, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions and domain events are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.6.x` Multilanguage (i18n)
+
+The language layer on top of the `v0.1.0` locale foundation: a way to switch language, and the core's own screens translated out of the box. The core ships **English and Ukrainian**; adding more locales is the host's job (the world's languages are not the core's to maintain).
+
+| Component | What it does |
+|-----------|--------------|
+| `LanguageController` + switch route | A `POST` switch route (`larafoundry.language.switch`, CSRF-protected, open to guests and signed-in users). The submitted code is validated against the locale allow-list, then persisted: session + a year-long cookie for everyone, plus the stored DB preference when signed in (the authoritative source `SetLocale` reads back first, so the choice never bounces). The redirect back is constrained to the app's own host, so a forged `Referer` can't turn it into an open redirect. |
+| `LocaleSwitcher` Vue component | A dropdown driven by the shared `available_locales` prop (each code with its native name and flag). Renders nothing when only one locale is available, so it's safe to drop into any layout. |
+| Bundled translations | Server-side `larafoundry::` strings (mail, flash, geo) in English and Ukrainian, plus a frontend dictionary for the core's Inertia pages. A host overrides any core string from its own `lang/{locale}.json`; the core dictionary sits underneath as the default. |
+
+> The locale resolution chain, the `ValidLocale` allow-list and the `HasLocalePreference` contract are the `v0.1.0` foundation; this phase adds the user-facing switch and the second language on top of them.
 
 ### `v0.5.x` Activity log (platform audit)
 
@@ -96,6 +108,7 @@ The cross-cutting primitives every later module depends on.
 - **Form UI kit:** `InputField`, `TextareaField`, `SelectField`, `DateField` with inline validation errors.
 - **`AppFlashMessage`** for toast notifications driven by the flash contract.
 - **`PagePaginator`** consuming the `HasPagination` payload.
+- **`LocaleSwitcher` / `CompanySwitcher`** dropdowns wired to the shared locale and company props.
 - **`AuthCard` / `AppBaseLayout`** layout primitives.
 - **`theme.css`** with Tailwind v4 `@theme` design tokens, importable straight from `vendor/`.
 
@@ -259,6 +272,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 1.2 | [Multi-tenancy](docs/modules/multi_tenancy.md) (companies / teams) | ✅ Shipped (`v0.3.x`) |
 | 1.3 | Roles & permissions (RBAC) | ✅ Shipped (`v0.4.x`) |
 | 2.1 | [Activity logging](docs/modules/logging.md) (platform audit) | ✅ Shipped (`v0.5.x`) |
+| 2.2 | [Multilanguage](docs/modules/multilanguage.md) (i18n, language switcher) | ✅ Shipped (`v0.6.x`) |
 | 2.x | [Navigation](docs/modules/navigation.md), [Admin users](docs/modules/admin_users.md), [Admin companies](docs/modules/admin_companies.md) (operator console) | 📋 Planned |
 | 3.x | [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md), [Payments](docs/modules/payments.md) | 📋 Planned |
 
@@ -268,7 +282,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 235 tests across foundation, auth, tenancy, RBAC and the activity log, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, and a misrecorded audit subject).
+- **Pest** on every piece of the core: 248 tests across foundation, auth, tenancy, RBAC, the activity log and multilanguage, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, and an open redirect on the language switch).
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit and pages, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

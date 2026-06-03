@@ -78,11 +78,12 @@ return [
     |              забота этого резолвера, не ядра (страны = бизнес-сущность host).
     */
     'locale' => [
-        'available' => ['en'],
+        'available' => ['en', 'uk'],
         'default' => env('LARAFOUNDRY_LOCALE', 'en'),
         'cookie' => 'locale',
         'locales' => [
             'en' => ['native' => 'English', 'flag' => '🇬🇧'],
+            'uk' => ['native' => 'Українська', 'flag' => '🇺🇦'],
         ],
         'detect_map' => [
             // 'ru' => 'uk',

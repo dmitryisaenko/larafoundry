@@ -28,7 +28,7 @@ function reject() {
 <template>
     <AppBaseLayout>
         <AuthCard
-            :title="$t('Join :company', { company })"
+            :title="$t('Join {company}', { company })"
             :subtitle="$t('You have been invited to join this company.')"
         >
             <div class="flex flex-col gap-3">
