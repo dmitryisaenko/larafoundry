@@ -97,9 +97,40 @@ class SetLocale
         }
 
         $response = $next($request);
-        $response->headers->setCookie(cookie($cookieName, $resolved, 60 * 24 * 365));
+
+        // Persist the detected locale as a cookie for the next request — but only
+        // if the request did not already set this cookie itself. The language
+        // switch endpoint runs *inside* this middleware: on a guest's first
+        // switch there is no session/cookie locale yet, so resolution lands here
+        // (detect → default) and would otherwise overwrite the controller's
+        // freshly chosen cookie. A downstream choice is authoritative; never
+        // clobber it with the detected fallback.
+        if (! $this->responseAlreadySetsCookie($response, $cookieName)) {
+            $response->headers->setCookie(cookie($cookieName, $resolved, 60 * 24 * 365));
+        }
 
         return $response;
+    }
+
+    /**
+     * Whether the response (or the queued-cookie jar) already carries this cookie.
+     *
+     * Covers both ways a downstream handler can set a cookie: attaching it to the
+     * response headers directly (e.g. RedirectResponse::withCookie) and queuing it
+     * through the CookieJar, which Laravel flushes onto the response after this
+     * middleware returns.
+     */
+    protected function responseAlreadySetsCookie(Response $response, string $name): bool
+    {
+        foreach ($response->headers->getCookies() as $cookie) {
+            if ($cookie->getName() === $name) {
+                return true;
+            }
+        }
+
+        // Also catch cookies the downstream queued via the CookieJar — those are
+        // flushed onto the response only after this middleware returns.
+        return app()->bound('cookie') && app('cookie')->hasQueued($name);
     }
 
     /**

@@ -171,3 +171,27 @@ it('never sets a locale outside the whitelist even with a misconfigured default'
     // Falls back to the first whitelisted locale rather than applying 'zz'.
     expect(App::getLocale())->toBe('en');
 });
+
+it('does not overwrite a locale cookie the downstream response already set', function () {
+    // Reproduces the integration bug: the language-switch endpoint runs inside
+    // this middleware, so on a guest's first switch (no session/cookie yet)
+    // resolution lands on the detected default. The middleware must not clobber
+    // the cookie the switch controller just set for the chosen locale.
+    $request = localeRequest(server: ['HTTP_ACCEPT_LANGUAGE' => 'fr-FR']); // detects 'en'
+
+    $next = function (Request $request): Response {
+        $response = new Response('ok');
+        $response->headers->setCookie(cookie('locale', 'uk', 60));
+
+        return $response;
+    };
+
+    $response = (new SetLocale)->handle($request, $next);
+
+    $cookies = collect($response->headers->getCookies())
+        ->filter(fn ($c) => $c->getName() === 'locale');
+
+    // Exactly one locale cookie, and it carries the downstream choice, not 'en'.
+    expect($cookies)->toHaveCount(1);
+    expect($cookies->first()->getValue())->toBe('uk');
+});
