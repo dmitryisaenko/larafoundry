@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Models;
 
+use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\Tenant;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -15,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Auth\User as DefaultUser;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * The base company — the tenant in `teams` mode (phase 1.2).
@@ -150,15 +150,16 @@ class Company extends Model implements Tenant
     }
 
     /**
-     * Public URL of the company logo, if any.
+     * Public URL of the company logo, or null when none is set (phase 2.4).
+     *
+     * Resolved through {@see LaraFoundryMedia::logoUrl()} rather than a hardcoded
+     * `Storage::disk('public')`, so the logo follows the configured media disk
+     * (portable to S3). The UI falls back to a generated company mark when this
+     * is null — the core does not auto-placeholder here.
      */
     public function getLogoUrlAttribute(): ?string
     {
-        if (! $this->logo_path) {
-            return null;
-        }
-
-        return Storage::disk('public')->url($this->logo_path);
+        return LaraFoundryMedia::logoUrl($this->logo_path);
     }
 
     /**

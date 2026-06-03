@@ -26,6 +26,11 @@ use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
+use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
+use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
+use Dmitryisaenko\LaraFoundry\Media\Support\FileStorageManager;
+use Dmitryisaenko\LaraFoundry\Media\Support\ImageProcessor;
+use Dmitryisaenko\LaraFoundry\Media\Support\InitialsAvatarGenerator;
 use Dmitryisaenko\LaraFoundry\Navigation\Contracts\PolicyChecker;
 use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Navigation\Providers\TenantMenuProvider;
@@ -47,6 +52,9 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
+use Intervention\Image\ImageManager;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
@@ -58,6 +66,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry.php', 'larafoundry');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-permissions.php', 'larafoundry-permissions');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-activitylog.php', 'larafoundry-activitylog');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-media.php', 'larafoundry-media');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -71,6 +80,34 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerTenantResolver();
         $this->registerActivityLog();
         $this->registerNavigation();
+        $this->registerMedia();
+    }
+
+    /**
+     * Wire the file/media library (phase 2.4).
+     *
+     * Every file operation depends on the MediaStorage contract (not
+     * Storage::disk directly), so the disk is configuration and a future
+     * polymorphic media library swaps in without touching call sites. The
+     * intervention ImageManager driver comes from config (gd by default — the
+     * common shared-hosting extension; imagick for hosts without gd); it is
+     * resolved lazily, so the extension is only needed when an image is actually
+     * processed. The avatar generator renders initials inline, so a missing
+     * avatar needs no extension and no stored file.
+     */
+    protected function registerMedia(): void
+    {
+        $this->app->singleton(ImageManager::class, function () {
+            $driver = config('larafoundry-media.image_driver', 'gd') === 'imagick'
+                ? new ImagickDriver
+                : new GdDriver;
+
+            return new ImageManager($driver);
+        });
+
+        $this->app->singleton(ImageProcessor::class);
+        $this->app->singleton(MediaStorage::class, FileStorageManager::class);
+        $this->app->singleton(AvatarGenerator::class, InitialsAvatarGenerator::class);
     }
 
     /**
@@ -162,6 +199,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerAuthorization();
         $this->bootActivityLog();
         $this->bootAdmin();
+        $this->bootMedia();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -229,6 +267,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function bootAdmin(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/admin.php');
+    }
+
+    /**
+     * Boot the file/media library (phase 2.4): the signed private-file route.
+     *
+     * The route is the auth-gated, signed door to private-disk files.
+     * FileStorageManager::temporaryUrl mints a short-lived signed URL to it for
+     * disks that cannot presign (the local/private disk), so a private file is
+     * never reachable by a raw, permanent path (recon finding #7). S3 presigns
+     * natively. The manager owns that decision, so it does not depend on a
+     * boot-time disk callback (which a test's Storage::fake would replace).
+     */
+    protected function bootMedia(): void
+    {
+        $this->loadRoutesFrom(__DIR__.'/../routes/media.php');
     }
 
     /**
@@ -301,6 +354,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-activitylog.php' => config_path('larafoundry-activitylog.php'),
         ], 'larafoundry-activitylog');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-media.php' => config_path('larafoundry-media.php'),
+        ], 'larafoundry-media');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

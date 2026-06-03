@@ -6,18 +6,32 @@ LaraFoundry is a modular SaaS foundation being extracted from [Kohana.io](https:
 
 This is built **in public** and **by extraction, not rewrite**. Each piece is pulled from battle-tested production code, modernized, hardened, covered with Pest, reviewed, and only then tagged. The README tracks what is *actually in the package*, not what is planned. See the roadmap for what's coming.
 
-**Tech stack:** Laravel 12 / 13, PHP 8.2+, Inertia 2 / 3, Vue 3, Tailwind CSS 4, Ziggy, Pest. Authentication builds on [Laravel Fortify](https://laravel.com/docs/fortify) and [Socialite](https://laravel.com/docs/socialite); the activity log builds on [spatie/laravel-activitylog](https://github.com/spatie/laravel-activitylog).
+**Tech stack:** Laravel 12 / 13, PHP 8.2+, Inertia 2 / 3, Vue 3, Tailwind CSS 4, Ziggy, Pest. Authentication builds on [Laravel Fortify](https://laravel.com/docs/fortify) and [Socialite](https://laravel.com/docs/socialite); the activity log builds on [spatie/laravel-activitylog](https://github.com/spatie/laravel-activitylog); the media library builds on [intervention/image](https://image.intervention.io) and [laravolt/avatar](https://github.com/laravolt/avatar).
 
 ```bash
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.7.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, and the navigation engine + first operator-console screen (Admin Users + impersonation).**
+> ⚠️ **Status: early but growing. Current release is `v0.8.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + first operator-console screen (Admin Users + impersonation), and the file / media library.**
 > Billing, admin companies / dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.8.x` File / media library
+
+One seam for storing and serving files, so avatars, logos and (later) host documents all go through the same disk-agnostic path instead of hardcoding `public_path()`. Everything resolves through the `MediaStorage` contract, so the disk is configuration: point `larafoundry-media.disk` at `s3` and uploads move to the cloud with no code change. Image processing uses [intervention/image](https://image.intervention.io); the default placeholder avatar is rendered inline and needs no extension.
+
+| Component | What it does |
+|-----------|--------------|
+| `MediaStorage` + `FileStorageManager` | The storage seam. `store()` writes to a configured disk with a generated uuid filename under a `YYYY/MM` shard (a client name can never steer the path), optionally producing named image variants. `url()`, `temporaryUrl()` and an idempotent `delete()` round it out. This is also the seam under a future polymorphic media library, so the avatar/logo call sites won't change when it lands. |
+| `ImageProcessor` | Resize / crop through intervention, driven by config variants (`scaleDown` never upsizes, `cover` crops to exact size). The source is decoded once and reused across the original and every variant. The driver (`gd` / `imagick`) is configurable. |
+| `AvatarGenerator` (initials) | A missing avatar renders as an initials placeholder, inline as an SVG data URI — no stored file, so it can never orphan, and no image extension required. `User::avatar_url` resolves the three shapes the column can hold: an external OAuth URL (as-is), a stored path (through the disk), or empty (the placeholder). Swap the contract to use Gravatar or anything else. |
+| Private files | A non-public disk plus a short-lived, signed, auth-gated download route (`temporaryUrl()`), so a private file is never reachable by a raw, permanent path. Both the path and the disk are signed; the route re-validates the disk. The seam for host order/invoice documents. |
+| Vue components | `UserAvatar`, `CompanyLogo` (image with an initials/initial fallback on empty or error), `FileUpload` and `ImageUpload` (file picker with a live preview), wired into the Admin Users table and the company switcher. |
+
+> Polymorphic attachments (one model, many files) are intentionally **not** here yet — this is the contract they will stand on, kept thin so adding them later doesn't rewrite the avatar/logo call sites. Image-processing needs a GD or Imagick PHP extension at runtime (only when an image is actually uploaded — the placeholder avatar needs neither).
 
 ### `v0.7.x` Navigation engine + operator console (Admin Users)
 
@@ -319,6 +333,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 2.1 | [Activity logging](docs/modules/logging.md) (platform audit) | ✅ Shipped (`v0.5.x`) |
 | 2.2 | [Multilanguage](docs/modules/multilanguage.md) (i18n, language switcher) | ✅ Shipped (`v0.6.x`) |
 | 2.3 | [Navigation](docs/modules/navigation.md) engine + [Admin users](docs/modules/admin_users.md) console (+ impersonation) | ✅ Shipped (`v0.7.x`) |
+| 2.4 | File / media library (storage seam, image variants, default avatars, private files) | ✅ Shipped (`v0.8.x`) |
 | 3.x | [Payments](docs/modules/payments.md) / billing, [Admin companies](docs/modules/admin_companies.md) + dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
@@ -327,8 +342,8 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 290 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage and the navigation/operator-console layer, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, and the donor's wide-open impersonation, where any admin could impersonate anyone including other admins with no audit, now policy-gated, audited and session-rotated).
-- **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages and navigation components, including a stored-XSS guard on the activity-log table.
+- **Pest** on every piece of the core: 331 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer and the file/media library, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, and a media-default that upsized small avatars into blurry thumbnails).
+- **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.
 

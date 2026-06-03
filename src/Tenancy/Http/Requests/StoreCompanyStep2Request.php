@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests;
 
+use Dmitryisaenko\LaraFoundry\Media\Http\Requests\Concerns\ValidatesUploadedFile;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class StoreCompanyStep2Request extends FormRequest
 {
+    use ValidatesUploadedFile;
+
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -28,9 +31,11 @@ class StoreCompanyStep2Request extends FormRequest
     {
         // Logo only. Description is collected in step 1 (and persisted there);
         // it must NOT be accepted here, or an empty step-2 submission would
-        // overwrite the step-1 description with a blank string.
+        // overwrite the step-1 description with a blank string. The image rules
+        // come from the media config (phase 2.4), so size/type limits are tuned
+        // in one place rather than hardcoded here.
         return [
-            'logo' => ['nullable', 'image', 'max:2048'],
+            'logo' => $this->imageUploadRules(),
         ];
     }
 }

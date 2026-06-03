@@ -8,6 +8,7 @@
  * v-html anywhere.
  */
 import UsersTableActions from './UsersTableActions.vue';
+import UserAvatar from '../media/UserAvatar.vue';
 
 defineProps({
     users: { type: Array, default: () => [] },
@@ -32,8 +33,17 @@ defineProps({
             <tbody>
                 <tr v-for="user in users" :key="user.id" class="border-b border-border/60 align-middle">
                     <td class="px-3 py-2">
-                        <div class="font-medium text-ink">{{ user.name }} {{ user.lastname }}</div>
-                        <div v-if="user.is_admin" class="text-xs font-semibold text-brand-700">{{ $t('Super-admin') }}</div>
+                        <div class="flex items-center gap-2">
+                            <UserAvatar
+                                :src="user.avatar_url"
+                                :name="`${user.name} ${user.lastname || ''}`"
+                                :size="32"
+                            />
+                            <div>
+                                <div class="font-medium text-ink">{{ user.name }} {{ user.lastname }}</div>
+                                <div v-if="user.is_admin" class="text-xs font-semibold text-brand-700">{{ $t('Super-admin') }}</div>
+                            </div>
+                        </div>
                     </td>
                     <td class="px-3 py-2">
                         <span>{{ user.email }}</span>

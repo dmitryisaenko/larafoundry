@@ -56,11 +56,12 @@ class LaraFoundryTenancy
             'id' => $company->getKey(),
             'uuid' => $company->uuid,
             'name' => $company->name,
+            'logo_url' => $company->logo_url,
         ];
     }
 
     /**
-     * @return array<int, array{id: int|string, uuid: string, name: string, is_owner: bool}>
+     * @return array<int, array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool}>
      */
     protected static function companyList(): array
     {
@@ -78,6 +79,7 @@ class LaraFoundryTenancy
             'id' => $company->getKey(),
             'uuid' => $company->uuid,
             'name' => $company->name,
+            'logo_url' => $company->logo_url,
             'is_owner' => (bool) $company->pivot->is_owner,
         ])->all();
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Media\Actions\StoreUploadedFileAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateCompanyAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Concerns\ResolvesActiveCompany;
@@ -53,16 +54,24 @@ class CreateCompanyController extends Controller
             ->with('status', __('larafoundry::tenancy.company_created'));
     }
 
-    public function storeStep2(StoreCompanyStep2Request $request): RedirectResponse
+    public function storeStep2(StoreCompanyStep2Request $request, StoreUploadedFileAction $storeFile): RedirectResponse
     {
         $company = $this->ownedActiveCompany($request);
 
         $data = $request->safe()->except('logo');
 
         if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('company-logos', 'public');
-            $data['logo_path'] = $path;
-            $data['logo'] = basename($path);
+            // Phase 2.4: store through the media action (configured disk, generated
+            // filename, FileUploaded event) rather than a hardcoded public disk, so
+            // logos follow `larafoundry-media.disk` and are portable to S3.
+            $stored = $storeFile->execute(
+                $request->file('logo'),
+                context: 'company_logo',
+                directory: (string) config('larafoundry-media.paths.company_logos', 'company-logos'),
+            );
+
+            $data['logo_path'] = $stored->path;
+            $data['logo'] = $stored->filename;
         }
 
         if ($data !== []) {

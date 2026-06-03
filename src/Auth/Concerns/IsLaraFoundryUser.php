@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
 use Dmitryisaenko\LaraFoundry\Auth\Support\DeviceFingerprint;
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
+use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
@@ -174,6 +175,24 @@ trait IsLaraFoundryUser
     public function setPreferredLocale(string $locale): void
     {
         $this->forceFill(['locale' => $locale])->save();
+    }
+
+    /**
+     * A displayable avatar URL, always resolvable (phase 2.4).
+     *
+     * The `avatar` column may hold a stored relative path, an absolute URL set
+     * by an OAuth provider at sign-up, or nothing at all — so this never just
+     * prefixes the disk URL. {@see LaraFoundryMedia::avatarUrl()} returns the
+     * external URL as-is, resolves a stored path through the media disk, or
+     * generates an initials placeholder from the user's name when empty. The
+     * host overrides the placeholder by rebinding the AvatarGenerator.
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        return LaraFoundryMedia::avatarUrl(
+            $this->getAttribute('avatar'),
+            trim((string) $this->getAttribute('name').' '.(string) $this->getAttribute('lastname')),
+        );
     }
 
     /**

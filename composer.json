@@ -16,8 +16,10 @@
         "illuminate/contracts": "^12.0 || ^13.0",
         "illuminate/support": "^12.0 || ^13.0",
         "inertiajs/inertia-laravel": "^2.0 || ^3.0",
+        "intervention/image": "^3.0",
         "laravel/fortify": "^1.25 || ^2.0",
         "laravel/socialite": "^5.0",
+        "laravolt/avatar": "^6.0",
         "spatie/laravel-activitylog": "^4.12",
         "tightenco/ziggy": "^2.0"
     },
@@ -25,6 +27,10 @@
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0 || ^11.0",
         "pestphp/pest": "^3.0 || ^4.0"
+    },
+    "suggest": {
+        "ext-gd": "Required only to process image uploads (avatars, logos) with the default GD image driver; the initials placeholder avatar needs no extension.",
+        "ext-imagick": "Alternative image driver — set larafoundry-media.image_driver to 'imagick' to use it instead of GD."
     },
     "autoload": {
         "psr-4": {

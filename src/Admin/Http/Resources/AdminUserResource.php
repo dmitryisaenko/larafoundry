@@ -30,6 +30,10 @@ class AdminUserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'lastname' => $this->lastname,
+            // Phase 2.4: always a resolvable URL (stored file, external OAuth
+            // avatar, or a generated initials placeholder) — never the raw
+            // column, so the table can render an <img> without a null check.
+            'avatar_url' => $this->avatar_url,
             'email' => $this->email,
             'phone' => $this->phone,
             'country' => $this->country,

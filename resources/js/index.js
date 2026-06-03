@@ -42,6 +42,12 @@ export { default as UsersTable } from './components/admin/UsersTable.vue';
 export { default as UsersTableActions } from './components/admin/UsersTableActions.vue';
 export { default as ImpersonationBanner } from './components/admin/ImpersonationBanner.vue';
 
+// Media (phase 2.4)
+export { default as UserAvatar } from './components/media/UserAvatar.vue';
+export { default as CompanyLogo } from './components/media/CompanyLogo.vue';
+export { default as FileUpload } from './components/media/FileUpload.vue';
+export { default as ImageUpload } from './components/media/ImageUpload.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';

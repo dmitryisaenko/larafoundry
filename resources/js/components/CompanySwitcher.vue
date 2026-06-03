@@ -12,6 +12,7 @@
 import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useT } from '../composables/useT.js';
+import CompanyLogo from './media/CompanyLogo.vue';
 
 const t = useT();
 
@@ -44,6 +45,7 @@ function switchTo(company) {
             class="flex items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink transition hover:bg-surface-subtle"
             @click="open = !open"
         >
+            <CompanyLogo v-if="active" :src="active.logo_url" :name="active.name" :size="20" />
             <span class="font-medium">{{ activeName }}</span>
             <span class="text-ink-soft">▾</span>
         </button>
@@ -59,7 +61,10 @@ function switchTo(company) {
                     :class="company.uuid === active?.uuid ? 'bg-brand-50 text-brand-700' : ''"
                     @click="switchTo(company)"
                 >
-                    <span>{{ company.name }}</span>
+                    <span class="flex items-center gap-2">
+                        <CompanyLogo :src="company.logo_url" :name="company.name" :size="20" />
+                        <span>{{ company.name }}</span>
+                    </span>
                     <span v-if="company.is_owner" class="text-xs text-ink-soft">{{ t('Owner') }}</span>
                 </button>
             </li>
