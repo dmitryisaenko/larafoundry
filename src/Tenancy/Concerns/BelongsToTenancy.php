@@ -84,15 +84,19 @@ trait BelongsToTenancy
     /**
      * Promote the next available company to active (owned first, then member).
      *
-     * Returns false when the user has no companies left — the caller then knows
-     * to send them to the "create a company" flow.
+     * Skips blocked companies (phase 3.3): a company a super-admin has blocked is
+     * not an eligible landing spot, so a multi-company member auto-lands on a
+     * working one instead of being bounced to the blocked screen. Returns false
+     * when the user has no UNBLOCKED company left — the caller then knows to send
+     * them to the "create a company" flow (or, for a member whose only company is
+     * blocked, the blocked screen, with no active company set so it cannot loop).
      */
     public function setNextAvailableCompany(): bool
     {
         $this->clearActiveCompany();
 
-        $next = $this->ownedCompanies()->first()
-            ?? $this->employeeCompanies()->first();
+        $next = $this->ownedCompanies()->whereNull('company_blocked_at')->first()
+            ?? $this->employeeCompanies()->whereNull('company_blocked_at')->first();
 
         if ($next === null) {
             return false;

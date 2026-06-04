@@ -13,6 +13,7 @@ declare(strict_types=1);
 return [
 
     'no_active_company' => 'Select or create a company first.',
+    'company_blocked' => 'This company has been blocked. Contact support.',
     'company_created' => 'Company created.',
     'company_switched' => 'You are now working as :company.',
     'setup_complete' => 'Your company is ready.',

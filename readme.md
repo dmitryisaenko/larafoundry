@@ -12,12 +12,25 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.9.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + first operator-console screen (Admin Users + impersonation), the file / media library, and the billing seam.**
-> The billing seam is exactly that: contracts, a gateway driver manager and a real access gate, with no payment SDK in the free core. Taking actual money (Stripe / Paddle via Cashier), plans, promo codes, trials and revenue metrics live in a separate paid `larafoundry-billing` add-on, not here. Admin companies / dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> ⚠️ **Status: early but growing. Current release is `v0.10.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade), the file / media library, and the billing seam.**
+> Admin Companies is a free-core console screen: a filterable company list, a read-only subscription-status view over the billing columns, and a super-admin company block that cascades to every member at the tenancy boundary. It does not manage subscriptions (change a plan, extend a period); that is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and revenue metrics. The admin dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.10.x` Admin Companies (operator console)
+
+The second operator-console screen, built on the same pattern as Admin Users: a super-admin view of every company on the platform. It is read-only about money (the core stores no payment records) and read-only about subscriptions (managing a plan is the add-on's job). What it adds is a real company block the donor never had.
+
+| Component | What it does |
+|-----------|--------------|
+| `CompanyController` | The super-admin company list (filterable, paginated), a read-only detail screen, and block / unblock. Behind the `larafoundry.admin` gate, with a second policy lock on the destructive block action. |
+| `AdminCompaniesFilter` | Reflection-safe query filter (free-text over name/owner, country, created-at window, subscription status, block state). A status facet is computed as SQL from the billing columns so it pages in the database. |
+| Company block + cascade | A super-admin block (`company_blocked_at`) that takes the whole team offline. Enforcement is at the single tenancy boundary (`EnsureActiveTenant`): a blocked company's members are denied the tenant screens regardless of role. The cascade is self-healing: a member of another, unblocked company is moved there automatically rather than stranded. Block columns are written server-side only (not mass-assignable), audited to the activity log, and accompanied by a tracked-session purge. |
+| `SubscriptionStatus` | A read-only classifier (`on_trial` / `active` / `expiring` / `expired` / `never_activated`) over the billing columns, the single source the list badge and the filter share. With billing off (the default) every company reads as `never_activated` with access open: honest, not a bug. |
+
+> Read-only about subscriptions on purpose: the screen reports state, it never changes a plan or period. Subscription management, payments and revenue metrics are the paid `larafoundry-billing` add-on. The admin dashboard is a later phase.
 
 ### `v0.9.x` Billing seam
 
@@ -349,7 +362,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 2.3 | [Navigation](docs/modules/navigation.md) engine + [Admin users](docs/modules/admin_users.md) console (+ impersonation) | ✅ Shipped (`v0.7.x`) |
 | 2.4 | File / media library (storage seam, image variants, default avatars, private files) | ✅ Shipped (`v0.8.x`) |
 | 3.1 | [Billing](docs/modules/payments.md) seam (gateway contract + driver manager, subscription columns, real `hasAccess` gate, region context) | ✅ Shipped (`v0.9.x`) |
-| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, metrics), [Admin companies](docs/modules/admin_companies.md) + dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
+| 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
+| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, metrics), admin dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -357,7 +371,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 362 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library and the billing seam, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, and an empty-string gateway config that would have thrown on every access check) with the billing access gate pinned fail-closed both ways.
+- **Pest** on every piece of the core: 398 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam and the admin-companies console, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, and a company-block cascade that would have looped a single-company member until it was made self-healing) with the billing access gate pinned fail-closed both ways.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

@@ -78,7 +78,8 @@ class Company extends Model implements Tenant
      * $fillable on purpose: subscription state is written server-side by the
      * billing add-on (webhooks/actions), never mass-assigned from user input —
      * leaving them unfillable guards against a host accidentally letting a user
-     * set their own `subscription_ends_at`.
+     * set their own `subscription_ends_at`. The same goes for `company_blocked_at`
+     * (phase 3.3): only the super-admin console writes it, via forceFill.
      *
      * @return array<string, string>
      */
@@ -88,6 +89,7 @@ class Company extends Model implements Tenant
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'free_month_used_at' => 'datetime',
+            'company_blocked_at' => 'datetime',
         ];
     }
 
@@ -159,6 +161,19 @@ class Company extends Model implements Tenant
     public function isInSetup(): bool
     {
         return $this->country === null;
+    }
+
+    /**
+     * Whether a super-admin has blocked this company (phase 3.3).
+     *
+     * The block is a cascade: a blocked company denies its tenant screens to
+     * EVERY member at the tenancy boundary (EnsureActiveTenant), not just its
+     * owner — so one column takes the whole company offline. Written server-side
+     * only (not $fillable); cleared by the console's unblock action.
+     */
+    public function isBlocked(): bool
+    {
+        return $this->company_blocked_at !== null;
     }
 
     /**

@@ -197,12 +197,20 @@ return [
     |--------------------------------------------------------------------------
     | Operator console (phase 2.3)
     |--------------------------------------------------------------------------
-    | Settings for the super-admin console (user management, impersonation).
+    | Settings for the super-admin console (user management, impersonation,
+    | company management).
     |
-    | users_per_page — page size for the admin user list.
+    | users_per_page     — page size for the admin user list.
+    | companies_per_page — page size for the admin company list (phase 3.3).
+    | subscription_expiring_within_days — a still-active subscription whose end
+    |   date falls inside this many days is classified as "expiring" in the
+    |   company list (status badge + filter). Display-only; access is still
+    |   granted until the end date passes (Company::hasAccess()).
     */
     'admin' => [
         'users_per_page' => 21,
+        'companies_per_page' => 21,
+        'subscription_expiring_within_days' => 7,
     ],
 
     /*

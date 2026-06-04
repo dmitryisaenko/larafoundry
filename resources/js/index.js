@@ -42,6 +42,11 @@ export { default as UsersTable } from './components/admin/UsersTable.vue';
 export { default as UsersTableActions } from './components/admin/UsersTableActions.vue';
 export { default as ImpersonationBanner } from './components/admin/ImpersonationBanner.vue';
 
+// Admin companies (phase 3.3)
+export { default as CompaniesTable } from './components/admin/CompaniesTable.vue';
+export { default as CompaniesTableActions } from './components/admin/CompaniesTableActions.vue';
+export { default as SubscriptionStatusBadge } from './components/admin/SubscriptionStatusBadge.vue';
+
 // Media (phase 2.4)
 export { default as UserAvatar } from './components/media/UserAvatar.vue';
 export { default as CompanyLogo } from './components/media/CompanyLogo.vue';

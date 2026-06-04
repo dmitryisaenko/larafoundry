@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -11,8 +12,9 @@ use Illuminate\Support\Facades\Route;
 | LaraFoundry operator-console routes (super-admin only)
 |--------------------------------------------------------------------------
 | Phase 2.3: user management + impersonation, on top of the activity log
-| (phase 2.1, `admin.activity-log.*`). Everything is behind `larafoundry.admin`
-| (super-admin via VisitorStatus) on an authenticated, verified session.
+| (phase 2.1, `admin.activity-log.*`). Phase 3.3 adds company management
+| (`admin.companies.*`). Everything is behind `larafoundry.admin` (super-admin
+| via VisitorStatus) on an authenticated, verified session.
 |
 | `impersonate.leave` is the one exception: it lives OUTSIDE the admin gate,
 | because while impersonating the actor IS the target user (not an admin), so
@@ -34,6 +36,14 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             Route::post('{user}/unblock', [UserController::class, 'unblock'])->name('unblock');
             Route::delete('{user}', [UserController::class, 'destroy'])->name('destroy');
             Route::post('{user}/restore', [UserController::class, 'undelete'])->name('restore');
+        });
+
+        Route::prefix('companies')->name('companies.')->group(function () {
+            Route::get('/', [CompanyController::class, 'index'])->name('index');
+            Route::get('search', [CompanyController::class, 'search'])->name('search');
+            Route::get('{company}', [CompanyController::class, 'show'])->name('show');
+            Route::post('{company}/block', [CompanyController::class, 'block'])->name('block');
+            Route::post('{company}/unblock', [CompanyController::class, 'unblock'])->name('unblock');
         });
 
         Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])

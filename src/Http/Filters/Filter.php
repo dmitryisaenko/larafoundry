@@ -98,10 +98,14 @@ abstract class Filter
     /**
      * Whether a request value should be ignored rather than applied.
      *
-     * Empty strings and nulls are skipped so blank inputs do not filter.
+     * Empty strings and nulls are skipped so blank inputs do not filter. Non-
+     * scalar values (arrays from `?key[]=x`, files) are skipped too: filter
+     * methods are typed for a scalar value, so passing an array would throw a
+     * TypeError (a 500) on otherwise-valid endpoints — a crafted array query
+     * param must be ignored, not crash the page.
      */
     protected function shouldSkip(mixed $value): bool
     {
-        return $value === null || $value === '';
+        return $value === null || $value === '' || ! is_scalar($value);
     }
 }

@@ -58,6 +58,7 @@ it('builds the admin menu for a super-admin', function () {
     $labels = array_column($menu, 'labelKey');
 
     expect($labels)->toContain('Users')
+        ->and($labels)->toContain('Companies')
         ->and($labels)->toContain('Activity log');
 });
 

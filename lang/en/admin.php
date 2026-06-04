@@ -20,6 +20,11 @@ return [
         'restored' => 'User restored.',
     ],
 
+    'companies' => [
+        'blocked' => 'Company blocked.',
+        'unblocked' => 'Company unblocked.',
+    ],
+
     'impersonate' => [
         'started' => 'You are now impersonating this user.',
         'stopped' => 'You have stopped impersonating.',
