@@ -24,6 +24,13 @@ use Dmitryisaenko\LaraFoundry\Authorization\Gates\RoleGates;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\AssignAuthenticatedRole;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
+use Dmitryisaenko\LaraFoundry\Billing\Contracts\EntitlementResolver;
+use Dmitryisaenko\LaraFoundry\Billing\Contracts\PlanRepositoryContract;
+use Dmitryisaenko\LaraFoundry\Billing\Contracts\RegionContext;
+use Dmitryisaenko\LaraFoundry\Billing\Support\ArrayPlanRepository;
+use Dmitryisaenko\LaraFoundry\Billing\Support\DefaultRegionContext;
+use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
+use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
@@ -81,6 +88,32 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerActivityLog();
         $this->registerNavigation();
         $this->registerMedia();
+        $this->registerBilling();
+    }
+
+    /**
+     * Wire the billing seam (phase 3.1).
+     *
+     * The FREE core ships only the seam: a gateway manager whose sole driver is
+     * 'null' (takes no money), plus default region / plan / entitlement
+     * implementations that keep the app fully open while billing is off. The paid
+     * `larafoundry-billing` add-on rebinds these contracts and registers real
+     * gateway drivers via PaymentGatewayManager::extend() — so nothing here knows
+     * Stripe/Paddle, and no payment SDK enters the free core's dependencies.
+     *
+     * The manager is a singleton so add-on/host-registered drivers and their
+     * resolved instances persist for the request; the contracts are bound (not
+     * singleton) like the other swappable seams so a host override takes cleanly.
+     */
+    protected function registerBilling(): void
+    {
+        $this->app->singleton(PaymentGatewayManager::class, function ($app) {
+            return new PaymentGatewayManager($app);
+        });
+
+        $this->app->bind(RegionContext::class, DefaultRegionContext::class);
+        $this->app->bind(PlanRepositoryContract::class, ArrayPlanRepository::class);
+        $this->app->bind(EntitlementResolver::class, NullEntitlementResolver::class);
     }
 
     /**

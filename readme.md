@@ -12,12 +12,26 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.8.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + first operator-console screen (Admin Users + impersonation), and the file / media library.**
-> Billing, admin companies / dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> ⚠️ **Status: early but growing. Current release is `v0.9.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + first operator-console screen (Admin Users + impersonation), the file / media library, and the billing seam.**
+> The billing seam is exactly that: contracts, a gateway driver manager and a real access gate, with no payment SDK in the free core. Taking actual money (Stripe / Paddle via Cashier), plans, promo codes, trials and revenue metrics live in a separate paid `larafoundry-billing` add-on, not here. Admin companies / dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.9.x` Billing seam
+
+The free core ships the *seam* for billing, not billing itself. It is the boundary the paid `larafoundry-billing` add-on plugs into: contracts for the payment gateway and plans, a driver manager in the Mail/Queue style, a region context, and a real `Company::hasAccess()` gate over subscription columns. No Stripe, Paddle or Cashier enters the free core's dependencies. With billing left off (the default) the core is a fully usable multi-tenant app with no paywall.
+
+| Component | What it does |
+|-----------|--------------|
+| `Company::hasAccess()` | The access gate. With `billing.enabled` off (default) it is always true, so the free core never blocks. Turn it on and it reads real subscription state from the company's billing columns: a live trial or an active subscription grants access, anything else denies (fail-closed). The billing columns (`trial_ends_at`, `subscription_ends_at`, `plan_id`, ...) ship in the core migration but are not mass-assignable, so a tenant can never write its own subscription. |
+| `PaymentGatewayInterface` + `PaymentGatewayManager` | The gateway driver seam, resolved by config like Mail or Queue. The free core registers one driver, `null`, which refuses every money operation loudly (no silent "success"). The add-on or a host registers real drivers via `extend()` and points `billing.gateway.default` at one. A host in a country Stripe/Paddle don't reach implements the contract for its local PSP. Webhook verification is part of the contract, not optional. |
+| `PlanContract` + `PlanRepositoryContract` | A plan is an interface, not a hardcoded config array, so the source of plans (config, a table, the gateway catalogue) is the add-on's choice. `Company.plan_id` is a plain string identifier; the core knows no plans out of the box. |
+| `RegionContext` | Country / currency / gateway routing, with a default that derives the country from the company's own column (server-side, never a client value). Per-country pricing and gateway routing are the add-on/host's job. |
+| `EntitlementResolver` | The Billing↔RBAC hook: "does this plan entitle feature X", in the same slug vocabulary as RBAC permissions. Open for everything in the free core; the add-on makes it real. |
+
+> This phase wires the gate but no caller yet: enabling billing makes `hasAccess()` answer correctly, and the future "subscription required" middleware / RBAC check will consult it without changing. Real payments, plans, promo codes, trials, the self-serve portal and revenue metrics are the paid add-on, not this seam. Honest about scope, as every release.
 
 ### `v0.8.x` File / media library
 
@@ -27,11 +41,11 @@ One seam for storing and serving files, so avatars, logos and (later) host docum
 |-----------|--------------|
 | `MediaStorage` + `FileStorageManager` | The storage seam. `store()` writes to a configured disk with a generated uuid filename under a `YYYY/MM` shard (a client name can never steer the path), optionally producing named image variants. `url()`, `temporaryUrl()` and an idempotent `delete()` round it out. This is also the seam under a future polymorphic media library, so the avatar/logo call sites won't change when it lands. |
 | `ImageProcessor` | Resize / crop through intervention, driven by config variants (`scaleDown` never upsizes, `cover` crops to exact size). The source is decoded once and reused across the original and every variant. The driver (`gd` / `imagick`) is configurable. |
-| `AvatarGenerator` (initials) | A missing avatar renders as an initials placeholder, inline as an SVG data URI — no stored file, so it can never orphan, and no image extension required. `User::avatar_url` resolves the three shapes the column can hold: an external OAuth URL (as-is), a stored path (through the disk), or empty (the placeholder). Swap the contract to use Gravatar or anything else. |
+| `AvatarGenerator` (initials) | A missing avatar renders as an initials placeholder, inline as an SVG data URI: no stored file, so it can never orphan, and no image extension required. `User::avatar_url` resolves the three shapes the column can hold: an external OAuth URL (as-is), a stored path (through the disk), or empty (the placeholder). Swap the contract to use Gravatar or anything else. |
 | Private files | A non-public disk plus a short-lived, signed, auth-gated download route (`temporaryUrl()`), so a private file is never reachable by a raw, permanent path. Both the path and the disk are signed; the route re-validates the disk. The seam for host order/invoice documents. |
 | Vue components | `UserAvatar`, `CompanyLogo` (image with an initials/initial fallback on empty or error), `FileUpload` and `ImageUpload` (file picker with a live preview), wired into the Admin Users table and the company switcher. |
 
-> Polymorphic attachments (one model, many files) are intentionally **not** here yet — this is the contract they will stand on, kept thin so adding them later doesn't rewrite the avatar/logo call sites. Image-processing needs a GD or Imagick PHP extension at runtime (only when an image is actually uploaded — the placeholder avatar needs neither).
+> Polymorphic attachments (one model, many files) are intentionally **not** here yet. This is the contract they will stand on, kept thin so adding them later doesn't rewrite the avatar/logo call sites. Image-processing needs a GD or Imagick PHP extension at runtime (only when an image is actually uploaded, the placeholder avatar needs neither).
 
 ### `v0.7.x` Navigation engine + operator console (Admin Users)
 
@@ -334,7 +348,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 2.2 | [Multilanguage](docs/modules/multilanguage.md) (i18n, language switcher) | ✅ Shipped (`v0.6.x`) |
 | 2.3 | [Navigation](docs/modules/navigation.md) engine + [Admin users](docs/modules/admin_users.md) console (+ impersonation) | ✅ Shipped (`v0.7.x`) |
 | 2.4 | File / media library (storage seam, image variants, default avatars, private files) | ✅ Shipped (`v0.8.x`) |
-| 3.x | [Payments](docs/modules/payments.md) / billing, [Admin companies](docs/modules/admin_companies.md) + dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
+| 3.1 | [Billing](docs/modules/payments.md) seam (gateway contract + driver manager, subscription columns, real `hasAccess` gate, region context) | ✅ Shipped (`v0.9.x`) |
+| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, metrics), [Admin companies](docs/modules/admin_companies.md) + dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -342,7 +357,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 331 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer and the file/media library, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, and a media-default that upsized small avatars into blurry thumbnails).
+- **Pest** on every piece of the core: 362 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library and the billing seam, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, and an empty-string gateway config that would have thrown on every access check) with the billing access gate pinned fail-closed both ways.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

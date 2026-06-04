@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Models;
 
+use Dmitryisaenko\LaraFoundry\Billing\Concerns\HasSubscription;
+use Dmitryisaenko\LaraFoundry\Billing\LaraFoundryBilling;
 use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\Tenant;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -32,6 +34,7 @@ use Illuminate\Foundation\Auth\User as DefaultUser;
 class Company extends Model implements Tenant
 {
     use HasFactory;
+    use HasSubscription;
     use HasUuids;
     use SoftDeletes;
 
@@ -66,6 +69,27 @@ class Company extends Model implements Tenant
         'logo',
         'logo_path',
     ];
+
+    /**
+     * Attribute casts.
+     *
+     * The billing columns (phase 3.1) are cast to dates so SubscriptionState and
+     * the HasSubscription accessors read them as Carbon instances. They are NOT in
+     * $fillable on purpose: subscription state is written server-side by the
+     * billing add-on (webhooks/actions), never mass-assigned from user input —
+     * leaving them unfillable guards against a host accidentally letting a user
+     * set their own `subscription_ends_at`.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'trial_ends_at' => 'datetime',
+            'subscription_ends_at' => 'datetime',
+            'free_month_used_at' => 'datetime',
+        ];
+    }
 
     /**
      * Route-bind companies by their uuid, never the numeric id.
@@ -138,15 +162,34 @@ class Company extends Model implements Tenant
     }
 
     /**
-     * Billing access gate — phase-3 seam.
+     * Billing access gate (phase 3.1).
      *
-     * Always true in the free core; the billing add-on overrides this with real
-     * trial/subscription checks. Call sites (gates, middleware) depend on this
-     * method so they never change when billing lands.
+     * Two regimes, switched by `larafoundry.billing.enabled`:
+     *
+     *  - DISABLED (default): always true. The free core is a fully usable
+     *    multi-tenant app with no paywall — gates never block, and there is no
+     *    billing add-on to say otherwise. This keeps the FREE promise.
+     *  - ENABLED (typically alongside the paid add-on): reads real subscription
+     *    state from the billing columns — a live trial OR an active subscription
+     *    grants access; anything else denies (fail-closed). The add-on's webhook
+     *    keeps `subscription_ends_at` current; a free self-host can grant a trial
+     *    by hand.
+     *
+     * This method is the SEAM the access decision flows through. The intended
+     * Billing↔RBAC loop (roadmap §40) has future call sites — the RBAC
+     * PolicyChecker / a "subscription required" middleware — consult it; in this
+     * phase the core wires none of them yet, so enabling billing makes the gate
+     * answer correctly but nothing in the core enforces it until that wiring
+     * lands. Returning real state now means those call sites won't change when
+     * they arrive.
      */
     public function hasAccess(): bool
     {
-        return true;
+        if (! LaraFoundryBilling::enabled()) {
+            return true;
+        }
+
+        return $this->subscriptionState()->hasAccess();
     }
 
     /**

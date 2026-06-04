@@ -43,13 +43,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Billing (шов)
+    | Billing (шов, phase 3.1)
     |--------------------------------------------------------------------------
-    | Реализация — в платном аддоне `dmitryisaenko/larafoundry-billing`.
-    | В бесплатном ядре остаётся только контракт; hasAccess() = true.
+    | В бесплатном ядре живёт только ШОВ: контракты + драйвер-менеджер + null-
+    | реализации. Реальные платежи (Cashier Stripe/Paddle, promo, trial-UI,
+    | portal, метрики) — в платном аддоне `dmitryisaenko/larafoundry-billing`,
+    | который встаёт в эти контракты.
+    |
+    | enabled — главный рубильник доступа. false (по умолчанию) = бесплатный
+    |           self-host без ограничений: Company::hasAccess() всегда true,
+    |           ворота не блокируют. true (обычно вместе с аддоном) = hasAccess()
+    |           читает реальное состояние подписки из billing-колонок companies
+    |           (fail-closed: нет валидного trial/подписки → нет доступа).
+    |
+    | gateway.default — имя драйвера платёжного шлюза по умолчанию. В ядре
+    |           зарегистрирован только 'null' (ничего не принимает). Аддон/host
+    |           регистрируют 'stripe'/'paddle'/локальный PSP через
+    |           PaymentGatewayManager::extend() и указывают его здесь.
+    |
+    | region.default_currency — валюта по умолчанию (ISO 4217), когда нет
+    |           маппинга страна→валюта. Per-country цены/валюты/выбор шлюза —
+    |           зона аддона/host через свою реализацию RegionContext.
     */
     'billing' => [
-        'enabled' => false,
+        'enabled' => env('LARAFOUNDRY_BILLING_ENABLED', false),
+
+        'gateway' => [
+            'default' => env('LARAFOUNDRY_BILLING_GATEWAY', 'null'),
+        ],
+
+        'region' => [
+            'default_currency' => env('LARAFOUNDRY_BILLING_CURRENCY', 'USD'),
+        ],
     ],
 
     /*
