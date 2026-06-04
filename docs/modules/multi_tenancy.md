@@ -1,5 +1,7 @@
 # Multi-Tenancy & Authorization Module
 
+> **⚠️ Early design note (June 2025).** This page is an early planning draft from before the package was built. The shipped package differs in places: trait and scope names changed (`BelongsToCompany` became `BelongsToTenant`, `forCompany()`/`forAdmin()` became `forTenant()`/`withoutTenancy()`), and authorization shipped as a separate phase. For the current, accurate reference see [multi-tenancy.md](../multi-tenancy.md). Treat this page as design intent only. This file stays at its original URL so older links keep working.
+
 > Production-grade multi-tenancy with automatic data isolation, config-driven permissions, and a 5-level authorization hierarchy for Laravel SaaS applications.
 
 ## Overview
