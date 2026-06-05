@@ -206,11 +206,17 @@ return [
     |   date falls inside this many days is classified as "expiring" in the
     |   company list (status badge + filter). Display-only; access is still
     |   granted until the end date passes (Company::hasAccess()).
+    | active_within_days — a user with tracked activity inside this many days is
+    |   counted as "active" in the dashboard user widget (phase 3.4).
+    | dashboard_activity_limit — how many recent admin-log events the dashboard
+    |   activity widget shows (phase 3.4). Clamped to a sane ceiling in code.
     */
     'admin' => [
         'users_per_page' => 21,
         'companies_per_page' => 21,
         'subscription_expiring_within_days' => 7,
+        'active_within_days' => 30,
+        'dashboard_activity_limit' => 10,
     ],
 
     /*

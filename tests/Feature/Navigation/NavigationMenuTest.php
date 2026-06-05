@@ -57,7 +57,9 @@ it('builds the admin menu for a super-admin', function () {
     $menu = app(MenuBuilder::class)->build('admin', $admin);
     $labels = array_column($menu, 'labelKey');
 
-    expect($labels)->toContain('Users')
+    // The Dashboard (phase 3.4) is the first admin item (order 5).
+    expect($labels[0])->toBe('Dashboard')
+        ->and($labels)->toContain('Users')
         ->and($labels)->toContain('Companies')
         ->and($labels)->toContain('Activity log');
 });

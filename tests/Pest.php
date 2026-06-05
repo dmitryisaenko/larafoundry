@@ -19,6 +19,7 @@ uses(TestCase::class)->in(
     'Unit/FilterTest.php',
     'Unit/HasPaginationTest.php',
     'Unit/Navigation',
+    'Unit/Dashboard',
     'Unit/Media',
     'Unit/Billing',
 );

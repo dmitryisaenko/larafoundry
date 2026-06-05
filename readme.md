@@ -12,12 +12,25 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.10.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade), the file / media library, and the billing seam.**
-> Admin Companies is a free-core console screen: a filterable company list, a read-only subscription-status view over the billing columns, and a super-admin company block that cascades to every member at the tenancy boundary. It does not manage subscriptions (change a plan, extend a period); that is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and revenue metrics. The admin dashboard, notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> ⚠️ **Status: early but growing. Current release is `v0.11.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, and the billing seam.**
+> The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. Notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.11.x` Admin Dashboard (operator console)
+
+The operator console's landing screen, and the widget **seam** behind it. The dashboard is the exact mirror of the navigation engine: the backend builds and permission-filters a widget list from registered providers, and Vue renders each widget's component from a pluggable registry. The free core ships three widgets (users, companies, recent activity); a host or the paid add-on adds more without editing the core. It is revenue-agnostic on purpose.
+
+| Component | What it does |
+|-----------|--------------|
+| `DashboardWidgetProviderInterface` + `DashboardWidget` + `DashboardBuilder` | The seam, 1:1 with the navigation `MenuProvider` / `MenuItem` / `MenuBuilder`. Providers contribute `DashboardWidget`s for a level (`admin`); the builder merges them, filters by RBAC (and `visible`), sorts by `order`, memoises per request and emits arrays. Widget titles are i18n **keys**, translated in Vue. The one difference from the menu seam: a provider receives the user, since a widget carries computed data. |
+| `DashboardMetricsService` | The FREE metrics, kept out of the provider so the SQL is testable and cache-ready. Every figure is a constant-query aggregate (`SUM(CASE WHEN …)`), never a per-row classification, so the page is O(1) in the number of users / companies. Users (totals, recent sign-ups, verified / active / blocked), companies (totals + the `SubscriptionStatus` breakdown reproduced in SQL), activity (a 24h count + a compact recent feed). |
+| `CoreMetricsWidgetProvider` | Registers the three free widgets (`core.users`, `core.companies`, `core.activity`) on the `admin` level. Behind the `larafoundry.admin` gate, so the widgets carry no per-item policy — the zone gate is the authority, like the admin menu. |
+| Frontend widget registry | `dashboardWidgets` + `registerDashboardWidget(name, component)` exported from the package, plus the `UsersWidget` / `CompaniesWidget` / `ActivityWidget` / `UnknownWidget` Vue components and the `Admin/Dashboard` page. The page resolves each widget's component name through the registry and falls back to `UnknownWidget` (raw data) for a name it does not know, so a missing add-on registrar degrades gracefully instead of crashing the page. |
+
+> Revenue is intentionally **not** here: the dashboard is revenue-agnostic and the revenue widget plugs in through the same seam from the paid `larafoundry-billing` add-on. The metrics are uncached in this release (a single-operator page over O(1) aggregates); the service is isolated so a `Cache::remember` can wrap it later without touching the seam.
 
 ### `v0.10.x` Admin Companies (operator console)
 
@@ -72,7 +85,7 @@ A permission-aware navigation engine, and the first real screen of the operator 
 | Admin Users console | `Admin/Users/{Index,Edit,Create}` behind `larafoundry.admin`: list with filters (search / status / verification) + pagination, create / edit, block / unblock, soft-delete / restore. Blocking also invalidates the user's tracked sessions; every action is written to the activity log. Privilege/state columns are never mass-assigned. The resource omits social links (PII). |
 | Impersonation | "Follow into a user", super-admin only. The policy refuses impersonating another admin, a blocked/deleted account, or yourself; take and leave are both audited and the session id is rotated on each identity swap. `leave` lives outside the admin gate (while impersonating you are not an admin). |
 
-> Admin Companies and the admin Dashboard are intentionally **not** here: they are ~80% billing data, so they ship with the billing phase to avoid a double extract.
+> Admin Companies (`v0.10.x`) and the Admin Dashboard (`v0.11.x`) are **not** in this phase: they sit closer to the billing data, so they ship after the billing seam to avoid a double extract.
 
 ### `v0.6.x` Multilanguage (i18n)
 
@@ -363,7 +376,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 2.4 | File / media library (storage seam, image variants, default avatars, private files) | ✅ Shipped (`v0.8.x`) |
 | 3.1 | [Billing](docs/modules/payments.md) seam (gateway contract + driver manager, subscription columns, real `hasAccess` gate, region context) | ✅ Shipped (`v0.9.x`) |
 | 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
-| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, metrics), admin dashboard, [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
+| 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
+| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, revenue metrics), [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -371,7 +385,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 398 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam and the admin-companies console, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, and a company-block cascade that would have looped a single-company member until it was made self-healing) with the billing access gate pinned fail-closed both ways.
+- **Pest** on every piece of the core: 418 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console and the admin dashboard, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, and a company-block cascade that would have looped a single-company member until it was made self-healing) with the billing access gate pinned fail-closed both ways.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

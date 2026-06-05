@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        // The console landing screen (phase 3.4): URL /admin.
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('index');
             Route::get('search', [UserController::class, 'search'])->name('search');

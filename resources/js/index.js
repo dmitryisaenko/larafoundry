@@ -47,6 +47,14 @@ export { default as CompaniesTable } from './components/admin/CompaniesTable.vue
 export { default as CompaniesTableActions } from './components/admin/CompaniesTableActions.vue';
 export { default as SubscriptionStatusBadge } from './components/admin/SubscriptionStatusBadge.vue';
 
+// Dashboard widgets (phase 3.4)
+import UsersWidget from './components/admin/dashboard/UsersWidget.vue';
+import CompaniesWidget from './components/admin/dashboard/CompaniesWidget.vue';
+import ActivityWidget from './components/admin/dashboard/ActivityWidget.vue';
+import UnknownWidget from './components/admin/dashboard/UnknownWidget.vue';
+
+export { UsersWidget, CompaniesWidget, ActivityWidget, UnknownWidget };
+
 // Media (phase 2.4)
 export { default as UserAvatar } from './components/media/UserAvatar.vue';
 export { default as CompanyLogo } from './components/media/CompanyLogo.vue';
@@ -64,6 +72,38 @@ export { default as AppBaseLayout } from './layouts/AppBaseLayout.vue';
 export { default as AppLayout } from './layouts/AppLayout.vue';
 export { default as AdminLayout } from './layouts/AdminLayout.vue';
 export { default as LayoutSwitcher } from './layouts/LayoutSwitcher.vue';
+
+/**
+ * Pluggable dashboard widget registry (phase 3.4).
+ *
+ * Maps a widget COMPONENT NAME (the string the backend DashboardWidget ships) to
+ * its Vue component. The dashboard page resolves each widget through this map, so
+ * the seam grows without the page knowing every widget: the core registers its
+ * own here, and an add-on (or host) registers more at boot via
+ * {@link registerDashboardWidget}. `UnknownWidget` is the fallback the page uses
+ * for a name not in the map.
+ */
+export const dashboardWidgets = {
+    UsersWidget,
+    CompaniesWidget,
+    ActivityWidget,
+    UnknownWidget,
+};
+
+/**
+ * Register (or override) a dashboard widget component by name.
+ *
+ * A host imports an add-on's registrar once in its app entry (e.g.
+ * `import '@/Pages/Admin/Dashboard/registerBillingWidgets'`), which calls this so
+ * the add-on's backend-declared widget has a component to render. Called at boot,
+ * before any dashboard render.
+ *
+ * @param {string} name  the component name the backend widget uses
+ * @param {import('vue').Component} component
+ */
+export function registerDashboardWidget(name, component) {
+    dashboardWidgets[name] = component;
+}
 
 /**
  * Install the LaraFoundry core into a Vue app instance.

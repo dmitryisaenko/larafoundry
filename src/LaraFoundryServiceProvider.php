@@ -32,6 +32,8 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\DefaultRegionContext;
 use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
+use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
+use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
@@ -87,6 +89,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerTenantResolver();
         $this->registerActivityLog();
         $this->registerNavigation();
+        $this->registerDashboard();
         $this->registerMedia();
         $this->registerBilling();
     }
@@ -161,6 +164,26 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 ->setPolicyChecker($app->make(PolicyChecker::class))
                 ->addProvider($app->make(AdminMenuProvider::class))
                 ->addProvider($app->make(TenantMenuProvider::class));
+        });
+    }
+
+    /**
+     * Wire the operator-console dashboard (phase 3.4): one shared DashboardBuilder
+     * with the RBAC policy checker and the core's own metrics provider.
+     *
+     * The exact mirror of {@see registerNavigation()} — the dashboard seam copies
+     * the navigation seam. The builder is a singleton so its per-request memo and
+     * the registered providers persist; a host (or the paid billing add-on) adds
+     * its widgets by resolving the builder and calling addProvider, exactly the way
+     * a menu provider is added. The PolicyChecker is shared with navigation: "can
+     * this user see this slug" is one question on both seams.
+     */
+    protected function registerDashboard(): void
+    {
+        $this->app->singleton(DashboardBuilder::class, function ($app) {
+            return (new DashboardBuilder)
+                ->setPolicyChecker($app->make(PolicyChecker::class))
+                ->addProvider($app->make(CoreMetricsWidgetProvider::class));
         });
     }
 
