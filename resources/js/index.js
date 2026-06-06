@@ -28,7 +28,14 @@ export { default as AuthCard } from './components/AuthCard.vue';
 export { default as AuthScreen } from './components/auth/AuthScreen.vue';
 export { default as Modal } from './components/ui/Modal.vue';
 export { default as QrLoginPanel } from './components/auth/QrLoginPanel.vue';
-export { default as QrScanner } from './components/auth/QrScanner.vue';
+// QrScanner is intentionally NOT re-exported here. It pulls in the heavy
+// `html5-qrcode` camera library via a lazy import, and re-exporting it from the
+// barrel would drag that dependency into the build graph of every host that
+// imports the core entry point — even hosts that never build a scanner page.
+// A host that does build the scanning device's page imports it directly:
+//   import QrScanner from '@dmitryisaenko/larafoundry/resources/js/components/auth/QrScanner.vue';
+// and adds `html5-qrcode` to its own package.json (the page that uses it owns
+// the runtime dependency).
 export { default as TwoFactorChallengeForm } from './components/auth/TwoFactorChallengeForm.vue';
 export { default as CompanySwitcher } from './components/CompanySwitcher.vue';
 export { default as LocaleSwitcher } from './components/LocaleSwitcher.vue';
