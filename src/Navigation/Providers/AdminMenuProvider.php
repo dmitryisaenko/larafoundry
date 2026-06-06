@@ -12,8 +12,8 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
  *
  * Populates the 'admin' level with the platform surfaces the core ships:
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
- * Activity Log (phase 2.1) and Broadcasts (phase 4.1). The whole zone already
- * sits behind the
+ * Activity Log (phase 2.1), Broadcasts (phase 4.1) and Support tickets
+ * (phase 4.2). The whole zone already sits behind the
  * `larafoundry.admin` gate (super-admin via VisitorStatus), so these items carry
  * NO permission slug — the zone gate is the authority.
  *
@@ -62,6 +62,13 @@ class AdminMenuProvider implements MenuProviderInterface
                 icon: 'broadcast',
                 order: 25,
                 activePatterns: ['admin.notifications.*'],
+            ),
+            new MenuItem(
+                labelKey: 'Support',
+                route: 'admin.tickets.index',
+                icon: 'support',
+                order: 30,
+                activePatterns: ['admin.tickets.*'],
             ),
         ];
     }

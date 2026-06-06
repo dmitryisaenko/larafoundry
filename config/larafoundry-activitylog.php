@@ -7,6 +7,8 @@ use Dmitryisaenko\LaraFoundry\Notifications\Events\BroadcastNotificationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyInvitationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
+use Dmitryisaenko\LaraFoundry\Tickets\Events\TicketCreated;
+use Dmitryisaenko\LaraFoundry\Tickets\Events\TicketReplied;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -73,6 +75,10 @@ return [
 
         // --- Notifications (phase 4.1) ---
         BroadcastNotificationSent::class => ['group' => 'Notifications', 'description' => 'Broadcast sent', 'code' => 200],
+
+        // --- Tickets / helpdesk (phase 4.2) ---
+        TicketCreated::class => ['group' => 'Tickets', 'description' => 'Ticket created', 'code' => 201],
+        TicketReplied::class => ['group' => 'Tickets', 'description' => 'Ticket replied', 'code' => 200],
 
     ],
 

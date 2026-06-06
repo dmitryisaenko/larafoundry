@@ -9,6 +9,7 @@ use Dmitryisaenko\LaraFoundry\Authorization\Concerns\HasRolesAndPermissions;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Notifications\Concerns\HasNotifications;
 use Dmitryisaenko\LaraFoundry\Tenancy\Concerns\BelongsToTenancy;
+use Dmitryisaenko\LaraFoundry\Tickets\Concerns\HasTickets;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -28,6 +29,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     use BelongsToTenancy;
     use HasNotifications;
     use HasRolesAndPermissions;
+    use HasTickets;
     use IsLaraFoundryUser;
 
     protected $table = 'users';

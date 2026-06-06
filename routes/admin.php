@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
+use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -75,6 +76,24 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                     ->middleware('throttle:10,1')
                     ->name('send');
                 Route::delete('{notification}', [BroadcastNotificationController::class, 'destroy'])->name('destroy');
+            });
+
+            // Helpdesk (phase 4.2): the operator queue + one ticket's thread and
+            // its lifecycle (reply / close / status / priority / category /
+            // label). The user side lives in routes/tickets.php; this is the
+            // operator console, behind the super-admin gate.
+            Route::prefix('tickets')->name('tickets.')->group(function () {
+                Route::get('/', [AdminTicketController::class, 'index'])->name('index');
+                Route::get('create', [AdminTicketController::class, 'create'])->name('create');
+                Route::post('/', [AdminTicketController::class, 'store'])->name('store');
+                Route::get('{ticket}', [AdminTicketController::class, 'show'])->name('show');
+                Route::get('{ticket}/edit', [AdminTicketController::class, 'edit'])->name('edit');
+                Route::put('{ticket}', [AdminTicketController::class, 'update'])->name('update');
+                Route::post('{ticket}/reply', [AdminTicketController::class, 'reply'])->name('reply');
+                Route::patch('{ticket}/close', [AdminTicketController::class, 'close'])->name('close');
+                Route::patch('{ticket}/priority', [AdminTicketController::class, 'updatePriority'])->name('priority');
+                Route::post('{ticket}/category', [AdminTicketController::class, 'toggleCategory'])->name('category');
+                Route::post('{ticket}/label', [AdminTicketController::class, 'toggleLabel'])->name('label');
             });
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])

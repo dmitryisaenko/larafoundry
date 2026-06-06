@@ -62,7 +62,8 @@ it('builds the admin menu for a super-admin', function () {
         ->and($labels)->toContain('Users')
         ->and($labels)->toContain('Companies')
         ->and($labels)->toContain('Activity log')
-        ->and($labels)->toContain('Broadcasts');
+        ->and($labels)->toContain('Broadcasts')
+        ->and($labels)->toContain('Support');
 });
 
 it('lets an owner see all tenant menu items via owner bypass', function () {

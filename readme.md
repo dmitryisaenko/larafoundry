@@ -19,6 +19,19 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.15.x` Support tickets (helpdesk)
+
+A support channel between a host user and the platform operator: the customer opens a ticket, the operator answers from the console. Extracted from the production donor and rewritten as a self-contained module — no external ticket package.
+
+| Component | What it does |
+|-----------|--------------|
+| User inbox | Every authenticated user reaches their own tickets from a header **Support** link (shipped in the core layout next to the bell). They open a ticket (title, message, categories), see the conversation and reply. The list is scoped to the caller, hides long-resolved tickets and is ordered by the support workflow. A **blocked** user can still reach support — it is their only channel to the operator. |
+| Status workflow | Status is never picked by hand — it is derived from the action: a user-opened ticket is `wait-moderator`, an operator reply moves it to `wait-customer`, a user reply reopens it, and the operator closes it to `resolved`. |
+| Operator console | The super-admin queue (filters + counters), one ticket's thread, reply, close, set priority and toggle categories/labels. Every operator mutation (status / priority / category / label) is written to the **activity log**; a reply or an operator-opened ticket pushes an **in-app notification** to the author (the phase 4.1 `NotificationService` seam). |
+| Security | Message bodies render as **text, never `v-html`** (closing the donor's XSS hole); ticket creation and replies are **rate-limited**; the user side is authorized by ownership and the operator side by the super-admin gate. Categories and labels are config-driven slug lists stored as JSON — no extra tables. |
+
+> The host adds `use HasTickets` to its user model (the `tickets()` relation). The user routes, the operator console and the **Support** header link / menu item ship in the core, so a host that renders through `LayoutSwitcher` gets the whole helpdesk with no frontend wiring. It optionally publishes `larafoundry-tickets-config` to extend the category/label lists.
+
 ### `v0.14.x` Notifications
 
 An in-app notification centre plus super-admin broadcasts, delivered without realtime infrastructure (polling, not WebSockets, so no daemon is needed).
@@ -426,6 +439,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
 | 3.x | Billing add-on (`larafoundry-billing`: real payments via Stripe / Paddle, plans, promo codes, trials, subscription management, revenue metrics) | 💳 Available (paid add-on, see [larafoundry.com](https://larafoundry.com)) |
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
+| 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 4.x | [Tickets](docs/modules/tickets.md), feature voting, documentation | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).

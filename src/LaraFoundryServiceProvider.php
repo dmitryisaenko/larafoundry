@@ -58,6 +58,8 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\EnsureActiveTenant;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\SetActiveTenant;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
+use Dmitryisaenko\LaraFoundry\Tickets\Models\Ticket;
+use Dmitryisaenko\LaraFoundry\Tickets\Policies\TicketPolicy;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
@@ -85,6 +87,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-activitylog.php', 'larafoundry-activitylog');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-media.php', 'larafoundry-media');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-notifications.php', 'larafoundry-notifications');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-tickets.php', 'larafoundry-tickets');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -272,6 +275,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/qr.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
 
         $this->registerAuthMiddleware();
@@ -282,6 +286,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootActivityLog();
         $this->bootAdmin();
         $this->bootMedia();
+        $this->bootTickets();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -367,6 +372,22 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function bootMedia(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/media.php');
+    }
+
+    /**
+     * Boot the helpdesk (phase 4.2): the ownership policy for the user-facing
+     * ticket routes.
+     *
+     * The user routes load in boot() (every authenticated user has support); the
+     * operator's admin-ticket routes live in routes/admin.php behind the
+     * `larafoundry.admin` gate (loaded by bootAdmin), so the policy here only
+     * guards the customer side. The new-ticket / reply lifecycle events
+     * (TicketCreated / TicketReplied) are audited through the activity-log event
+     * registry (config), not wired here.
+     */
+    protected function bootTickets(): void
+    {
+        Gate::policy(Ticket::class, TicketPolicy::class);
     }
 
     /**
@@ -459,6 +480,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-notifications.php' => config_path('larafoundry-notifications.php'),
         ], 'larafoundry-notifications-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-tickets.php' => config_path('larafoundry-tickets.php'),
+        ], 'larafoundry-tickets-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

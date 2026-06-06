@@ -78,6 +78,13 @@ export { default as NotificationBell } from './components/notifications/Notifica
 export { default as NotificationItem } from './components/notifications/NotificationItem.vue';
 export { default as BroadcastForm } from './components/notifications/BroadcastForm.vue';
 
+// Tickets / helpdesk (phase 4.2)
+export { default as TicketStatusBadge } from './components/tickets/TicketStatusBadge.vue';
+export { default as TicketPriorityBadge } from './components/tickets/TicketPriorityBadge.vue';
+export { default as TicketMessageList } from './components/tickets/TicketMessageList.vue';
+export { default as TicketForm } from './components/tickets/TicketForm.vue';
+export { default as SupportLink } from './components/tickets/SupportLink.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';
