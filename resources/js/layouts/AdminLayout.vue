@@ -17,6 +17,7 @@ import { usePage } from '@inertiajs/vue3';
 import AppFlashMessage from '../components/AppFlashMessage.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
 import MobileNav from '../components/navigation/MobileNav.vue';
+import NotificationBell from '../components/notifications/NotificationBell.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
 
 defineProps({
@@ -43,6 +44,7 @@ const navigation = computed(() => page.props.navigation ?? []);
                     <h1 v-if="title" class="text-lg font-semibold text-ink">{{ title }}</h1>
                 </div>
                 <nav class="flex items-center gap-4 text-sm text-ink-soft">
+                    <NotificationBell />
                     <slot name="nav" />
                 </nav>
             </div>

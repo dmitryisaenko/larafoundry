@@ -11,8 +11,9 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
  * Core menu for the super-admin operator console.
  *
  * Populates the 'admin' level with the platform surfaces the core ships:
- * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3) and the
- * Activity Log (phase 2.1). The whole zone already sits behind the
+ * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
+ * Activity Log (phase 2.1) and Broadcasts (phase 4.1). The whole zone already
+ * sits behind the
  * `larafoundry.admin` gate (super-admin via VisitorStatus), so these items carry
  * NO permission slug — the zone gate is the authority.
  *
@@ -54,6 +55,13 @@ class AdminMenuProvider implements MenuProviderInterface
                 icon: 'activity',
                 order: 20,
                 activePatterns: ['admin.activity-log.*'],
+            ),
+            new MenuItem(
+                labelKey: 'Broadcasts',
+                route: 'admin.notifications.index',
+                icon: 'broadcast',
+                order: 25,
+                activePatterns: ['admin.notifications.*'],
             ),
         ];
     }

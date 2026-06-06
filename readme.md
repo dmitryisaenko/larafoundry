@@ -30,7 +30,7 @@ An in-app notification centre plus super-admin broadcasts, delivered without rea
 | System notifications | A host's domain pushes a system notification through `NotificationService` (translation-key wording, the core's mail pattern): the seam that replaces the donor's per-event jobs. The broadcast-sent event is on the activity log. |
 | Retention | `larafoundry:notifications-prune` clears read notifications past the retention window (the host schedules it, like the activity-log clean). |
 
-> The host adds `use HasNotifications` to its user model (the `appNotifications()` relation, named to avoid clashing with Laravel's `Notifiable`), drops `<NotificationBell />` into its layout, and (optionally) publishes `larafoundry-notifications-config` to extend the type registry. The store lives in `larafoundry_notifications`, so it never collides with Laravel's reserved `notifications` table.
+> The host adds `use HasNotifications` to its user model (the `appNotifications()` relation, named to avoid clashing with Laravel's `Notifiable`); the bell and the operator-console "Broadcasts" screen ship in the core layouts and menu, so a host that renders through `LayoutSwitcher` gets both with no wiring. It optionally publishes `larafoundry-notifications-config` to extend the type registry, and the store lives in `larafoundry_notifications`, so it never collides with Laravel's reserved `notifications` table. Full reference: [docs/notifications.md](docs/notifications.md).
 
 ### `v0.13.x` QR cross-device login + presentation switch
 

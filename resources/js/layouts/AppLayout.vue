@@ -18,6 +18,7 @@ import CompanySwitcher from '../components/CompanySwitcher.vue';
 import LocaleSwitcher from '../components/LocaleSwitcher.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
 import MobileNav from '../components/navigation/MobileNav.vue';
+import NotificationBell from '../components/notifications/NotificationBell.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
 
 const page = usePage();
@@ -41,6 +42,7 @@ const activeCompany = computed(() => page.props.activeCompany ?? null);
                 <div class="flex items-center gap-3">
                     <CompanySwitcher :companies="companies" :active="activeCompany" />
                     <LocaleSwitcher />
+                    <NotificationBell />
                     <slot name="header-actions" />
                 </div>
             </div>
