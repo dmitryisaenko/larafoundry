@@ -18,7 +18,8 @@ combination of these. Learn them once and a new module is never a surprise:
 1. **Model traits.** You mix a core trait into your own model to gain a feature.
    Your `User` already carries `BelongsToTenancy` (multi-tenancy),
    `HasRolesAndPermissions` (RBAC) and `IsLaraFoundryUser` (identity); add
-   `HasNotifications` for the inbox. One `use` per feature.
+   `HasNotifications` for the inbox, `HasTickets` for support. One `use` per
+   feature.
 2. **Package install and migrations.** The core arrives as a Composer package and
    ships its own tables. You run `php artisan migrate`; you never write the core's
    migrations.
@@ -48,6 +49,7 @@ module's accurate page does not exist yet, an early planning draft lives under
 |--------|-------|-----------|
 | Multi-tenancy | 1.2 | [multi-tenancy.md](multi-tenancy.md) |
 | Notifications | 4.1 | [notifications.md](notifications.md) |
+| Tickets and helpdesk | 4.2 | [tickets.md](tickets.md) |
 | Authentication and sessions | 1.1 | early draft: [modules/authentication.md](modules/authentication.md) |
 | Roles and permissions | 1.3 | early draft: [modules/traits_middlewares.md](modules/traits_middlewares.md) |
 | Activity log | 2.1 | early draft: [modules/logging.md](modules/logging.md) |
