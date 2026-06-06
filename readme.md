@@ -403,6 +403,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 1.1 | [Authentication](docs/modules/authentication.md) & [Users / Registration](docs/modules/registration.md) | ✅ Shipped (`v0.2.x`) |
 | 1.2 | [Multi-tenancy](docs/modules/multi_tenancy.md) (companies / teams) | ✅ Shipped (`v0.3.x`) |
 | 1.3 | Roles & permissions (RBAC) | ✅ Shipped (`v0.4.x`) |
+| 1.4 | Auth entry modes (super-admin OTP gate, session PIN-lock, QR cross-device login, page/modal presentation switch) | ✅ Shipped (`v0.12.x`–`v0.13.x`) |
 | 2.1 | [Activity logging](docs/modules/logging.md) (platform audit) | ✅ Shipped (`v0.5.x`) |
 | 2.2 | [Multilanguage](docs/modules/multilanguage.md) (i18n, language switcher) | ✅ Shipped (`v0.6.x`) |
 | 2.3 | [Navigation](docs/modules/navigation.md) engine + [Admin users](docs/modules/admin_users.md) console (+ impersonation) | ✅ Shipped (`v0.7.x`) |
@@ -410,7 +411,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.1 | [Billing](docs/modules/payments.md) seam (gateway contract + driver manager, subscription columns, real `hasAccess` gate, region context) | ✅ Shipped (`v0.9.x`) |
 | 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
 | 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
-| 3.x | Billing add-on (`larafoundry-billing`: real payments, plans, promo, revenue metrics), [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
+| 3.x | Billing add-on (`larafoundry-billing`: real payments via Stripe / Paddle, plans, promo codes, trials, subscription management, revenue metrics) | 💳 Available (paid add-on, see [larafoundry.com](https://larafoundry.com)) |
+| 3.x | [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -418,7 +420,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 418 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console and the admin dashboard, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, and a company-block cascade that would have looped a single-company member until it was made self-healing) with the billing access gate pinned fail-closed both ways.
+- **Pest** on every piece of the core: 497 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard and the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log) with the billing access gate pinned fail-closed both ways.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.
