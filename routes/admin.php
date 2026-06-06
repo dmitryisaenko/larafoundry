@@ -7,6 +7,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
+use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,6 +61,20 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::get('{company}', [CompanyController::class, 'show'])->name('show');
                 Route::post('{company}/block', [CompanyController::class, 'block'])->name('block');
                 Route::post('{company}/unblock', [CompanyController::class, 'unblock'])->name('unblock');
+            });
+
+            // Broadcasts (phase 4.1): draft → send (queued fan-out) → manage.
+            // `send` is throttled so a held submit cannot queue repeated fan-outs.
+            Route::prefix('notifications')->name('notifications.')->group(function () {
+                Route::get('/', [BroadcastNotificationController::class, 'index'])->name('index');
+                Route::get('create', [BroadcastNotificationController::class, 'create'])->name('create');
+                Route::post('/', [BroadcastNotificationController::class, 'store'])->name('store');
+                Route::get('{notification}/edit', [BroadcastNotificationController::class, 'edit'])->name('edit');
+                Route::put('{notification}', [BroadcastNotificationController::class, 'update'])->name('update');
+                Route::post('{notification}/send', [BroadcastNotificationController::class, 'send'])
+                    ->middleware('throttle:10,1')
+                    ->name('send');
+                Route::delete('{notification}', [BroadcastNotificationController::class, 'destroy'])->name('destroy');
             });
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\ActivityLog\Geo\IpApiGeoResolver;
+use Dmitryisaenko\LaraFoundry\Notifications\Events\BroadcastNotificationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyInvitationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -69,6 +70,9 @@ return [
         CompanyCreated::class => ['group' => 'Tenancy', 'description' => 'Company created', 'code' => 201],
         CompanyInvitationSent::class => ['group' => 'Tenancy', 'description' => 'Employee invited', 'code' => 200],
         EmployeeRemoved::class => ['group' => 'Tenancy', 'description' => 'Employee removed', 'code' => 200],
+
+        // --- Notifications (phase 4.1) ---
+        BroadcastNotificationSent::class => ['group' => 'Notifications', 'description' => 'Broadcast sent', 'code' => 200],
 
     ],
 

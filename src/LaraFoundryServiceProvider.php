@@ -49,6 +49,8 @@ use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Navigation\Providers\TenantMenuProvider;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\RbacPolicyChecker;
+use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsCommand;
+use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -82,6 +84,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-permissions.php', 'larafoundry-permissions');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-activitylog.php', 'larafoundry-activitylog');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-media.php', 'larafoundry-media');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-notifications.php', 'larafoundry-notifications');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -98,6 +101,19 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerDashboard();
         $this->registerMedia();
         $this->registerBilling();
+        $this->registerNotifications();
+    }
+
+    /**
+     * Wire the notification centre (phase 4.1).
+     *
+     * The host's domain pushes system notifications through NotificationService;
+     * binding it as a singleton lets a host rebind a richer implementation
+     * (extra channels, preferences) without touching call sites.
+     */
+    protected function registerNotifications(): void
+    {
+        $this->app->singleton(NotificationService::class);
     }
 
     /**
@@ -255,6 +271,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/pin.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/qr.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
 
         $this->registerAuthMiddleware();
@@ -273,6 +290,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 InstallCommand::class,
                 SyncPermissionsCommand::class,
                 PruneSignInRequestsCommand::class,
+                PruneNotificationsCommand::class,
             ]);
         }
     }
@@ -437,6 +455,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-media.php' => config_path('larafoundry-media.php'),
         ], 'larafoundry-media');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-notifications.php' => config_path('larafoundry-notifications.php'),
+        ], 'larafoundry-notifications-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

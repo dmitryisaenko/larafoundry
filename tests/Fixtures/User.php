@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Tests\Fixtures;
 use Dmitryisaenko\LaraFoundry\Auth\Concerns\IsLaraFoundryUser;
 use Dmitryisaenko\LaraFoundry\Authorization\Concerns\HasRolesAndPermissions;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
+use Dmitryisaenko\LaraFoundry\Notifications\Concerns\HasNotifications;
 use Dmitryisaenko\LaraFoundry\Tenancy\Concerns\BelongsToTenancy;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,6 +26,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     use BelongsToTenancy;
+    use HasNotifications;
     use HasRolesAndPermissions;
     use IsLaraFoundryUser;
 

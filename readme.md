@@ -12,12 +12,25 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.13.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, and the billing seam.**
-> The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. Notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> ⚠️ **Status: early but growing. Current release is `v0.14.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, and the in-app notification centre with super-admin broadcasts.**
+> The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.14.x` Notifications
+
+An in-app notification centre plus super-admin broadcasts, delivered without realtime infrastructure (polling, not WebSockets, so no daemon is needed).
+
+| Component | What it does |
+|-----------|--------------|
+| In-app inbox | Each user has their own notification centre: a bell with an unread badge (`NotificationBell`, polled on a light visibility-aware interval and refreshed on open) and a full inbox page. Every query is scoped to the caller, so a user only ever sees or marks their own. Titles and bodies render as **text, never `v-html`**, so a broadcast body cannot inject markup, and a notification's actions are reduced to internal GET links. |
+| Super-admin broadcasts | The operator drafts a per-locale message with an audience filter (verification, recent activity, RBAC role) and an optional visibility window, then sends it. Sending is a **queued, chunked fan-out** (`SendBroadcastNotificationJob`, `insertOrIgnore`), not a synchronous mass-attach, so a large user base never blocks the request or double-delivers; the send route is rate-limited and the platform super-admin is excluded. |
+| System notifications | A host's domain pushes a system notification through `NotificationService` (translation-key wording, the core's mail pattern): the seam that replaces the donor's per-event jobs. The broadcast-sent event is on the activity log. |
+| Retention | `larafoundry:notifications-prune` clears read notifications past the retention window (the host schedules it, like the activity-log clean). |
+
+> The host adds `use HasNotifications` to its user model (the `appNotifications()` relation, named to avoid clashing with Laravel's `Notifiable`), drops `<NotificationBell />` into its layout, and (optionally) publishes `larafoundry-notifications-config` to extend the type registry. The store lives in `larafoundry_notifications`, so it never collides with Laravel's reserved `notifications` table.
 
 ### `v0.13.x` QR cross-device login + presentation switch
 
@@ -412,7 +425,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
 | 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
 | 3.x | Billing add-on (`larafoundry-billing`: real payments via Stripe / Paddle, plans, promo codes, trials, subscription management, revenue metrics) | 💳 Available (paid add-on, see [larafoundry.com](https://larafoundry.com)) |
-| 3.x | [Notifications](docs/modules/notifications.md), [Tickets](docs/modules/tickets.md) | 📋 Planned |
+| 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
+| 4.x | [Tickets](docs/modules/tickets.md), feature voting, documentation | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 

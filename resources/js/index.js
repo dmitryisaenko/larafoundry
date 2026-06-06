@@ -73,6 +73,11 @@ export { default as CompanyLogo } from './components/media/CompanyLogo.vue';
 export { default as FileUpload } from './components/media/FileUpload.vue';
 export { default as ImageUpload } from './components/media/ImageUpload.vue';
 
+// Notifications (phase 4.1)
+export { default as NotificationBell } from './components/notifications/NotificationBell.vue';
+export { default as NotificationItem } from './components/notifications/NotificationItem.vue';
+export { default as BroadcastForm } from './components/notifications/BroadcastForm.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';
