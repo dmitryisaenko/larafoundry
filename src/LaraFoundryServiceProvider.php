@@ -13,6 +13,7 @@ use Dmitryisaenko\LaraFoundry\ActivityLog\Policies\ActivityLogPolicy;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
+use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserProfileInformation;
 use Dmitryisaenko\LaraFoundry\Auth\Contracts\DeviceFingerprintResolver;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
@@ -51,6 +52,8 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\RbacPolicyChecker;
 use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsCommand;
 use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
+use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfileExporter;
+use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataExportRegistry;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -77,6 +80,7 @@ use Intervention\Image\ImageManager;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
+use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
 
 class LaraFoundryServiceProvider extends ServiceProvider
 {
@@ -97,6 +101,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->app->singleton(CreatesNewUsers::class, CreateNewUser::class);
         $this->app->singleton(ResetsUserPasswords::class, ResetUserPassword::class);
         $this->app->singleton(UpdatesUserPasswords::class, UpdateUserPassword::class);
+        $this->app->singleton(UpdatesUserProfileInformation::class, UpdateUserProfileInformation::class);
 
         $this->registerTenantResolver();
         $this->registerActivityLog();
@@ -105,6 +110,24 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerMedia();
         $this->registerBilling();
         $this->registerNotifications();
+        $this->registerProfile();
+    }
+
+    /**
+     * Wire the profile module (phase 5.1): the user-data export registry.
+     *
+     * Mirrors {@see registerNavigation()} / {@see registerDashboard()} — a
+     * singleton registry seeded with the core's own provider, to which a host or
+     * module adds more by resolving it and calling addProvider. The personal-data
+     * export that consumes it is phase 5.3; the seam is wired now so it has
+     * providers to read when it lands.
+     */
+    protected function registerProfile(): void
+    {
+        $this->app->singleton(UserDataExportRegistry::class, function ($app) {
+            return (new UserDataExportRegistry)
+                ->addProvider($app->make(CoreUserProfileExporter::class));
+        });
     }
 
     /**
@@ -271,6 +294,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/profile.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/pin.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/qr.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/api.php');

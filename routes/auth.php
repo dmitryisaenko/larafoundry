@@ -25,9 +25,15 @@ Route::middleware('web')->group(function () {
             ->name('larafoundry.oauth.callback');
     });
 
-    // Session management — authenticated only.
+    // Session management — authenticated only. The literal `others` route is
+    // declared before the `{session}` model-bound one so it wins the match
+    // (otherwise the binder would try to resolve a UserSession with id "others").
     Route::middleware('auth')->group(function () {
         Route::delete('auth/sessions/others', [SessionController::class, 'destroyOthers'])
             ->name('larafoundry.sessions.destroy-others');
+
+        Route::delete('auth/sessions/{session}', [SessionController::class, 'destroy'])
+            ->whereNumber('session')
+            ->name('larafoundry.sessions.destroy');
     });
 });
