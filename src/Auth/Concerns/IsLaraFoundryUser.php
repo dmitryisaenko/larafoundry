@@ -12,6 +12,7 @@ use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
@@ -101,6 +102,7 @@ trait IsLaraFoundryUser
     {
         return [
             'password',
+            'pin_code',
             'remember_token',
             'provider_token',
             'provider_refresh_token',
@@ -235,5 +237,23 @@ trait IsLaraFoundryUser
     {
         return $this->getAttribute('password') === null
             && $this->getAttribute('provider_name') !== null;
+    }
+
+    /**
+     * Whether the user has set a session PIN (phase 1.4).
+     */
+    public function hasPin(): bool
+    {
+        return $this->getAttribute('pin_code') !== null;
+    }
+
+    /**
+     * Verify a PIN against the stored hash (timing-safe via Hash::check).
+     */
+    public function checkPinCode(string $pin): bool
+    {
+        $hash = $this->getAttribute('pin_code');
+
+        return is_string($hash) && $hash !== '' && Hash::check($pin, $hash);
     }
 }

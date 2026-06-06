@@ -10,6 +10,9 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     config(['larafoundry-activitylog.geo.enabled' => false]);
     config(['inertia.testing.ensure_pages_exist' => false]);
+    // The OTP step-up gate is exercised in AdminOtpGateTest; these console tests
+    // are about dashboard behaviour, so they run with the gate off.
+    config(['larafoundry.security.super_admin.require_otp' => false]);
 });
 
 function dashAdmin(string $email = 'dashboss@x.test'): User

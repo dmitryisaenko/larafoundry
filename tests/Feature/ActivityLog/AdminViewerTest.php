@@ -12,6 +12,8 @@ beforeEach(function () {
     config(['larafoundry-activitylog.geo.enabled' => false]);
     // The viewer publishes Inertia pages; CI does not ship them on disk.
     config(['inertia.testing.ensure_pages_exist' => false]);
+    // OTP step-up gate is covered in AdminOtpGateTest; run viewer tests with it off.
+    config(['larafoundry.security.super_admin.require_otp' => false]);
 });
 
 function adminUser(): User

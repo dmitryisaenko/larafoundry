@@ -131,6 +131,68 @@ it('links the provider to the existing account when link_existing is true (case 
     expect(User::count())->toBe(1);
 });
 
+it('REFUSES OAuth that would claim the reserved super-admin email on a new account', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+
+    fakeSocialiteReturns(socialUser('attacker-gid', 'boss@x.test'));
+
+    $response = $this->get(route('larafoundry.oauth.callback', ['provider' => 'google']));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error');
+    expect(Auth::check())->toBeFalse()
+        ->and(User::where('email', 'boss@x.test')->exists())->toBeFalse();
+});
+
+it('REFUSES OAuth linking to the reserved super-admin email even with link_existing on', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+    config()->set('larafoundry.auth.oauth.link_existing', true);
+
+    // The real super-admin account exists locally (provisioned out-of-band).
+    $admin = User::create([
+        'name' => 'Boss',
+        'email' => 'boss@x.test',
+        'password' => 'admins-own-password',
+        'is_admin' => true,
+    ]);
+
+    // Attacker controls a provider account asserting the admin's email (any case).
+    fakeSocialiteReturns(socialUser('attacker-gid', 'BOSS@X.TEST'));
+
+    $response = $this->get(route('larafoundry.oauth.callback', ['provider' => 'google']));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error');
+    expect(Auth::check())->toBeFalse();
+
+    // The operator account must not get a provider linkage written.
+    $admin->refresh();
+    expect($admin->provider_name)->toBeNull()
+        ->and($admin->provider_id)->toBeNull();
+});
+
+it('still lets an already-linked operator sign in through OAuth', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+
+    // The operator linked the provider out-of-band (branch 1 — existing link).
+    $admin = User::create([
+        'name' => 'Boss',
+        'email' => 'boss@x.test',
+        'password' => 'admins-own-password',
+        'is_admin' => true,
+        'provider_name' => 'google',
+        'provider_id' => 'admin-gid',
+    ]);
+
+    fakeSocialiteReturns(socialUser('admin-gid', 'boss@x.test'));
+
+    $this->get(route('larafoundry.oauth.callback', ['provider' => 'google']))
+        ->assertRedirect();
+
+    expect(Auth::id())->toBe($admin->id)
+        ->and(User::count())->toBe(1);
+});
+
 it('refuses a provider that is not in the allow-list (case e)', function () {
     config()->set('larafoundry.auth.oauth.providers', ['github']);
 

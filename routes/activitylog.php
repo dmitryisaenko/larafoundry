@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 | Naming: `admin.activity-log.*`.
 */
 
-Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
+Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin', 'larafoundry.admin.otp'])
     ->prefix('admin/activity-log')
     ->name('admin.activity-log.')
     ->group(function () {

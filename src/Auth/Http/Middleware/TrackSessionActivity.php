@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Auth\Http\Middleware;
 use Closure;
 use Dmitryisaenko\LaraFoundry\Auth\Contracts\DeviceFingerprintResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -53,7 +54,13 @@ class TrackSessionActivity
 
         $user = $request->user();
 
-        if ($user !== null && method_exists($user, 'recordSessionActivity') && $request->hasSession()) {
+        // The PIN routes must not refresh last_activity: entering (or being
+        // bounced to) the PIN screen is not activity, or the idle timer that
+        // CheckPinLock reads would never elapse.
+        if ($user !== null
+            && method_exists($user, 'recordSessionActivity')
+            && $request->hasSession()
+            && ! Str::is('pin.*', (string) $request->route()?->getName())) {
             $user->recordSessionActivity(
                 sessionId: $request->session()->getId(),
                 device: $this->devices->resolve($request),

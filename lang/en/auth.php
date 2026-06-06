@@ -40,6 +40,23 @@ return [
         'current_invalid' => 'The provided password does not match your current password.',
     ],
 
+    'super_admin' => [
+        'email_reserved' => 'This email address is reserved and cannot be registered.',
+    ],
+
+    'admin_otp' => [
+        'setup_required' => 'Two-factor authentication is required for the operator console. Set it up first.',
+        'invalid_code' => 'The provided authentication code was invalid.',
+    ],
+
+    'pin' => [
+        'enabled' => 'PIN lock enabled.',
+        'disabled' => 'PIN lock disabled.',
+        'invalid' => 'Incorrect PIN.',
+        'locked_out' => 'Too many attempts. Try again in :minutes minute(s).',
+        'locked_change' => 'Unlock this session before changing your PIN.',
+    ],
+
     'admin_alert' => [
         'subject' => 'Security alert: admin login attempt',
         'intro' => 'A :step login attempt was made on the admin account.',

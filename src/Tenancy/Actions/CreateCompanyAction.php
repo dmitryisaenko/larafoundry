@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Actions;
 
+use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -17,6 +18,11 @@ use Illuminate\Support\Str;
  * membership) can never persist. After creation the company becomes the user's
  * active one and {@see CompanyCreated} fires — the seam phase 1.3 listens on to
  * clone default roles (decision D1.2-f). Roles are NOT created here.
+ *
+ * The platform super-admin is rejected up front (phase 1.4): the operator
+ * identity is kept separate from tenant identities, so it can never own a
+ * company. This is the server-side half of that separation; the other half
+ * keeps the super-admin out of tenant routes (RedirectSuperAdminToConsole).
  */
 class CreateCompanyAction
 {
@@ -25,6 +31,19 @@ class CreateCompanyAction
      */
     public function execute(Authenticatable $owner, array $data): Company
     {
+        // Reject the operator on either signal: the resolved admin status (flag +
+        // email) OR the reserved email alone. The email check closes the gap
+        // where a reserved-email account that never got the flag would otherwise
+        // slip through isAdmin().
+        $email = method_exists($owner, 'getAttribute') ? $owner->getAttribute('email') : null;
+
+        abort_if(
+            app(VisitorStatus::class)->isAdmin($owner)
+                || VisitorStatus::isSuperAdminEmail(is_string($email) ? $email : null),
+            403,
+            __('larafoundry::tenancy.super_admin_cannot_own'),
+        );
+
         $companyClass = config('larafoundry.tenancy.company_model', Company::class);
 
         $company = DB::transaction(function () use ($companyClass, $owner, $data): Company {

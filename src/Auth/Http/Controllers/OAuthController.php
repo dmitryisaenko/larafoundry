@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Auth\Http\Controllers;
 
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
+use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\RedirectResponse;
@@ -111,6 +112,16 @@ class OAuthController extends Controller
             ])->save();
 
             return ['status' => 'ok', 'user' => $linked];
+        }
+
+        // The super-admin email is reserved (phase 1.4): OAuth must not bind it
+        // to a NEW or an existing local account. Branch 1 above still lets an
+        // already-linked operator sign in; this only blocks claiming or linking
+        // the reserved email fresh — closing the takeover/squatting vector that
+        // bypasses registration's reservation. Refused generically (same message
+        // as email-taken) so it does not reveal that the email is the admin's.
+        if (VisitorStatus::isSuperAdminEmail($social->getEmail())) {
+            return ['status' => 'refused', 'user' => null];
         }
 
         // 2. A local account already owns this email.

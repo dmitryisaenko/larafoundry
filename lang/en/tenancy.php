@@ -24,6 +24,7 @@ return [
     'removal_requested' => 'Your removal request has been sent.',
     'removal_cancelled' => 'Your removal request has been cancelled.',
     'owner_cannot_leave' => 'A company owner cannot leave their own company.',
+    'super_admin_cannot_own' => 'Platform administrators cannot create or own a company.',
 
     'invitation' => [
         'subject' => 'You have been invited to join :company',

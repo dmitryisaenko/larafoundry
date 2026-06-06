@@ -126,6 +126,19 @@ return [
     | admin_ips         — список IP (CSV или массив), которым разрешён вход в
     |                     admin/auth-зону на проде. Пусто = ограничения нет.
     |                     Используется RestrictAuthByIp middleware.
+    | super_admin       — платформенный супер-админ (phase 1.4):
+    |   email           — эксклюзивный email оператора. Когда задан, ТОЛЬКО он
+    |                     (вместе с флагом is_admin) получает admin-статус в
+    |                     VisitorStatus, И этот email зарезервирован: не может
+    |                     зарегистрироваться обычным юзером и не может владеть
+    |                     компанией (operator-личность отделена от tenant-личностей).
+    |                     Пусто = fallback на auth.failed_login.admin_email
+    |                     (обратная совместимость), затем «флага достаточно».
+    |   console_route   — имя роута, в который изолируется супер-админ
+    |                     (RedirectSuperAdminToConsole редиректит его сюда из
+    |                     tenant-зон).
+    |   allowed_routes  — имена роутов (fnmatch), доступные супер-админу ВНЕ
+    |                     редиректа в консоль (сама консоль, OTP-gate, PIN, logout).
     | email_verification — настройки EnsureEmailIsVerified middleware:
     |   redirect_route  — куда отправлять непроверенного пользователя.
     |   except_routes   — имена роутов (fnmatch-паттерны), доступные без проверки.
@@ -133,6 +146,29 @@ return [
     */
     'security' => [
         'admin_ips' => env('LARAFOUNDRY_ADMIN_IPS', ''),
+        'super_admin' => [
+            'email' => env('LARAFOUNDRY_SUPER_ADMIN_EMAIL'),
+            'console_route' => 'admin.dashboard.index',
+            'allowed_routes' => [
+                'admin.*',
+                'pin.*',
+                'logout',
+                'password.confirm*',
+            ],
+
+            // OTP step-up gate (phase 1.4): the operator console requires a
+            // fresh two-factor code once per session (EnsureAdminOtpVerified),
+            // on top of any 2FA challenge at login — so OAuth logins (which skip
+            // Fortify's login challenge) still prove OTP before reaching /admin.
+            //
+            // require_otp        — master switch. true = enforce the gate.
+            // two_factor_setup_route — route NAME of the host's 2FA-enrolment
+            //   screen. A super-admin without confirmed 2FA is sent here. Null
+            //   (no host route) means the gate denies with 403 instead (fail
+            //   closed: no operator access without 2FA configured).
+            'require_otp' => env('LARAFOUNDRY_ADMIN_REQUIRE_OTP', true),
+            'two_factor_setup_route' => env('LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE'),
+        ],
         'email_verification' => [
             'redirect_route' => 'verification.notice',
             'except_routes' => [
@@ -143,6 +179,31 @@ return [
                 'profile',
             ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Session PIN-lock (phase 1.4)
+    |--------------------------------------------------------------------------
+    | Telegram-style быстрый повторный вход: после простоя (или ручной блокировки)
+    | активная веб-сессия требует короткий PIN вместо полного релогина. PIN —
+    | опционален, любой пользователь включает его в профиле; хранится хешем.
+    |
+    | enabled         — главный рубильник. false = PIN-механика не применяется
+    |                   (CheckPinLock middleware = no-op), даже если PIN задан.
+    | length          — длина PIN (цифр). Донорский дефолт — 4.
+    | idle_timeout    — секунд бездействия, после которых сессия авто-блокируется
+    |                   (только та сессия, что простаивала).
+    | max_attempts    — неверных вводов подряд до временной блокировки ввода.
+    | lockout_minutes — на сколько минут запирается ВВОД PIN после превышения
+    |                   max_attempts (анти-brute-force; донор этого не имел).
+    */
+    'pin' => [
+        'enabled' => env('LARAFOUNDRY_PIN_ENABLED', true),
+        'length' => 4,
+        'idle_timeout' => 1800,
+        'max_attempts' => 5,
+        'lockout_minutes' => 15,
     ],
 
     /*

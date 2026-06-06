@@ -13,6 +13,8 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     config(['larafoundry-activitylog.geo.enabled' => false]);
     config(['inertia.testing.ensure_pages_exist' => false]);
+    // OTP step-up gate is covered in AdminOtpGateTest; run console tests with it off.
+    config(['larafoundry.security.super_admin.require_otp' => false]);
 });
 
 function superAdmin(string $email = 'root@x.test'): User

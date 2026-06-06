@@ -57,6 +57,45 @@ it('rejects an unconfirmed password on registration', function () {
     ]))->toThrow(ValidationException::class);
 });
 
+it('rejects registration with the reserved super-admin email', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+
+    expect(fn () => (new CreateNewUser)->create([
+        'name' => 'Intruder',
+        'email' => 'boss@x.test',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+    ]))->toThrow(ValidationException::class);
+
+    expect(User::where('email', 'boss@x.test')->exists())->toBeFalse();
+});
+
+it('allows registration with a non-reserved email when a super-admin email is set', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+
+    $user = (new CreateNewUser)->create([
+        'name' => 'Normal',
+        'email' => 'normal@x.test',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+    ]);
+
+    expect($user->email)->toBe('normal@x.test');
+});
+
+it('rejects registration with the reserved email in a different case', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+
+    expect(fn () => (new CreateNewUser)->create([
+        'name' => 'Intruder',
+        'email' => 'BOSS@X.TEST',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+    ]))->toThrow(ValidationException::class);
+
+    expect(User::whereRaw('LOWER(email) = ?', ['boss@x.test'])->exists())->toBeFalse();
+});
+
 it('resets the password to a new hashed value', function () {
     $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'old-password']);
 

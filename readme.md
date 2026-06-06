@@ -19,6 +19,18 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.12.x` Auth entry modes (super-admin gate + PIN-lock)
+
+Hardens how the platform operator enters the console, and adds an optional session PIN-lock for everyone. Three guards, all no-ops for the users they don't apply to.
+
+| Component | What it does |
+|-----------|--------------|
+| Super-admin identity | The operator email (`security.super_admin.email`) is reserved: it cannot register or own a company (guards in `CreateNewUser` / `OAuthController` / `CreateCompanyAction`, resolved through one case-insensitive `VisitorStatus::isSuperAdminEmail()`). `RedirectSuperAdminToConsole` (`larafoundry.confine_admin`) keeps the operator inside `/admin`, redirecting them out of tenant routes. |
+| OTP step-up gate | `EnsureAdminOtpVerified` (`larafoundry.admin.otp`) sits on the console: the operator must have confirmed Fortify 2FA (else → enrolment / 403) and clear a **fresh OTP once per session** before `/admin` opens. This makes "operator login is OTP-only" hold for **every** channel: an OAuth login skips Fortify's login challenge, but this gate catches it (and a stolen cookie) uniformly. Verification reuses Fortify's own provider (TOTP) + single-use recovery codes. |
+| Session PIN-lock | `CheckPinLock` (`larafoundry.pin`) auto-locks an idle session and bounces it to a PIN-entry screen, a Telegram-style quick re-entry instead of a full re-login. PIN is per-user (bcrypt), lock state is per-session ("lock everywhere, unlock per-device"). PIN entry is **rate-limited** (per-session attempt counter + lockout window), the brute-force hole the donor lacked. |
+
+> The host applies `larafoundry.confine_admin` + `larafoundry.pin` on its web group (see "Wiring the middleware"), points `security.super_admin.two_factor_setup_route` at its own 2FA-enrolment screen, and sets `LARAFOUNDRY_SUPER_ADMIN_EMAIL`. QR cross-device login and the page/modal presentation switch stay deferred.
+
 ### `v0.11.x` Admin Dashboard (operator console)
 
 The operator console's landing screen, and the widget **seam** behind it. The dashboard is the exact mirror of the navigation engine: the backend builds and permission-filters a widget list from registered providers, and Vue renders each widget's component from a pluggable registry. The free core ships three widgets (users, companies, recent activity); a host or the paid add-on adds more without editing the core. It is revenue-agnostic on purpose.
@@ -27,7 +39,7 @@ The operator console's landing screen, and the widget **seam** behind it. The da
 |-----------|--------------|
 | `DashboardWidgetProviderInterface` + `DashboardWidget` + `DashboardBuilder` | The seam, 1:1 with the navigation `MenuProvider` / `MenuItem` / `MenuBuilder`. Providers contribute `DashboardWidget`s for a level (`admin`); the builder merges them, filters by RBAC (and `visible`), sorts by `order`, memoises per request and emits arrays. Widget titles are i18n **keys**, translated in Vue. The one difference from the menu seam: a provider receives the user, since a widget carries computed data. |
 | `DashboardMetricsService` | The FREE metrics, kept out of the provider so the SQL is testable and cache-ready. Every figure is a constant-query aggregate (`SUM(CASE WHEN …)`), never a per-row classification, so the page is O(1) in the number of users / companies. Users (totals, recent sign-ups, verified / active / blocked), companies (totals + the `SubscriptionStatus` breakdown reproduced in SQL), activity (a 24h count + a compact recent feed). |
-| `CoreMetricsWidgetProvider` | Registers the three free widgets (`core.users`, `core.companies`, `core.activity`) on the `admin` level. Behind the `larafoundry.admin` gate, so the widgets carry no per-item policy — the zone gate is the authority, like the admin menu. |
+| `CoreMetricsWidgetProvider` | Registers the three free widgets (`core.users`, `core.companies`, `core.activity`) on the `admin` level. Behind the `larafoundry.admin` gate, so the widgets carry no per-item policy: the zone gate is the authority, like the admin menu. |
 | Frontend widget registry | `dashboardWidgets` + `registerDashboardWidget(name, component)` exported from the package, plus the `UsersWidget` / `CompaniesWidget` / `ActivityWidget` / `UnknownWidget` Vue components and the `Admin/Dashboard` page. The page resolves each widget's component name through the registry and falls back to `UnknownWidget` (raw data) for a name it does not know, so a missing add-on registrar degrades gracefully instead of crashing the page. |
 
 > Revenue is intentionally **not** here: the dashboard is revenue-agnostic and the revenue widget plugs in through the same seam from the paid `larafoundry-billing` add-on. The metrics are uncached in this release (a single-operator page over O(1) aggregates); the service is isolated so a `Cache::remember` can wrap it later without touching the seam.
@@ -268,6 +280,8 @@ use Dmitryisaenko\LaraFoundry\Http\Middleware\HandleAppearance;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole; // v0.12
+use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;          // v0.12
 use App\Http\Middleware\HandleInertiaRequests; // extends the core one
 
 ->withMiddleware(function (Middleware $middleware): void {
@@ -277,11 +291,18 @@ use App\Http\Middleware\HandleInertiaRequests; // extends the core one
         HandleInertiaRequests::class,
         TrackSessionActivity::class,
         EnsureAccountIsActive::class,
+        // v0.12: confine the super-admin to /admin and enforce the session
+        // PIN-lock. Both no-op for non-admins / users without a PIN and skip
+        // their own routes, so they sit safely on the global web group.
+        RedirectSuperAdminToConsole::class,
+        CheckPinLock::class,
     ]);
 })
 ```
 
 > "Log out other devices" evicts remote sessions immediately on the `database` session driver. On other drivers the framework session lives outside the package's reach, so that feature needs the database driver.
+
+> The operator console's OTP step-up (`larafoundry.admin.otp`) is wired onto the admin routes by the package itself. The host only points `security.super_admin.two_factor_setup_route` at its 2FA-enrolment screen so an un-enrolled operator is sent there.
 
 ### Extending the Inertia middleware
 

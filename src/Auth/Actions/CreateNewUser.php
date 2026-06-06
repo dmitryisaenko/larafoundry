@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Actions;
 
+use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User;
@@ -36,6 +37,14 @@ class CreateNewUser implements CreatesNewUsers
             'email' => [
                 'required', 'string', 'email', 'max:255',
                 Rule::unique($this->table($model)),
+                // The super-admin email is reserved: the operator identity must
+                // not be claimable through public registration (phase 1.4). The
+                // check is case-insensitive (a `not_in` would be case-sensitive).
+                function (string $attribute, mixed $value, callable $fail): void {
+                    if (VisitorStatus::isSuperAdminEmail(is_string($value) ? $value : null)) {
+                        $fail(__('larafoundry::auth.super_admin.email_reserved'));
+                    }
+                },
             ],
             'password' => [
                 'required', 'string', 'confirmed',

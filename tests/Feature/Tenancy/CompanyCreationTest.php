@@ -10,6 +10,7 @@ use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
 
@@ -43,6 +44,40 @@ it('creates a company, attaches the owner, and fires CompanyCreated', function (
         ->and($user->isOwnerOf($company))->toBeTrue();
 
     Event::assertDispatched(CompanyCreated::class, fn ($e) => $e->company->is($company) && $e->owner->is($user));
+});
+
+it('forbids the platform super-admin from owning a company', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+    $admin = User::create([
+        'name' => 'Boss',
+        'email' => 'boss@x.test',
+        'password' => 'secret-pass',
+        'is_admin' => true,
+        'email_verified_at' => now(),
+    ]);
+
+    expect(fn () => app(CreateCompanyAction::class)->execute($admin, ['name' => 'Acme']))
+        ->toThrow(HttpException::class);
+
+    expect(Company::count())->toBe(0);
+});
+
+it('forbids a reserved-email account from owning a company even without the admin flag', function () {
+    config()->set('larafoundry.security.super_admin.email', 'boss@x.test');
+    // A reserved-email account that never received the is_admin flag (defence in
+    // depth: the email guard catches it even though isAdmin() would not).
+    $squatter = User::create([
+        'name' => 'Squatter',
+        'email' => 'Boss@x.test',
+        'password' => 'secret-pass',
+        'is_admin' => false,
+        'email_verified_at' => now(),
+    ]);
+
+    expect(fn () => app(CreateCompanyAction::class)->execute($squatter, ['name' => 'Acme']))
+        ->toThrow(HttpException::class);
+
+    expect(Company::count())->toBe(0);
 });
 
 it('generates a unique slug when names collide', function () {

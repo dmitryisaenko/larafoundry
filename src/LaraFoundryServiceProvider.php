@@ -14,6 +14,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Contracts\DeviceFingerprintResolver;
+use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
@@ -34,7 +35,9 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
 use Dmitryisaenko\LaraFoundry\Media\Support\FileStorageManager;
@@ -54,6 +57,8 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -246,6 +251,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/pin.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
 
         $this->registerAuthMiddleware();
@@ -301,6 +307,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
     {
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('larafoundry.admin', EnsureSuperAdmin::class);
+        $router->aliasMiddleware('larafoundry.admin.otp', EnsureAdminOtpVerified::class);
         $router->aliasMiddleware('larafoundry.activity.route', LogActivity::class);
 
         $this->loadRoutesFrom(__DIR__.'/../routes/activitylog.php');
@@ -345,13 +352,17 @@ class LaraFoundryServiceProvider extends ServiceProvider
      *
      * `larafoundry.account.active` enforces blocked/deleted gating;
      * `larafoundry.session.track` records and refreshes the tracked session row
-     * each request. The host applies both to its authenticated route group.
+     * each request; `larafoundry.confine_admin` keeps the platform super-admin
+     * inside the operator console (phase 1.4). The host applies all three to its
+     * authenticated/web route group.
      */
     protected function registerAuthMiddleware(): void
     {
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('larafoundry.account.active', EnsureAccountIsActive::class);
         $router->aliasMiddleware('larafoundry.session.track', TrackSessionActivity::class);
+        $router->aliasMiddleware('larafoundry.confine_admin', RedirectSuperAdminToConsole::class);
+        $router->aliasMiddleware('larafoundry.pin', CheckPinLock::class);
     }
 
     /**
@@ -376,6 +387,14 @@ class LaraFoundryServiceProvider extends ServiceProvider
         // several times, so only a per-request pass sees the final, live id.
         Event::listen(Failed::class, [LogFailedLoginAttempt::class, 'handleFailed']);
         Event::listen(Lockout::class, [LogFailedLoginAttempt::class, 'handleLockout']);
+
+        // The OTP step-up is proven once per session: any fresh login or a
+        // logout drops the flag, so the operator must re-clear the gate. This
+        // also closes the OAuth channel — an OAuth login never sets the flag, so
+        // the gate always challenges before the console opens (phase 1.4).
+        $forgetOtp = fn () => session()->forget(EnsureAdminOtpVerified::SESSION_KEY);
+        Event::listen(Login::class, $forgetOtp);
+        Event::listen(Logout::class, $forgetOtp);
     }
 
     /**
