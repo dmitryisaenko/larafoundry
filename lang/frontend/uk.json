@@ -176,6 +176,14 @@
     "You are impersonating another user.": "Ви дієте від імені іншого користувача.",
     "You have been invited to join this company.": "Вас запросили приєднатися до цієї компанії.",
     "Your account has been blocked. If you believe this is a mistake, please contact support.": "Ваш обліковий запис заблоковано. Якщо ви вважаєте, що це помилка, зверніться до служби підтримки.",
+    "QR code": "QR-код",
+    "Scan this code with your phone to sign in.": "Відскануйте цей код телефоном, щоб увійти.",
+    "Sign-in QR code": "QR-код для входу",
+    "Generating QR code…": "Генеруємо QR-код…",
+    "Could not generate a QR code. Please try again.": "Не вдалося згенерувати QR-код. Спробуйте ще раз.",
+    "That code is not a sign-in code for this site.": "Цей код не є кодом входу для цього сайту.",
+    "Could not approve the sign-in. Please try again.": "Не вдалося підтвердити вхід. Спробуйте ще раз.",
+    "No camera found.": "Камеру не знайдено.",
     "default": "за замовчуванням",
     "h": "год"
 }

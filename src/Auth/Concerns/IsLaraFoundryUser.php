@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Identity behaviour for a LaraFoundry user model.
@@ -33,6 +34,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  */
 trait IsLaraFoundryUser
 {
+    use HasApiTokens;
     use Notifiable;
     use TwoFactorAuthenticatable;
 

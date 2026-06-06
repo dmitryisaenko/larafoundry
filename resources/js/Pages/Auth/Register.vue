@@ -5,8 +5,12 @@
  * POSTs the new account fields to Laravel Fortify's `/register` endpoint.
  * On success Fortify logs the user in and redirects.
  */
+import { ref } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
-import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { InputField, AuthScreen } from '@dmitryisaenko/larafoundry';
+
+// Modal-mode visibility (inert in page mode); closed on a successful register.
+const open = ref(true);
 
 const form = useForm({
     name: '',
@@ -17,17 +21,21 @@ const form = useForm({
 
 function submit() {
     form.post('/register', {
+        onSuccess: () => {
+            open.value = false;
+        },
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 }
 </script>
 
 <template>
-    <AppBaseLayout>
-        <AuthCard
-            :title="$t('Create an account')"
-            :subtitle="$t('Get started in less than a minute.')"
-        >
+    <AuthScreen
+        :title="$t('Create an account')"
+        :subtitle="$t('Get started in less than a minute.')"
+        :open="open"
+        @close="open = false"
+    >
             <form class="flex flex-col gap-4" @submit.prevent="submit">
                 <InputField
                     v-model="form.name"
@@ -79,10 +87,9 @@ function submit() {
                 </button>
             </form>
 
-            <template #footer>
-                {{ $t('Already have an account?') }}
-                <Link href="/login" class="text-brand-600 hover:text-brand-700">{{ $t('Sign in') }}</Link>
-            </template>
-        </AuthCard>
-    </AppBaseLayout>
+        <template #footer>
+            {{ $t('Already have an account?') }}
+            <Link href="/login" class="text-brand-600 hover:text-brand-700">{{ $t('Sign in') }}</Link>
+        </template>
+    </AuthScreen>
 </template>

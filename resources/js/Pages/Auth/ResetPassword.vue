@@ -11,13 +11,17 @@
  *  - email {string} pre-filled account email from the reset link
  *  - token {string} the signed password-reset token
  */
+import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { InputField, AuthScreen } from '@dmitryisaenko/larafoundry';
 
 const props = defineProps({
     email: { type: String, default: '' },
     token: { type: String, required: true },
 });
+
+// Modal-mode visibility (inert in page mode); closed on a successful reset.
+const open = ref(true);
 
 const form = useForm({
     token: props.token,
@@ -28,17 +32,21 @@ const form = useForm({
 
 function submit() {
     form.post('/reset-password', {
+        onSuccess: () => {
+            open.value = false;
+        },
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 }
 </script>
 
 <template>
-    <AppBaseLayout>
-        <AuthCard
-            :title="$t('Reset password')"
-            :subtitle="$t('Choose a new password for your account.')"
-        >
+    <AuthScreen
+        :title="$t('Reset password')"
+        :subtitle="$t('Choose a new password for your account.')"
+        :open="open"
+        @close="open = false"
+    >
             <form class="flex flex-col gap-4" @submit.prevent="submit">
                 <InputField
                     v-model="form.email"
@@ -78,6 +86,5 @@ function submit() {
                     {{ $t('Reset password') }}
                 </button>
             </form>
-        </AuthCard>
-    </AppBaseLayout>
+    </AuthScreen>
 </template>

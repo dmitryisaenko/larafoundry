@@ -87,8 +87,12 @@ class ActivityLogService
         bool $isSuccessful = true,
         int $responseCode = 200,
         bool $geoSync = true,
+        ?Authenticatable $causer = null,
     ): Model {
-        $causer = Auth::user();
+        // Default to the web-guard user; callers on a non-default guard (e.g. the
+        // QR verify endpoint authenticated via the `sanctum` token guard, where
+        // Auth::user() on the default guard is null) pass the resolved causer in.
+        $causer ??= Auth::user();
 
         $activity = $this->write(
             logName: $logName,

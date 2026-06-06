@@ -229,9 +229,33 @@ return [
     | failed_login.notify  — email/log channel notified on admin login failures.
     | two_factor.confirm   — require the user to confirm TOTP enrolment with a
     |                        live code before it is active (recommended).
+    | presentation         — how the guest auth screens (login/register/forgot/
+    |                        reset) are surfaced: `page` (a full page, the
+    |                        default) or `modal` (an overlay over the host's
+    |                        content). Read by the AuthScreen frontend wrapper via
+    |                        the shared `auth_presentation` prop; an unknown value
+    |                        falls back to `page` so the surface never breaks.
     */
     'auth' => [
         'password_min_length' => 8,
+
+        'presentation' => env('LARAFOUNDRY_AUTH_PRESENTATION', 'page'), // page | modal
+
+        // QR cross-device login (phase 1.4 part 2). The web side shows a QR an
+        // already-authenticated device scans to approve a login.
+        //  enabled              — master switch for the QR routes + Login QR tab.
+        //  ttl_minutes          — how long a freshly generated code stays valid.
+        //  absolute_ttl_minutes — hard cap measured from creation, so a code that
+        //                         keeps sliding forward still dies (donor hole #4).
+        //  size                 — rendered QR side length in px.
+        //  poll_interval_ms     — how often the web side polls for approval.
+        'qr' => [
+            'enabled' => env('LARAFOUNDRY_QR_ENABLED', true),
+            'ttl_minutes' => 5,
+            'absolute_ttl_minutes' => 15,
+            'size' => 400,
+            'poll_interval_ms' => 2000,
+        ],
 
         'oauth' => [
             'enabled' => env('LARAFOUNDRY_OAUTH_ENABLED', false),

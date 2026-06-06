@@ -12,12 +12,24 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.11.x`: foundation, authentication, multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, and the billing seam.**
+> ⚠️ **Status: early but growing. Current release is `v0.13.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, and the billing seam.**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. Notifications and the other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.13.x` QR cross-device login + presentation switch
+
+Finishes the auth-entry phase: a WhatsApp-Web-style sign-in and a config switch for how the guest auth screens are surfaced.
+
+| Component | What it does |
+|-----------|--------------|
+| QR cross-device login | The web (guest) side shows a QR (`QrLoginPanel`); a device already signed in scans it and approves the sign-in, and the web side polls until it is logged in. Extracted from the donor with its holes closed: the token is **SHA-256 hashed** in the DB (plaintext only in the QR), every endpoint is **rate-limited**, the session is regenerated before login, the code is single-use with a sliding TTL under an absolute cap, attempts are audited, and the scanner validates the decoded URL (same-origin + the verify path) before any request, closing the donor's blind-fetch SSRF. The super-admin is blocked from approving. |
+| Sanctum API seam | The verify endpoint is **guard-agnostic** (`auth:sanctum`): a same-origin web request authenticates by session cookie today, and a future native app authenticates by Bearer token, through one controller. The core installs Sanctum and carries the `personal_access_tokens` table so a host gets the API guard with no extra setup. |
+| Presentation switch | `auth.presentation` = `page` (default, unchanged) or `modal`: the same Login / Register / Forgot / Reset screens render either as a full page or as an overlay (`Modal` + `AuthScreen`), driven by one shared prop. An unknown value falls back to `page`, so the default surface never breaks. |
+
+> QR login is gated by `LARAFOUNDRY_QR_ENABLED` (its routes are not registered when off). The host runs `php artisan migrate` (for `personal_access_tokens` and `sign_in_requests`), adds the `api` routing group + `statefulApi()` in `bootstrap/app.php`, and schedules `larafoundry:qr:prune` to clear spent codes.
 
 ### `v0.12.x` Auth entry modes (super-admin gate + PIN-lock)
 
@@ -29,7 +41,7 @@ Hardens how the platform operator enters the console, and adds an optional sessi
 | OTP step-up gate | `EnsureAdminOtpVerified` (`larafoundry.admin.otp`) sits on the console: the operator must have confirmed Fortify 2FA (else → enrolment / 403) and clear a **fresh OTP once per session** before `/admin` opens. This makes "operator login is OTP-only" hold for **every** channel: an OAuth login skips Fortify's login challenge, but this gate catches it (and a stolen cookie) uniformly. Verification reuses Fortify's own provider (TOTP) + single-use recovery codes. |
 | Session PIN-lock | `CheckPinLock` (`larafoundry.pin`) auto-locks an idle session and bounces it to a PIN-entry screen, a Telegram-style quick re-entry instead of a full re-login. PIN is per-user (bcrypt), lock state is per-session ("lock everywhere, unlock per-device"). PIN entry is **rate-limited** (per-session attempt counter + lockout window), the brute-force hole the donor lacked. |
 
-> The host applies `larafoundry.confine_admin` + `larafoundry.pin` on its web group (see "Wiring the middleware"), points `security.super_admin.two_factor_setup_route` at its own 2FA-enrolment screen, and sets `LARAFOUNDRY_SUPER_ADMIN_EMAIL`. QR cross-device login and the page/modal presentation switch stay deferred.
+> The host applies `larafoundry.confine_admin` + `larafoundry.pin` on its web group (see "Wiring the middleware"), points `security.super_admin.two_factor_setup_route` at its own 2FA-enrolment screen, and sets `LARAFOUNDRY_SUPER_ADMIN_EMAIL`. (QR cross-device login and the page/modal presentation switch landed in `v0.13.x`, above.)
 
 ### `v0.11.x` Admin Dashboard (operator console)
 

@@ -57,6 +57,12 @@ return [
         'locked_change' => 'Unlock this session before changing your PIN.',
     ],
 
+    'qr' => [
+        'invalid' => 'This sign-in code is invalid or has expired.',
+        'approved' => 'Sign-in approved. You can return to the other device.',
+        'admin_forbidden' => 'Administrators cannot sign in by QR code.',
+    ],
+
     'admin_alert' => [
         'subject' => 'Security alert: admin login attempt',
         'intro' => 'A :step login attempt was made on the admin account.',

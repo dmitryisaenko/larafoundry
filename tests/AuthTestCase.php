@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Tests;
 
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Laravel\Fortify\FortifyServiceProvider;
+use Laravel\Sanctum\SanctumServiceProvider;
 use Laravel\Socialite\SocialiteServiceProvider;
 
 /**
@@ -24,6 +25,7 @@ abstract class AuthTestCase extends TestCase
         return [
             SocialiteServiceProvider::class,
             FortifyServiceProvider::class,
+            SanctumServiceProvider::class,
             ...parent::getPackageProviders($app),
         ];
     }

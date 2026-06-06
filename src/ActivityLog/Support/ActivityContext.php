@@ -59,13 +59,16 @@ class ActivityContext
             'user_browser' => $device->browser,
             'route_name' => $request->route()?->getName(),
             'request_method' => $request->getMethod(),
-            'full_url' => $this->redactUrl($request->fullUrl()),
+            'full_url' => $this->redactUrl(
+                $request->fullUrl(),
+                $request->route()?->parameters() ?? [],
+            ),
         ];
     }
 
     /**
-     * Mask PII query-string values in a URL, byte-for-byte preserving everything
-     * else.
+     * Mask PII values in a URL — both query-string and route-path segments —
+     * byte-for-byte preserving everything else.
      *
      * A reset token or 2FA code in a query string would otherwise be stored
      * verbatim; matching keys have their value replaced with `[redacted]`. The
@@ -74,19 +77,29 @@ class ActivityContext
      * dotted/spaced keys (`filter.name` -> `filter_name`), re-index array params
      * (`ids[]` -> `ids[0]`), drop repeated scalar keys, and corrupt relative URLs
      * into `http:///...`.
+     *
+     * Secrets also travel as PATH segments (e.g. the QR verify URL
+     * `/qr/verify/{id}/{token}`), which the query-string pass cannot see. When
+     * the matched route's parameters are supplied, any whose NAME is a PII key
+     * (e.g. `token`) has its value masked in the path too — closing the hole
+     * where a hashed-in-DB secret would still leak verbatim into `full_url`.
+     *
+     * @param  array<string, mixed>  $routeParameters
      */
-    public function redactUrl(string $url): string
+    public function redactUrl(string $url, array $routeParameters = []): string
     {
+        $keys = array_map(
+            'strtolower',
+            (array) config('larafoundry-activitylog.pii_redact_keys', [])
+        );
+
+        $url = $this->redactPathParameters($url, $routeParameters, $keys);
+
         $query = parse_url($url, PHP_URL_QUERY);
 
         if ($query === null || $query === false || $query === '') {
             return $url;
         }
-
-        $keys = array_map(
-            'strtolower',
-            (array) config('larafoundry-activitylog.pii_redact_keys', [])
-        );
 
         $redacted = preg_replace_callback(
             '/(^|&)([^=&]+)=([^&]*)/',
@@ -103,6 +116,37 @@ class ActivityContext
         // Replace only the query segment, leaving scheme/host/path/fragment as-is
         // (so a relative URL stays relative).
         return str_replace('?'.$query, '?'.$redacted, $url);
+    }
+
+    /**
+     * Replace any route-parameter value whose NAME is a PII key with `[redacted]`
+     * wherever that exact value appears in the URL (path segments).
+     *
+     * Replacing the literal value (rather than rebuilding the path) keeps the URL
+     * intact and avoids re-encoding surprises; the value is a server-issued
+     * surrogate/secret, so a plain str_replace of its raw and url-encoded forms
+     * is precise enough.
+     *
+     * @param  array<string, mixed>  $routeParameters
+     * @param  array<int, string>  $keys
+     */
+    protected function redactPathParameters(string $url, array $routeParameters, array $keys): string
+    {
+        foreach ($routeParameters as $name => $value) {
+            if (! is_scalar($value) || ! in_array(strtolower((string) $name), $keys, true)) {
+                continue;
+            }
+
+            $value = (string) $value;
+
+            if ($value === '') {
+                continue;
+            }
+
+            $url = str_replace([rawurlencode($value), $value], '[redacted]', $url);
+        }
+
+        return $url;
     }
 
     /**

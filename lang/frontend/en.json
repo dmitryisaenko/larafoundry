@@ -176,6 +176,14 @@
     "You are impersonating another user.": "You are impersonating another user.",
     "You have been invited to join this company.": "You have been invited to join this company.",
     "Your account has been blocked. If you believe this is a mistake, please contact support.": "Your account has been blocked. If you believe this is a mistake, please contact support.",
+    "QR code": "QR code",
+    "Scan this code with your phone to sign in.": "Scan this code with your phone to sign in.",
+    "Sign-in QR code": "Sign-in QR code",
+    "Generating QR code…": "Generating QR code…",
+    "Could not generate a QR code. Please try again.": "Could not generate a QR code. Please try again.",
+    "That code is not a sign-in code for this site.": "That code is not a sign-in code for this site.",
+    "Could not approve the sign-in. Please try again.": "Could not approve the sign-in. Please try again.",
+    "No camera found.": "No camera found.",
     "default": "default",
     "h": "h"
 }

@@ -18,6 +18,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
+use Dmitryisaenko\LaraFoundry\Auth\Qr\Console\Commands\PruneSignInRequestsCommand;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Authorization\Console\Commands\SyncPermissionsCommand;
 use Dmitryisaenko\LaraFoundry\Authorization\Gates\PermissionGateRegistrar;
@@ -252,6 +253,8 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/pin.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/qr.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
 
         $this->registerAuthMiddleware();
@@ -269,6 +272,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
             $this->commands([
                 InstallCommand::class,
                 SyncPermissionsCommand::class,
+                PruneSignInRequestsCommand::class,
             ]);
         }
     }

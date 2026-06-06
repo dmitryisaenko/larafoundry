@@ -9,12 +9,17 @@
  * Props:
  *  - status {string|null} session status flash ("we have emailed your link")
  */
+import { ref } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
-import { InputField, AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { InputField, AuthScreen } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     status: { type: String, default: null },
 });
+
+// Modal-mode visibility (inert in page mode). The modal stays OPEN after a
+// successful submit so the "reset link emailed" status shows inside it.
+const open = ref(true);
 
 const form = useForm({
     email: '',
@@ -26,12 +31,13 @@ function submit() {
 </script>
 
 <template>
-    <AppBaseLayout>
-        <AuthCard
-            :title="$t('Forgot password')"
-            :subtitle="$t('Enter your email and we will send you a reset link.')"
-            :status="status"
-        >
+    <AuthScreen
+        :title="$t('Forgot password')"
+        :subtitle="$t('Enter your email and we will send you a reset link.')"
+        :status="status"
+        :open="open"
+        @close="open = false"
+    >
             <form class="flex flex-col gap-4" @submit.prevent="submit">
                 <InputField
                     v-model="form.email"
@@ -53,9 +59,8 @@ function submit() {
                 </button>
             </form>
 
-            <template #footer>
-                <Link href="/login" class="text-brand-600 hover:text-brand-700">{{ $t('Back to sign in') }}</Link>
-            </template>
-        </AuthCard>
-    </AppBaseLayout>
+        <template #footer>
+            <Link href="/login" class="text-brand-600 hover:text-brand-700">{{ $t('Back to sign in') }}</Link>
+        </template>
+    </AuthScreen>
 </template>

@@ -58,6 +58,36 @@ class HandleInertiaRequests extends Middleware
                 'location' => $request->url(),
             ],
             'appearance' => fn () => $request->cookie('appearance') ?? 'system',
+            'auth_presentation' => fn () => $this->authPresentation(),
+            'auth_qr' => fn () => $this->qrSettings(),
+        ];
+    }
+
+    /**
+     * How the guest auth screens are surfaced: `page` (default) or `modal`.
+     *
+     * Validated against the known set so a host typo (or a missing config key)
+     * degrades to `page` rather than rendering an undefined surface. This is the
+     * single source of truth the AuthScreen wrapper reads on the frontend.
+     */
+    protected function authPresentation(): string
+    {
+        $mode = config('larafoundry.auth.presentation', 'page');
+
+        return in_array($mode, ['page', 'modal'], true) ? $mode : 'page';
+    }
+
+    /**
+     * QR cross-device login settings the Login screen needs: whether to show the
+     * QR tab and how often the panel should poll for approval.
+     *
+     * @return array{enabled: bool, poll_interval_ms: int}
+     */
+    protected function qrSettings(): array
+    {
+        return [
+            'enabled' => (bool) config('larafoundry.auth.qr.enabled', true),
+            'poll_interval_ms' => (int) config('larafoundry.auth.qr.poll_interval_ms', 2000),
         ];
     }
 
