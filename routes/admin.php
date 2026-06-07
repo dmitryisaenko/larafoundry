@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
+use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -95,6 +96,10 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::post('{ticket}/category', [AdminTicketController::class, 'toggleCategory'])->name('category');
                 Route::post('{ticket}/label', [AdminTicketController::class, 'toggleLabel'])->name('label');
             });
+
+            // App-scope settings (phase 5.1).
+            Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
+            Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])
                 ->name('impersonate.take');

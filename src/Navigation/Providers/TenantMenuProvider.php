@@ -47,6 +47,20 @@ class TenantMenuProvider implements MenuProviderInterface
                 order: 90,
                 activePatterns: ['authorization.roles.*'],
             ),
+            // Company settings — guarded by the RBAC permission (owners and
+            // super-admins bypass), scoped to the active company (phase 5.1).
+            // Carries a policy so the "bare member sees an empty menu" invariant
+            // holds (a member without company.settings.view is filtered out).
+            // Personal account settings are NOT a company-sidebar item — they are
+            // reached from the host's user menu (route: settings.account).
+            new MenuItem(
+                labelKey: 'Company settings',
+                route: 'settings.company',
+                policy: 'company.settings.view',
+                icon: 'settings',
+                order: 95,
+                activePatterns: ['settings.company'],
+            ),
         ];
     }
 

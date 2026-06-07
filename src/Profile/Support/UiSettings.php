@@ -55,7 +55,8 @@ class UiSettings
         $type = self::definition($key)['type'] ?? 'string';
 
         return match ($type) {
-            'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $value,
+            // Unrecognised values fall to false (fail-closed), not PHP truthiness.
+            'boolean' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
             'integer' => (int) $value,
             'float' => (float) $value,
             default => is_scalar($value) ? (string) $value : '',

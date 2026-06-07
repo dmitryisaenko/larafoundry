@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\SettingsController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\CreateCompanyController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\EmployeeController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\InvitationController;
@@ -67,5 +68,13 @@ Route::middleware(['web', 'auth'])->group(function () {
                 Route::post('request-removal', [EmployeeController::class, 'requestRemoval'])->name('request-removal');
                 Route::post('cancel-removal', [EmployeeController::class, 'cancelRemoval'])->name('cancel-removal');
             });
+
+        // Company settings (phase 5.1) — requires an active company; the company
+        // is the resolved active tenant, never an id from the request. The
+        // controller gates view/update on the RBAC company.settings.* permissions.
+        Route::middleware('larafoundry.tenant.required')->group(function () {
+            Route::get('settings/company', [SettingsController::class, 'company'])->name('settings.company');
+            Route::put('settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company.update');
+        });
     });
 });

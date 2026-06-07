@@ -70,6 +70,13 @@ class AdminMenuProvider implements MenuProviderInterface
                 order: 30,
                 activePatterns: ['admin.tickets.*'],
             ),
+            new MenuItem(
+                labelKey: 'Settings',
+                route: 'admin.settings.index',
+                icon: 'settings',
+                order: 35,
+                activePatterns: ['admin.settings.*'],
+            ),
         ];
     }
 

@@ -54,6 +54,8 @@ use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsC
 use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfileExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataExportRegistry;
+use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
+use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
@@ -111,6 +113,20 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerBilling();
         $this->registerNotifications();
         $this->registerProfile();
+        $this->registerSettings();
+    }
+
+    /**
+     * Wire the settings module (phase 5.1): the generic key-value repository.
+     *
+     * A singleton so the {@see Settings}
+     * facade and every caller share one instance (and a host can rebind a richer
+     * store without touching call sites). The store itself is config-driven — the
+     * registry of declared keys lives in `config('larafoundry.settings')`.
+     */
+    protected function registerSettings(): void
+    {
+        $this->app->singleton(SettingsRepository::class);
     }
 
     /**
@@ -295,6 +311,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/profile.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/settings.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/pin.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/qr.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/api.php');

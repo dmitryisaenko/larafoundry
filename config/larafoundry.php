@@ -354,4 +354,92 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Settings (phase 5.1)
+    |--------------------------------------------------------------------------
+    | Реестр generic key-value настроек (таблица larafoundry_settings). ЕДИНЫЙ
+    | источник истины: writable/readable ТОЛЬКО зарегистрированные ключи
+    | (fail-closed) — произвольный key в store не попадёт. Каждый ключ:
+    |
+    |   scope      — app | company | user (где живёт значение и кто им владеет:
+    |                app=супер-админ, company=активная компания[RBAC
+    |                company.settings.*], user=сам пользователь).
+    |   type       — boolean | integer | float | string | array (каст значения).
+    |   default    — значение по умолчанию, когда ничего не сохранено.
+    |   validation — Laravel-правило валидации значения при записи.
+    |   in         — (опц.) enum допустимых значений (для select в UI).
+    |   public     — (опц., только app) отдавать ли значение во фронт (host
+    |                шарит через Inertia::share).
+    |   form       — (опц., default true) показывать ли ключ в self-service форме.
+    |                false = ключ хранится в store, но пишется не формой, а другим
+    |                флоу (напр. consent-флаги — пишет визард согласий Ф5.3).
+    |
+    | Host добавляет свои настройки, публикуя этот конфиг. Доменных настроек ядро
+    | не закладывает — только инфраструктурные + швы под Ф5.3 (consent).
+    */
+    'settings' => [
+
+        // App scope — платформенные, правит только супер-админ.
+        'support_email' => [
+            'scope' => 'app',
+            'label' => 'Support email',
+            'type' => 'string',
+            'default' => null,
+            'validation' => ['nullable', 'email', 'max:255'],
+            'public' => true,
+        ],
+        'signups_enabled' => [
+            'scope' => 'app',
+            'label' => 'Allow new sign-ups',
+            'type' => 'boolean',
+            'default' => true,
+            'validation' => ['boolean'],
+            'public' => true,
+        ],
+
+        // Company scope — правит владелец/роль с company.settings.update.
+        'timezone' => [
+            'scope' => 'company',
+            'label' => 'Time zone',
+            'type' => 'string',
+            'default' => 'UTC',
+            'validation' => ['string', 'timezone'],
+        ],
+
+        // User scope — правит сам пользователь.
+        'email_notifications' => [
+            'scope' => 'user',
+            'label' => 'Email notifications',
+            'type' => 'boolean',
+            'default' => true,
+            'validation' => ['boolean'],
+        ],
+
+        // User scope — швы согласий под Ф5.3 (Legal/GDPR). Зарегистрированы,
+        // чтобы store мог их держать, но НЕ в self-service форме (form=false):
+        // их пишет флоу согласий Ф5.3, не страница настроек.
+        'cookie_consent' => [
+            'scope' => 'user',
+            'type' => 'boolean',
+            'default' => false,
+            'validation' => ['boolean'],
+            'form' => false,
+        ],
+        'terms_accepted_version' => [
+            'scope' => 'user',
+            'type' => 'string',
+            'default' => null,
+            'validation' => ['nullable', 'string', 'max:50'],
+            'form' => false,
+        ],
+        'terms_accepted_at' => [
+            'scope' => 'user',
+            'type' => 'string',
+            'default' => null,
+            'validation' => ['nullable', 'date'],
+            'form' => false,
+        ],
+    ],
+
 ];
