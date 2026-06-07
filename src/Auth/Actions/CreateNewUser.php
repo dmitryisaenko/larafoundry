@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Auth\Actions;
 
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
+use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Validator;
@@ -32,7 +33,9 @@ class CreateNewUser implements CreatesNewUsers
     {
         $model = config('auth.providers.users.model', User::class);
 
-        Validator::make($input, [
+        $consent = app(ConsentManager::class);
+
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required', 'string', 'email', 'max:255',
@@ -50,14 +53,34 @@ class CreateNewUser implements CreatesNewUsers
                 'required', 'string', 'confirmed',
                 Password::min((int) config('larafoundry.auth.password_min_length', 8))->defaults(),
             ],
+        ];
+
+        // Require explicit acceptance only when there is a published Terms page to
+        // accept (phase 5.3 part B, fail-open): a host with no Terms yet is never
+        // blocked from registering users.
+        if ($consent->termsRequired()) {
+            $rules['terms'] = ['accepted'];
+        }
+
+        Validator::make($input, $rules, [
+            'terms.accepted' => __('larafoundry::legal.terms.must_accept'),
         ])->validate();
 
-        return $model::create([
+        $user = $model::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
             'locale' => config('larafoundry.locale.default', 'en'),
         ]);
+
+        // Record the accepted version + timestamp for the re-accept gate. The user
+        // is not authenticated yet (Fortify logs in after), so the scope is passed
+        // explicitly.
+        if ($consent->termsRequired()) {
+            $consent->recordTermsAcceptance($user);
+        }
+
+        return $user;
     }
 
     /**

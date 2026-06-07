@@ -33,6 +33,24 @@ it('writes and reads back a value cast to its declared type', function () {
     expect(Settings::get('u_flag'))->toBeFalse();
 });
 
+it('reports whether a value is explicitly stored, distinct from the default', function () {
+    $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'secret-pass']);
+    $this->actingAs($user);
+
+    // Default false, but nothing stored yet.
+    expect(Settings::get('u_consent'))->toBeFalse()
+        ->and(Settings::has('u_consent'))->toBeFalse();
+
+    Settings::set('u_consent', false);
+
+    // Same value, but now explicitly decided.
+    expect(Settings::has('u_consent'))->toBeTrue();
+});
+
+it('is fail-closed for has(): an unregistered key reports false', function () {
+    expect(Settings::has('nope'))->toBeFalse();
+});
+
 it('is fail-closed: writing an unregistered key throws', function () {
     expect(fn () => Settings::set('nope', 'x'))->toThrow(RuntimeException::class);
 });

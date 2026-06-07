@@ -20,6 +20,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendWelcomeNotification;
+use Dmitryisaenko\LaraFoundry\Auth\Listeners\SyncCookieConsentOnLogin;
 use Dmitryisaenko\LaraFoundry\Auth\Qr\Console\Commands\PruneSignInRequestsCommand;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Authorization\Console\Commands\SyncPermissionsCommand;
@@ -44,8 +45,10 @@ use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole;
+use Dmitryisaenko\LaraFoundry\Legal\Http\Middleware\EnsureTermsAccepted;
 use Dmitryisaenko\LaraFoundry\Legal\Models\LegalPage;
 use Dmitryisaenko\LaraFoundry\Legal\Policies\LegalPagePolicy;
+use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
@@ -142,6 +145,11 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function registerLegal(): void
     {
         $this->app->singleton(LegalPageRepository::class);
+
+        // The consent authority (phase 5.3 part B): terms enforcement + cookie
+        // consent, shared by the registration hook, the re-accept gate, the
+        // consent controller, the login listener and the Inertia share.
+        $this->app->singleton(ConsentManager::class);
     }
 
     /**
@@ -361,6 +369,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/legal.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/consent.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
 
@@ -523,6 +532,11 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $router->aliasMiddleware('larafoundry.session.track', TrackSessionActivity::class);
         $router->aliasMiddleware('larafoundry.confine_admin', RedirectSuperAdminToConsole::class);
         $router->aliasMiddleware('larafoundry.pin', CheckPinLock::class);
+
+        // The terms re-acceptance gate (phase 5.3 part B). The host applies it to
+        // its authenticated web group; it is fail-open (no published Terms = no
+        // enforcement), so adding it is always safe.
+        $router->aliasMiddleware('larafoundry.terms', EnsureTermsAccepted::class);
     }
 
     /**
@@ -555,6 +569,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $forgetOtp = fn () => session()->forget(EnsureAdminOtpVerified::SESSION_KEY);
         Event::listen(Login::class, $forgetOtp);
         Event::listen(Logout::class, $forgetOtp);
+
+        // Adopt a guest's cookie-consent choice into their account on first login
+        // (phase 5.3 part B) — settings become the source of truth once signed in.
+        Event::listen(Login::class, SyncCookieConsentOnLogin::class);
 
         // Welcome the user once their address is verified (phase 5.1) — on
         // Verified, not Registered, so it follows the verification mail.

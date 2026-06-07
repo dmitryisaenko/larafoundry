@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
+use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
+use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -94,6 +96,67 @@ it('rejects registration with the reserved email in a different case', function 
     ]))->toThrow(ValidationException::class);
 
     expect(User::whereRaw('LOWER(email) = ?', ['boss@x.test'])->exists())->toBeFalse();
+});
+
+// --- Terms acceptance at registration (phase 5.3 part B) --------------------
+
+it('does not require terms when no terms page is published', function () {
+    config()->set('larafoundry-legal.terms.enforce', true);
+
+    // No published terms page → fail-open → registration succeeds without a checkbox.
+    $user = (new CreateNewUser)->create([
+        'name' => 'Jane',
+        'email' => 'noterms@x.test',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+    ]);
+
+    expect($user->email)->toBe('noterms@x.test');
+});
+
+it('requires terms acceptance when a terms page is published', function () {
+    config()->set('larafoundry-legal.terms.enforce', true);
+    config()->set('larafoundry-legal.pages', [
+        'terms' => ['title' => ['en' => 'Terms'], 'body_html' => ['en' => '<p>t</p>']],
+    ]);
+    app(LegalPageRepository::class)->save('terms', [
+        'title' => ['en' => 'Terms'],
+        'body_html' => ['en' => '<p>t</p>'],
+        'is_published' => true,
+    ]);
+
+    expect(fn () => (new CreateNewUser)->create([
+        'name' => 'Jane',
+        'email' => 'terms@x.test',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+        // no `terms` field
+    ]))->toThrow(ValidationException::class);
+
+    expect(User::where('email', 'terms@x.test')->exists())->toBeFalse();
+});
+
+it('records the accepted terms version when the checkbox is ticked', function () {
+    config()->set('larafoundry-legal.terms.enforce', true);
+    config()->set('larafoundry-legal.pages', [
+        'terms' => ['title' => ['en' => 'Terms'], 'body_html' => ['en' => '<p>t</p>']],
+    ]);
+    app(LegalPageRepository::class)->save('terms', [
+        'title' => ['en' => 'Terms'],
+        'body_html' => ['en' => '<p>t</p>'],
+        'is_published' => true,
+    ]);
+
+    $user = (new CreateNewUser)->create([
+        'name' => 'Jane',
+        'email' => 'agreed@x.test',
+        'password' => 'long-enough-pass',
+        'password_confirmation' => 'long-enough-pass',
+        'terms' => true,
+    ]);
+
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBe('1')
+        ->and(Settings::get('terms_accepted_at', $user->getKey()))->not->toBeNull();
 });
 
 it('resets the password to a new hashed value', function () {

@@ -33,6 +33,45 @@ declare(strict_types=1);
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cookie consent (phase 5.3 part B)
+    |--------------------------------------------------------------------------
+    | OFF by default: the core sets only strictly-necessary cookies (session /
+    | XSRF / locale / appearance), which do NOT require consent. A host turns the
+    | banner on only once it adds non-essential cookies (analytics/marketing).
+    | Granularity is binary (accept all / necessary only); the decision is stored
+    | in an encrypted cookie for guests and synced to the `cookie_consent` user
+    | setting on login (the source of truth once authenticated, decision D-5.3-6).
+    |
+    | SECURITY: keep `cookie` under Laravel's cookie encryption — do NOT add it to
+    | EncryptCookies::$except. Encryption is what makes a guest's decision tamper-
+    | resistant; exempting it would let anyone forge an `accept` cookie.
+    */
+    'cookie_consent' => [
+        'enabled' => false,
+        'cookie' => 'larafoundry_cookie_consent',
+        'lifetime_days' => 365,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Terms acceptance + re-accept gate (phase 5.3 part B)
+    |--------------------------------------------------------------------------
+    | `enforce` ON requires a registration-time checkbox AND re-acceptance when
+    | the published Terms version is bumped. It is FAIL-OPEN: when the `slug` page
+    | is not published (currentVersion is null) nothing is enforced, so the gate
+    | never locks users out of a page that does not exist yet. `slug` chooses which
+    | legal page drives the gate. `except_routes` / `except_prefixes` extend the
+    | built-in bypass list (logout, the accept screen, legal pages, verification).
+    */
+    'terms' => [
+        'enforce' => true,
+        'slug' => 'terms',
+        'except_routes' => [],
+        'except_prefixes' => [],
+    ],
+
     'pages' => [
 
         // Условия использования.

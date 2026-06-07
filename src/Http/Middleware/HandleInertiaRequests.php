@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Http\Middleware;
 
+use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
@@ -60,6 +61,29 @@ class HandleInertiaRequests extends Middleware
             'appearance' => fn () => $request->cookie('appearance') ?? 'system',
             'auth_presentation' => fn () => $this->authPresentation(),
             'auth_qr' => fn () => $this->qrSettings(),
+            'consent' => fn () => $this->consentState($request),
+        ];
+    }
+
+    /**
+     * Consent state the frontend needs cross-page (phase 5.3 part B): whether the
+     * cookie banner is enabled and already decided (the banner reads this on every
+     * page), and whether the registration checkbox is required (cheap, resolved
+     * from the published Terms version). Both come from the one ConsentManager so
+     * the host wires nothing.
+     *
+     * @return array<string, mixed>
+     */
+    protected function consentState(Request $request): array
+    {
+        $consent = app(ConsentManager::class);
+
+        return [
+            'cookie' => [
+                'enabled' => $consent->cookieConsentEnabled(),
+                'decided' => $consent->cookieConsentDecided($request),
+            ],
+            'terms_required' => $consent->termsRequired(),
         ];
     }
 

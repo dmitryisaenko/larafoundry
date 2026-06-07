@@ -94,6 +94,7 @@ export { default as EmailPreviewFrame } from './components/email/EmailPreviewFra
 
 // Legal / GDPR (phase 5.3)
 export { default as LegalPageEditor } from './components/legal/LegalPageEditor.vue';
+export { default as CookieConsentBanner } from './components/legal/CookieConsentBanner.vue';
 
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';

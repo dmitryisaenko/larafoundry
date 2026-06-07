@@ -97,6 +97,33 @@ class SettingsRepository
     }
 
     /**
+     * Whether a value is EXPLICITLY stored for a key in its resolved scope.
+     *
+     * Distinct from {@see get()}: get returns the registry default when nothing is
+     * stored, so it cannot tell "set to the default" from "never decided". The
+     * consent flow (phase 5.3) needs that distinction — a `cookie_consent` of false
+     * could mean "chose necessary-only" or "has not chosen yet". Fail-closed: an
+     * unregistered key, or a user/company scope with no context, returns false.
+     */
+    public function has(string $key, int|string|null $scopeId = null): bool
+    {
+        $definition = $this->definition($key);
+
+        if ($definition === null) {
+            return false;
+        }
+
+        $scope = (string) $definition['scope'];
+        $resolved = $this->resolveScopeId($scope, $scopeId);
+
+        if ($resolved === null) {
+            return false;
+        }
+
+        return array_key_exists($key, $this->storedForScope($scope, $resolved));
+    }
+
+    /**
      * Write a setting after validating it against the registry.
      *
      * Throws on an unregistered key (fail-closed), a value that fails the key's

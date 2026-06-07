@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Facade;
  * (phase 5.1).
  *
  * @method static mixed get(string $key, int|string|null $scopeId = null, mixed $default = null)
+ * @method static bool has(string $key, int|string|null $scopeId = null)
  * @method static void set(string $key, mixed $value, int|string|null $scopeId = null)
  * @method static array allForScope(string $scope, int|string|null $scopeId = null)
  * @method static array publicSettings()

@@ -15,4 +15,9 @@ return [
 
     'saved' => 'The legal page has been saved.',
 
+    'terms' => [
+        'must_accept' => 'You must accept the Terms of Service to continue.',
+        'accepted' => 'Thank you. Your acceptance has been recorded.',
+    ],
+
 ];
