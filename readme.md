@@ -12,12 +12,25 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.16.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, and the settings / profile / email-template service modules.**
+> ⚠️ **Status: early but growing. Current release is `v0.17.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, and the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure).**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.17.x` Legal / GDPR
+
+The legal and GDPR layer, built as a seam rather than a checkbox. The headline is that the right to access and the right to be forgotten turn out to be the same shape: two mirrored provider registries, so every module wires data export and account erasure the same way. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Legal pages | A super-admin editor for Terms, Privacy and Cookie policy, stored in the database per locale, **versioned**, served on a public `/legal/{slug}` route. The body is sanitized on save and on render through the same `HtmlSanitizer` the email editor uses; there is no variable rendering, so a legal page is static and safe. A fail-closed registry decides which slugs exist; an unpublished page 404s, so a placeholder default is never served as real legal text. |
+| Consent | A cookie banner that ships **off** (the core sets only strictly-necessary cookies, which need no consent), a registration **Terms checkbox**, and a **re-accept gate** (`larafoundry.terms` middleware) that triggers when the published Terms version is bumped. `ConsentManager` is the single authority all of them read, so they never disagree. The gate is **fail-open**: nothing is enforced until a Terms page is published, so a fresh install is never locked out of a page that does not exist. |
+| Data export (right to access) | A synchronous JSON download of everything the app holds about a user, assembled from every registered `ExportsUserDataProvider` (the core ships profile, sessions, settings and consent; modules add their own). Rate-limited against repeated dumps. |
+| Account erasure (right to be forgotten) | Deleting an account is a **reversible soft-delete** that starts a grace clock; a super-admin can restore it during the window. A daily command (`larafoundry:purge-deleted-accounts`) then runs every registered `PurgesUserData`: the core **anonymises** the identity (never a hard DELETE, so foreign keys and legal records survive), modules erase what they own. It is **idempotent** via a `user_purged_at` stamp. The activity log is deliberately kept, anonymise the who, keep the what, as proof the erasure ran. |
+
+> No new trait on `User` and no new dependency (the sanitizer arrived with `v0.16.x`). The host runs `php artisan migrate` and `vendor:publish --tag=larafoundry-pages`, mounts the `CookieConsentBanner` once in `app.js`, adds the `larafoundry.terms` middleware to its web group, and schedules `larafoundry:purge-deleted-accounts`. The operator "Legal pages" screen is wired into the core admin menu; the public legal and consent routes load from the package. Full reference: [docs/legal-gdpr.md](docs/legal-gdpr.md).
 
 ### `v0.16.x` Settings, profile and email templates
 
@@ -34,14 +47,14 @@ Three small service modules most SaaS apps rebuild by hand: a generic settings s
 
 ### `v0.15.x` Support tickets (helpdesk)
 
-A support channel between a host user and the platform operator: the customer opens a ticket, the operator answers from the console. Extracted from the production donor and rewritten as a self-contained module — no external ticket package.
+A support channel between a host user and the platform operator: the customer opens a ticket, the operator answers from the console. Extracted from the production donor and rewritten as a self-contained module - no external ticket package.
 
 | Component | What it does |
 |-----------|--------------|
-| User inbox | Every authenticated user reaches their own tickets from a header **Support** link (shipped in the core layout next to the bell). They open a ticket (title, message, categories), see the conversation and reply. The list is scoped to the caller, hides long-resolved tickets and is ordered by the support workflow. A **blocked** user can still reach support — it is their only channel to the operator. |
-| Status workflow | Status is never picked by hand — it is derived from the action: a user-opened ticket is `wait-moderator`, an operator reply moves it to `wait-customer`, a user reply reopens it, and the operator closes it to `resolved`. |
+| User inbox | Every authenticated user reaches their own tickets from a header **Support** link (shipped in the core layout next to the bell). They open a ticket (title, message, categories), see the conversation and reply. The list is scoped to the caller, hides long-resolved tickets and is ordered by the support workflow. A **blocked** user can still reach support - it is their only channel to the operator. |
+| Status workflow | Status is never picked by hand - it is derived from the action: a user-opened ticket is `wait-moderator`, an operator reply moves it to `wait-customer`, a user reply reopens it, and the operator closes it to `resolved`. |
 | Operator console | The super-admin queue (filters + counters), one ticket's thread, reply, close, set priority and toggle categories/labels. Every operator mutation (status / priority / category / label) is written to the **activity log**; a reply or an operator-opened ticket pushes an **in-app notification** to the author (the phase 4.1 `NotificationService` seam). |
-| Security | Message bodies render as **text, never `v-html`** (closing the donor's XSS hole); ticket creation and replies are **rate-limited**; the user side is authorized by ownership and the operator side by the super-admin gate. Categories and labels are config-driven slug lists stored as JSON — no extra tables. |
+| Security | Message bodies render as **text, never `v-html`** (closing the donor's XSS hole); ticket creation and replies are **rate-limited**; the user side is authorized by ownership and the operator side by the super-admin gate. Categories and labels are config-driven slug lists stored as JSON - no extra tables. |
 
 > The host adds `use HasTickets` to its user model (the `tickets()` relation). The user routes, the operator console and the **Support** header link / menu item ship in the core, so a host that renders through `LayoutSwitcher` gets the whole helpdesk with no frontend wiring. It optionally publishes `larafoundry-tickets-config` to extend the category/label lists.
 
@@ -454,7 +467,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |
-| 5.3 | Legal / GDPR (account deletion, data export, cookie / terms consent) | 🛠️ Next |
+| 5.3 | [Legal / GDPR](docs/legal-gdpr.md) (legal pages editor, cookie / terms consent, data export, grace-period account erasure) | ✅ Shipped (`v0.17.x`) |
 | 4.x / 5.x | Feature voting, affiliate program, documentation, SEO, onboarding | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
@@ -463,7 +476,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 667 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, and the settings / profile / email-template modules, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log, and an email-template editor built so a database-stored template can never execute code) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
+- **Pest** on every piece of the core: 743 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, the settings / profile / email-template modules, and the legal / GDPR layer (editable legal pages, the fail-open Terms gate, consent, data export and the grace-period account-erasure cron), many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log, and an email-template editor built so a database-stored template can never execute code) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.
