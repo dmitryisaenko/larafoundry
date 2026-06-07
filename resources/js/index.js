@@ -92,6 +92,9 @@ export { default as SettingsForm } from './components/settings/SettingsForm.vue'
 export { default as EmailTemplateEditor } from './components/email/EmailTemplateEditor.vue';
 export { default as EmailPreviewFrame } from './components/email/EmailPreviewFrame.vue';
 
+// Legal / GDPR (phase 5.3)
+export { default as LegalPageEditor } from './components/legal/LegalPageEditor.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';

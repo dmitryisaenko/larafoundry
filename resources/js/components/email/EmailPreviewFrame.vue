@@ -12,6 +12,9 @@
  */
 defineProps({
     html: { type: String, default: '' },
+    // The iframe's accessible title. Defaults to the email-editor wording; the
+    // legal-page editor reuses this frame and passes its own.
+    title: { type: String, default: 'Email preview' },
 });
 </script>
 
@@ -20,6 +23,6 @@ defineProps({
         :srcdoc="html"
         sandbox="allow-same-origin"
         class="h-96 w-full rounded-md border border-border bg-white"
-        title="Email preview"
+        :title="title"
     />
 </template>

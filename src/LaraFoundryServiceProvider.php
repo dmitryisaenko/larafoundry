@@ -44,6 +44,9 @@ use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole;
+use Dmitryisaenko\LaraFoundry\Legal\Models\LegalPage;
+use Dmitryisaenko\LaraFoundry\Legal\Policies\LegalPagePolicy;
+use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\AvatarGenerator;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
 use Dmitryisaenko\LaraFoundry\Media\Support\FileStorageManager;
@@ -102,6 +105,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-notifications.php', 'larafoundry-notifications');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-tickets.php', 'larafoundry-tickets');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-email.php', 'larafoundry-email');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-legal.php', 'larafoundry-legal');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -123,6 +127,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerProfile();
         $this->registerSettings();
         $this->registerEmail();
+        $this->registerLegal();
+    }
+
+    /**
+     * Wire the legal-page editor (phase 5.3): the legal-page repository.
+     *
+     * A singleton mirroring {@see registerEmail()} so the admin editor, the public
+     * controller and the (phase 5.3/B) terms re-accept gate share one config-driven
+     * store. The registry of editable pages lives in
+     * `config('larafoundry-legal.pages')`; the database holds only the super-admin's
+     * published pages. The viewing/editing policy is registered in {@see bootLegal()}.
+     */
+    protected function registerLegal(): void
+    {
+        $this->app->singleton(LegalPageRepository::class);
     }
 
     /**
@@ -341,6 +360,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/legal.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
 
@@ -354,6 +374,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootMedia();
         $this->bootTickets();
         $this->bootEmail();
+        $this->bootLegal();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -469,6 +490,21 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function bootEmail(): void
     {
         Gate::policy(EmailTemplate::class, EmailTemplatePolicy::class);
+    }
+
+    /**
+     * Boot the legal-page editor (phase 5.3): its super-admin policy.
+     *
+     * The editor routes live in routes/admin.php behind the `larafoundry.admin`
+     * gate (loaded by bootAdmin); the public pages load in boot() (routes/legal.php,
+     * open to everyone). The policy here is the explicit, identity-level re-check the
+     * editor controller and form requests authorize against — defence in depth over
+     * the zone gate (mirrors decision D-5.1-3), since the body is HTML rendered into
+     * a public page.
+     */
+    protected function bootLegal(): void
+    {
+        Gate::policy(LegalPage::class, LegalPagePolicy::class);
     }
 
     /**
@@ -618,6 +654,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-email.php' => config_path('larafoundry-email.php'),
         ], 'larafoundry-email-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-legal.php' => config_path('larafoundry-legal.php'),
+        ], 'larafoundry-legal-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

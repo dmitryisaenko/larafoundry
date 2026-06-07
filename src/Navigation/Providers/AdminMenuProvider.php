@@ -13,8 +13,8 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
  * Populates the 'admin' level with the platform surfaces the core ships:
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
  * Activity Log (phase 2.1), Broadcasts (phase 4.1), Support tickets
- * (phase 4.2), the Email templates editor and Settings (phase 5.1). The whole
- * zone already sits behind the
+ * (phase 4.2), the Email templates editor and Settings (phase 5.1) and the Legal
+ * pages editor (phase 5.3). The whole zone already sits behind the
  * `larafoundry.admin` gate (super-admin via VisitorStatus), so these items carry
  * NO permission slug — the zone gate is the authority.
  *
@@ -77,6 +77,13 @@ class AdminMenuProvider implements MenuProviderInterface
                 icon: 'mail',
                 order: 32,
                 activePatterns: ['admin.email-templates.*'],
+            ),
+            new MenuItem(
+                labelKey: 'Legal pages',
+                route: 'admin.legal-pages.index',
+                icon: 'legal',
+                order: 33,
+                activePatterns: ['admin.legal-pages.*'],
             ),
             new MenuItem(
                 labelKey: 'Settings',

@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
+use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
 use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
@@ -115,6 +116,19 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::post('{code}/test', [EmailTemplateController::class, 'sendTest'])
                     ->middleware('throttle:'.config('larafoundry-email.test_email.throttle', '5,1'))
                     ->name('test');
+            });
+
+            // Legal pages (phase 5.3): edit-only over the shipped pages (Terms,
+            // Privacy, Cookie policy), with a server-rendered, sanitized preview.
+            // The `{slug}` is a registry key (not a model binding) — a page has a
+            // DB row only once published, so the controller resolves it from the
+            // registry and 404s an unknown slug. The public pages are in
+            // routes/legal.php (open to everyone); this is the operator editor.
+            Route::prefix('legal-pages')->name('legal-pages.')->group(function () {
+                Route::get('/', [LegalPageController::class, 'index'])->name('index');
+                Route::get('{slug}/edit', [LegalPageController::class, 'edit'])->name('edit');
+                Route::put('{slug}', [LegalPageController::class, 'update'])->name('update');
+                Route::post('{slug}/preview', [LegalPageController::class, 'preview'])->name('preview');
             });
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])
