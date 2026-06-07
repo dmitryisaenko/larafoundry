@@ -88,6 +88,10 @@ export { default as SupportLink } from './components/tickets/SupportLink.vue';
 // Settings (phase 5.1)
 export { default as SettingsForm } from './components/settings/SettingsForm.vue';
 
+// Email templates (phase 5.1)
+export { default as EmailTemplateEditor } from './components/email/EmailTemplateEditor.vue';
+export { default as EmailPreviewFrame } from './components/email/EmailPreviewFrame.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';

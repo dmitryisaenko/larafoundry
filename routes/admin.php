@@ -7,6 +7,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
+use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
 use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
@@ -100,6 +101,21 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             // App-scope settings (phase 5.1).
             Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
             Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+
+            // Email templates (phase 5.1): edit-only over the shipped templates,
+            // with a server-rendered preview and a rate-limited test send. The
+            // `{code}` is a registry key (not a model binding) — a template has a
+            // DB row only once edited, so the controller resolves it from the
+            // registry and 404s an unknown code.
+            Route::prefix('email-templates')->name('email-templates.')->group(function () {
+                Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+                Route::get('{code}/edit', [EmailTemplateController::class, 'edit'])->name('edit');
+                Route::put('{code}', [EmailTemplateController::class, 'update'])->name('update');
+                Route::post('{code}/preview', [EmailTemplateController::class, 'preview'])->name('preview');
+                Route::post('{code}/test', [EmailTemplateController::class, 'sendTest'])
+                    ->middleware('throttle:'.config('larafoundry-email.test_email.throttle', '5,1'))
+                    ->name('test');
+            });
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])
                 ->name('impersonate.take');

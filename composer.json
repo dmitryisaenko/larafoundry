@@ -14,6 +14,7 @@
     "require": {
         "php": "^8.2",
         "bacon/bacon-qr-code": "^3.0",
+        "ezyang/htmlpurifier": "^4.18",
         "illuminate/contracts": "^12.0 || ^13.0",
         "illuminate/support": "^12.0 || ^13.0",
         "inertiajs/inertia-laravel": "^2.0 || ^3.0",

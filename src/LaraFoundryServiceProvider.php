@@ -37,6 +37,9 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
+use Dmitryisaenko\LaraFoundry\Email\Models\EmailTemplate;
+use Dmitryisaenko\LaraFoundry\Email\Policies\EmailTemplatePolicy;
+use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole;
@@ -94,6 +97,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-media.php', 'larafoundry-media');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-notifications.php', 'larafoundry-notifications');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-tickets.php', 'larafoundry-tickets');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-email.php', 'larafoundry-email');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -114,6 +118,22 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerNotifications();
         $this->registerProfile();
         $this->registerSettings();
+        $this->registerEmail();
+    }
+
+    /**
+     * Wire the email-template editor (phase 5.1): the template repository.
+     *
+     * A singleton so the editor, the renderer and every future Notification that
+     * looks a template up share one config-driven store (a host can rebind a
+     * richer one without touching call sites). The registry of editable templates
+     * lives in `config('larafoundry-email.templates')`; the database holds only a
+     * super-admin's overrides. The viewing/editing policy is registered in
+     * {@see bootEmail()}.
+     */
+    protected function registerEmail(): void
+    {
+        $this->app->singleton(EmailTemplateRepository::class);
     }
 
     /**
@@ -328,6 +348,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootAdmin();
         $this->bootMedia();
         $this->bootTickets();
+        $this->bootEmail();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -432,6 +453,20 @@ class LaraFoundryServiceProvider extends ServiceProvider
     }
 
     /**
+     * Boot the email-template editor (phase 5.1): its super-admin policy.
+     *
+     * The editor routes live in routes/admin.php behind the `larafoundry.admin`
+     * gate (loaded by bootAdmin); the policy here is the explicit, identity-level
+     * re-check the controller and form requests authorize against — defence in
+     * depth over the zone gate (decision D-5.1-3), since the body is HTML rendered
+     * into outgoing mail.
+     */
+    protected function bootEmail(): void
+    {
+        Gate::policy(EmailTemplate::class, EmailTemplatePolicy::class);
+    }
+
+    /**
      * Register the core's auth middleware aliases.
      *
      * `larafoundry.account.active` enforces blocked/deleted gating;
@@ -525,6 +560,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-tickets.php' => config_path('larafoundry-tickets.php'),
         ], 'larafoundry-tickets-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-email.php' => config_path('larafoundry-email.php'),
+        ], 'larafoundry-email-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),
