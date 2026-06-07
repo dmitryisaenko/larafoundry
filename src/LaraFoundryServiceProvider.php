@@ -19,6 +19,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
+use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendWelcomeNotification;
 use Dmitryisaenko\LaraFoundry\Auth\Qr\Console\Commands\PruneSignInRequestsCommand;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Authorization\Console\Commands\SyncPermissionsCommand;
@@ -73,11 +74,14 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
@@ -338,6 +342,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
 
         $this->registerAuthMiddleware();
         $this->registerAuthEventListeners();
@@ -514,24 +519,73 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $forgetOtp = fn () => session()->forget(EnsureAdminOtpVerified::SESSION_KEY);
         Event::listen(Login::class, $forgetOtp);
         Event::listen(Logout::class, $forgetOtp);
+
+        // Welcome the user once their address is verified (phase 5.1) — on
+        // Verified, not Registered, so it follows the verification mail.
+        Event::listen(Verified::class, SendWelcomeNotification::class);
     }
 
     /**
-     * Localise the email-verification mail through the core's translations.
+     * Route the core's auth mails through the editable email templates, with a
+     * localised static fallback (phase 5.1, decisions D-5.1-8/12).
      *
-     * Decision D3-loc: the core owns the wording (so it ships translated out of
-     * the box and follows the locale standard), while Fortify/Laravel still own
-     * sending and link generation. The host overrides text via the published
-     * lang files and layout via `vendor:publish --tag=laravel-mail`.
+     * Verify-email and password-reset render from their `email_verification` /
+     * `password_reset` templates (a super-admin can rewrite the HTML); when a
+     * template is switched off, `mailMessage()` returns null and each closure
+     * falls back to a MailMessage built from the core's `larafoundry::auth`
+     * strings. Fortify/Laravel still own sending and link generation. Decision
+     * D3-loc still holds — the core owns the wording and ships it translated.
+     *
+     * The admin login-alert is intentionally NOT templated: it is an internal
+     * security notice to the operator, not a customer-facing mail, so it stays a
+     * plain translated MailMessage a super-admin cannot soften or break.
      */
     protected function localizeAuthMail(): void
     {
         VerifyEmail::toMailUsing(function (mixed $notifiable, string $url) {
+            $templated = app(EmailTemplateRepository::class)->mailMessage(
+                'email_verification',
+                $notifiable->locale ?? null,
+                ['name' => (string) ($notifiable->name ?? ''), 'verification_url' => $url],
+            );
+
+            if ($templated !== null) {
+                return $templated;
+            }
+
             return (new MailMessage)
                 ->subject(__('larafoundry::auth.verify_email.subject'))
                 ->line(__('larafoundry::auth.verify_email.intro'))
                 ->action(__('larafoundry::auth.verify_email.action'), $url)
                 ->line(__('larafoundry::auth.verify_email.outro'));
+        });
+
+        ResetPassword::toMailUsing(function (mixed $notifiable, string $token) {
+            $email = method_exists($notifiable, 'getEmailForPasswordReset')
+                ? $notifiable->getEmailForPasswordReset()
+                : ($notifiable->email ?? '');
+
+            // Rebuild the reset URL the way Laravel's default notification does,
+            // but never hard-depend on the route existing (package test context).
+            $url = Route::has('password.reset')
+                ? url(route('password.reset', ['token' => $token, 'email' => $email], false))
+                : url('/reset-password/'.$token.'?email='.urlencode((string) $email));
+
+            $templated = app(EmailTemplateRepository::class)->mailMessage(
+                'password_reset',
+                $notifiable->locale ?? null,
+                ['name' => (string) ($notifiable->name ?? ''), 'reset_url' => $url],
+            );
+
+            if ($templated !== null) {
+                return $templated;
+            }
+
+            return (new MailMessage)
+                ->subject(__('larafoundry::auth.reset_password.subject'))
+                ->line(__('larafoundry::auth.reset_password.intro'))
+                ->action(__('larafoundry::auth.reset_password.action'), $url)
+                ->line(__('larafoundry::auth.reset_password.outro'));
         });
     }
 
@@ -568,6 +622,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),
         ], 'larafoundry-pages');
+
+        $this->publishes([
+            __DIR__.'/../resources/views/mail' => resource_path('views/vendor/larafoundry/mail'),
+        ], 'larafoundry-mail-views');
 
         $this->publishes([
             __DIR__.'/../lang' => lang_path('vendor/larafoundry'),

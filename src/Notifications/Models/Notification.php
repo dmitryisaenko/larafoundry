@@ -28,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string $code
  * @property string $notification_type
  * @property string $status
+ * @property bool $send_mail
  * @property string|null $title_key
  * @property string|null $body_key
  * @property array<string, mixed>|null $params
@@ -49,6 +50,7 @@ class Notification extends Model
         'code',
         'notification_type',
         'status',
+        'send_mail',
         'title_key',
         'body_key',
         'params',
@@ -66,6 +68,7 @@ class Notification extends Model
     protected function casts(): array
     {
         return [
+            'send_mail' => 'boolean',
             'params' => 'array',
             'title_translations' => 'array',
             'body_translations' => 'array',

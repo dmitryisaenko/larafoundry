@@ -46,6 +46,8 @@ class StoreBroadcastNotificationRequest extends FormRequest
             'recipients.recentActivity' => ['nullable', 'in:1,24,168'],
             'recipients.role' => ['nullable', 'string', 'max:255'],
 
+            'send_mail' => ['nullable', 'boolean'],
+
             'visible_from' => ['nullable', 'date'],
             'visible_until' => ['nullable', 'date', 'after_or_equal:visible_from'],
         ];

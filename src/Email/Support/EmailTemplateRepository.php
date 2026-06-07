@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Email\Support;
 
 use Dmitryisaenko\LaraFoundry\Email\Models\EmailTemplate;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
@@ -164,6 +165,36 @@ class EmailTemplateRepository
             'html' => $this->sanitizer->clean($this->renderer->render($this->localized($resolved['body_html'], $locale), $data)),
             'text' => $this->renderer->render($this->localized($resolved['body_text'], $locale), $data),
         ];
+    }
+
+    /**
+     * Build a ready-to-return MailMessage for a notification from a template, or
+     * NULL to signal the caller to fall back to its own static MailMessage
+     * (decision D-5.1-8). This is the single seam the core's mail notifications
+     * use (verify-email, password-reset, welcome, company-invitation).
+     *
+     * Returns a MailMessage rather than a Mailable on purpose: the notification's
+     * MailChannel still owns addressing, which works for an ON-DEMAND notifiable
+     * (a company invite sent to a raw email with no user account) as well as a
+     * User. The rendered html is already purified by {@see self::render()}; the
+     * `larafoundry::mail` views echo the html/text parts raw.
+     *
+     * @param  array<string, scalar|null>  $data
+     */
+    public function mailMessage(string $code, ?string $locale, array $data): ?MailMessage
+    {
+        $rendered = $this->render($code, $locale, $data);
+
+        if ($rendered === null) {
+            return null;
+        }
+
+        return (new MailMessage)
+            ->subject($rendered['subject'])
+            ->view(
+                ['larafoundry::mail.html', 'larafoundry::mail.text'],
+                ['html' => $rendered['html'], 'text' => $rendered['text']],
+            );
     }
 
     /**

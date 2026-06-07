@@ -75,6 +75,21 @@ class CompanyInvitation extends Model
     }
 
     /**
+     * The user who issued the invitation (nullable — `invited_by` may be unset
+     * for imported/system invites). Used to fill the `inviter_name` template
+     * variable in the invitation email (phase 5.1).
+     *
+     * @return BelongsTo<Model, $this>
+     */
+    public function inviter(): BelongsTo
+    {
+        /** @var class-string<Model> $model */
+        $model = config('auth.providers.users.model');
+
+        return $this->belongsTo($model, 'invited_by');
+    }
+
+    /**
      * Whether the invitation is still pending and unexpired.
      */
     public function isActionable(): bool

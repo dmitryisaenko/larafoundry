@@ -19,6 +19,20 @@ return [
         'outro' => 'If you did not create an account, no further action is required.',
     ],
 
+    'reset_password' => [
+        'subject' => 'Reset your password',
+        'intro' => 'You are receiving this email because we received a password reset request for your account.',
+        'action' => 'Reset password',
+        'outro' => 'If you did not request a password reset, no further action is required.',
+    ],
+
+    'welcome' => [
+        'subject' => 'Welcome to :app',
+        'intro' => 'Welcome to :app. Your account is ready — sign in to get started.',
+        'action' => 'Sign in',
+        'outro' => 'If you need help, just reply to this email.',
+    ],
+
     'oauth' => [
         'invalid_provider' => 'That sign-in provider is not available.',
         'redirect_failed' => 'Could not start sign-in. Please try again.',

@@ -31,6 +31,7 @@ const form = useForm({
         recentActivity: props.notification?.recipients?.recentActivity ?? '',
         role: props.notification?.recipients?.role ?? '',
     },
+    send_mail: props.notification?.send_mail ?? false,
     visible_from: props.notification?.visible_from ?? '',
     visible_until: props.notification?.visible_until ?? '',
 });
@@ -108,6 +109,14 @@ function submit() {
                 <input v-model="form.recipients.role" type="text" :class="fieldClass" :placeholder="$t('Any role')">
             </div>
         </fieldset>
+
+        <label class="flex items-start gap-2 rounded-sm border border-border p-3 text-sm text-ink">
+            <input v-model="form.send_mail" type="checkbox" class="mt-0.5 rounded-sm border-border">
+            <span>
+                {{ $t('Also send by email') }}
+                <span class="mt-0.5 block text-xs text-ink-soft">{{ $t('Each recipient also gets this broadcast as an email.') }}</span>
+            </span>
+        </label>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

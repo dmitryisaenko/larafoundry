@@ -82,6 +82,7 @@ class BroadcastNotificationController extends Controller
                 'id' => $notification->id,
                 'code' => $notification->code,
                 'status' => $notification->status,
+                'send_mail' => $notification->send_mail,
                 'title_translations' => $notification->title_translations,
                 'body_translations' => $notification->body_translations,
                 'recipients' => $notification->recipient_filters,
@@ -164,6 +165,7 @@ class BroadcastNotificationController extends Controller
         return [
             'code' => $validated['code'],
             'notification_type' => 'admin',
+            'send_mail' => (bool) ($validated['send_mail'] ?? false),
             'title_translations' => $validated['title_translations'],
             'body_translations' => $validated['body_translations'] ?? null,
             'recipient_filters' => $recipients ?: null,

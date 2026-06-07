@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Notifications\Jobs;
 use Dmitryisaenko\LaraFoundry\Notifications\Events\BroadcastNotificationSent;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Filters\BroadcastRecipientFilter;
 use Dmitryisaenko\LaraFoundry\Notifications\Models\Notification;
+use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,9 +56,16 @@ class SendBroadcastNotificationJob implements ShouldQueue
 
         $batchSize = (int) config('larafoundry-notifications.broadcast.batch_size', 1000);
 
+        // Email the audience only when the broadcast opted in AND the global mail
+        // channel is on (decision D-5.1-14) — resolved once, not per chunk.
+        $withMail = $notification->send_mail && NotificationService::mailChannelEnabled();
+
+        /** @var class-string<Model> $model */
+        $model = config('auth.providers.users.model');
+
         $this->recipientQuery($notification)
             ->select('id')
-            ->chunkById($batchSize, function (Collection $users) use ($notification) {
+            ->chunkById($batchSize, function (Collection $users) use ($notification, $withMail, $model) {
                 $now = now();
 
                 $rows = $users->map(fn (Model $user) => [
@@ -70,6 +78,15 @@ class SendBroadcastNotificationJob implements ShouldQueue
 
                 if ($rows !== []) {
                     DB::table('larafoundry_notification_user')->insertOrIgnore($rows);
+                }
+
+                // Mail rides the same chunked job, so the audience scales the same
+                // way: one queued mail per recipient, never a single giant send.
+                if ($withMail) {
+                    NotificationService::dispatchInAppMail(
+                        $model::query()->findMany($users->modelKeys()),
+                        $notification->getKey(),
+                    );
                 }
             });
 
