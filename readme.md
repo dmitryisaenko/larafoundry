@@ -6,18 +6,31 @@ LaraFoundry is a modular SaaS foundation being extracted from [Kohana.io](https:
 
 This is built **in public** and **by extraction, not rewrite**. Each piece is pulled from battle-tested production code, modernized, hardened, covered with Pest, reviewed, and only then tagged. The README tracks what is *actually in the package*, not what is planned. See the roadmap for what's coming.
 
-**Tech stack:** Laravel 12 / 13, PHP 8.2+, Inertia 2 / 3, Vue 3, Tailwind CSS 4, Ziggy, Pest. Authentication builds on [Laravel Fortify](https://laravel.com/docs/fortify) and [Socialite](https://laravel.com/docs/socialite); the activity log builds on [spatie/laravel-activitylog](https://github.com/spatie/laravel-activitylog); the media library builds on [intervention/image](https://image.intervention.io) and [laravolt/avatar](https://github.com/laravolt/avatar).
+**Tech stack:** Laravel 12 / 13, PHP 8.2+, Inertia 2 / 3, Vue 3, Tailwind CSS 4, Ziggy, Pest. Authentication builds on [Laravel Fortify](https://laravel.com/docs/fortify) and [Socialite](https://laravel.com/docs/socialite); the activity log builds on [spatie/laravel-activitylog](https://github.com/spatie/laravel-activitylog); the media library builds on [intervention/image](https://image.intervention.io) and [laravolt/avatar](https://github.com/laravolt/avatar); the email-template editor builds on [ezyang/htmlpurifier](https://github.com/ezyang/htmlpurifier).
 
 ```bash
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.14.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, and the in-app notification centre with super-admin broadcasts.**
+> ⚠️ **Status: early but growing. Current release is `v0.16.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, and the settings / profile / email-template service modules.**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.16.x` Settings, profile and email templates
+
+Three small service modules most SaaS apps rebuild by hand: a generic settings store, a self-service profile hub, and a database-backed editor for the wording of the core's transactional emails. They ship together, a host wires them in one pass, and they need no new trait on the user model.
+
+| Component | What it does |
+|-----------|--------------|
+| Settings store | One generic key-value store with three scopes (app, company, user), driven by a **fail-closed** config registry: only declared keys can be read or written, each value cast and validated against its declared rule. Company settings are gated by RBAC and scoped to the active company, resolved server-side. App keys flagged `public` can be shared to the frontend. Backed by `larafoundry_settings`, cached per scope (no Redis). |
+| Profile hub | `/profile`, one tabbed page over name and email, password, two-factor, PIN, sessions, avatar and UI preferences. Changing the email asks for the current password, resets verification and revokes other sessions. UI preferences go through an allowlist into `users.ui_settings` (the donor let any key into that column). Account deletion (owner-guarded) and a data-export registry are the seams for the GDPR phase. |
+| Email template editor | A super-admin edits the subject and HTML body, per locale, of the core's verification / reset / welcome / invitation emails, stored in the database. The renderer is a **single-pass `{{token}}` replace, never Blade or eval**, so a stored template cannot execute code (no SSTI / RCE). On top: a strict allowed-variable check on save (422 otherwise), HTMLPurifier on the body, and a sandboxed-iframe preview. The core emails fall back to the static lang wording if a template is deactivated, so mail never breaks. |
+| Notification mail channel | The in-app notification channel (`v0.14.x`) can now also send email, **opt-in per notification** under a master switch, so enabling the module never starts surprise mailings. |
+
+> No new trait on `User`. The host runs `php artisan migrate` (the settings, email-template and `send_mail` migrations) and `vendor:publish --tag=larafoundry-pages`. The super-admin settings / email-template screens and the company-settings menu entry are wired into the core menus; the host links to the personal `/profile` and `/settings` from its own user menu, and optionally shares `Settings::publicSettings()` to the frontend. Full reference: [docs/settings-profile-email.md](docs/settings-profile-email.md).
 
 ### `v0.15.x` Support tickets (helpdesk)
 
@@ -440,7 +453,9 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.x | Billing add-on (`larafoundry-billing`: real payments via Stripe / Paddle, plans, promo codes, trials, subscription management, revenue metrics) | 💳 Available (paid add-on, see [larafoundry.com](https://larafoundry.com)) |
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
-| 4.x | [Tickets](docs/modules/tickets.md), feature voting, documentation | 📋 Planned |
+| 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |
+| 5.3 | Legal / GDPR (account deletion, data export, cookie / terms consent) | 🛠️ Next |
+| 4.x / 5.x | Feature voting, affiliate program, documentation, SEO, onboarding | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -448,7 +463,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 497 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard and the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log) with the billing access gate pinned fail-closed both ways.
+- **Pest** on every piece of the core: 667 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, and the settings / profile / email-template modules, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log, and an email-template editor built so a database-stored template can never execute code) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

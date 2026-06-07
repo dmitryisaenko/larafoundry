@@ -50,6 +50,7 @@ module's accurate page does not exist yet, an early planning draft lives under
 | Multi-tenancy | 1.2 | [multi-tenancy.md](multi-tenancy.md) |
 | Notifications | 4.1 | [notifications.md](notifications.md) |
 | Tickets and helpdesk | 4.2 | [tickets.md](tickets.md) |
+| Settings, profile and email templates | 5.1 | [settings-profile-email.md](settings-profile-email.md) |
 | Authentication and sessions | 1.1 | early draft: [modules/authentication.md](modules/authentication.md) |
 | Roles and permissions | 1.3 | early draft: [modules/traits_middlewares.md](modules/traits_middlewares.md) |
 | Activity log | 2.1 | early draft: [modules/logging.md](modules/logging.md) |
