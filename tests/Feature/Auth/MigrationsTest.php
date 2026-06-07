@@ -15,7 +15,7 @@ it('adds the identity columns to the users table', function () {
         'provider_id', 'provider_name', 'provider_token', 'provider_refresh_token',
         'avatar', 'country', 'locale', 'sex', 'birth_date', 'ui_settings',
         'is_admin', 'user_blocked_at', 'user_blocked_status', 'block_code',
-        'user_deleted_at', 'last_login_at', 'last_activity_at',
+        'user_deleted_at', 'user_purged_at', 'last_login_at', 'last_activity_at',
     ] as $column) {
         expect(Schema::hasColumn('users', $column))->toBeTrue("users.$column missing");
     }

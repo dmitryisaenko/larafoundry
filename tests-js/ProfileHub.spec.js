@@ -38,7 +38,7 @@ import DangerZone from '../resources/js/Pages/Profile/sections/DangerZone.vue';
 function mountHub(props = {}) {
     return mount(ProfileHub, {
         props: {
-            profile: { name: 'A', email: 'a@x.test', has_password: true, email_verified: true, avatar_url: '' },
+            profile: { name: 'A', email: 'a@x.test', has_password: true, is_oauth_only: false, email_verified: true, avatar_url: '' },
             sessions: [],
             uiSettings: {},
             uiSettingsSchema: [],

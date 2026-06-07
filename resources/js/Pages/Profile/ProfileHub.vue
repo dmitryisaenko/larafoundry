@@ -86,7 +86,11 @@ const activeTab = ref('profile');
                     :schema="uiSettingsSchema"
                 />
 
-                <DangerZone v-else-if="activeTab === 'danger'" :can-delete="canDeleteAccount">
+                <DangerZone
+                    v-else-if="activeTab === 'danger'"
+                    :can-delete="canDeleteAccount"
+                    :oauth-only="profile.is_oauth_only"
+                >
                     <DataExport />
                 </DangerZone>
             </div>

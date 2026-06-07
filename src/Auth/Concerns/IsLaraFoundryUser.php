@@ -88,6 +88,7 @@ trait IsLaraFoundryUser
             'birth_date' => 'date:Y-m-d',
             'user_blocked_at' => 'datetime',
             'user_deleted_at' => 'datetime',
+            'user_purged_at' => 'datetime',
             'last_login_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'ui_settings' => 'array',
@@ -229,6 +230,18 @@ trait IsLaraFoundryUser
     public function isDeleted(): bool
     {
         return $this->getAttribute('user_deleted_at') !== null;
+    }
+
+    /**
+     * Whether the account has been irreversibly purged (anonymised) by the
+     * grace-period erasure command (phase 5.3).
+     *
+     * `user_deleted_at` is reversible during the grace window; once
+     * `user_purged_at` is set the identity is gone and cannot be restored.
+     */
+    public function isPurged(): bool
+    {
+        return $this->getAttribute('user_purged_at') !== null;
     }
 
     /**

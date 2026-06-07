@@ -72,6 +72,26 @@ return [
         'except_prefixes' => [],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Account erasure (phase 5.3 part D — GDPR right to be forgotten)
+    |--------------------------------------------------------------------------
+    | Self-deletion is a reversible soft-delete (`user_deleted_at`) that starts a
+    | grace clock; the `larafoundry:purge-deleted-accounts` command irreversibly
+    | anonymises an account once it has sat soft-deleted for `grace_days` (default
+    | 30), giving the user a window to change their mind (a super-admin can
+    | restore them via the console during it). The host schedules the command
+    | daily — the core does not own a scheduler.
+    |
+    | `anonymized_email_domain` is the domain anonymised emails are minted under
+    | (`deleted-{id}@…`); the RFC 2606 reserved `.invalid` TLD can never be a
+    | deliverable address, so an anonymised account is unreachable by mail.
+    */
+    'erasure' => [
+        'grace_days' => 30,
+        'anonymized_email_domain' => 'deleted.invalid',
+    ],
+
     'pages' => [
 
         // Условия использования.

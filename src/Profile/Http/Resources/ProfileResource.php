@@ -43,6 +43,10 @@ class ProfileResource extends JsonResource
             // OAuth-only users have no local password, so the hub hides the
             // password tab and the email/delete flows that need current_password.
             'has_password' => $user->getAttribute('password') !== null,
+            // Mirrors DeleteAccountRequest::isOauthOnly() exactly so the danger
+            // zone branches its deletion form on the SAME predicate the server
+            // validates against (not merely "no password").
+            'is_oauth_only' => method_exists($user, 'isOauthOnly') && $user->isOauthOnly(),
         ];
     }
 }

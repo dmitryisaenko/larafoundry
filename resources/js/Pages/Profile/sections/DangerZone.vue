@@ -2,10 +2,16 @@
 /**
  * Danger zone — account deletion (phase 5.1), and the slot phase 5.3 grows into.
  *
- * Deleting requires the current password and is blocked server-side for a user
- * who still owns a company; `canDelete` mirrors that so the control hides when
- * deletion would be refused. The trailing <slot> is where phase 5.3 adds the
- * personal-data export (download) without reworking this section.
+ * Deletion is a grace-period erasure (phase 5.3): the account is signed out and
+ * hidden at once, then irreversibly anonymised after the grace window. It is
+ * blocked server-side for a user who still owns a company; `canDelete` mirrors
+ * that so the control hides when deletion would be refused.
+ *
+ * Confirmation depends on what the account has: a password account re-enters its
+ * password; an OAuth-only account (no local password, `oauthOnly`) retypes its
+ * email and ticks a box instead (decision D-5.3-11). The full form is sent either
+ * way — the backend validates only the fields that path needs. The trailing
+ * <slot> is where the personal-data export lives.
  */
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
@@ -13,11 +19,12 @@ import { InputField } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     canDelete: { type: Boolean, default: false },
+    oauthOnly: { type: Boolean, default: false },
 });
 
 const confirming = ref(false);
 
-const form = useForm({ current_password: '' });
+const form = useForm({ current_password: '', email: '', confirm_deletion: false });
 
 function submit() {
     form.delete('/profile/account', {
@@ -52,17 +59,48 @@ function submit() {
                 </button>
 
                 <form v-else class="flex flex-col gap-3" @submit.prevent="submit">
-                    <p class="text-sm text-ink">
-                        {{ $t('Please enter your password to confirm you want to permanently delete your account.') }}
-                    </p>
-                    <InputField
-                        v-model="form.current_password"
-                        name="current_password"
-                        type="password"
-                        :title="$t('Current password')"
-                        :errors="form.errors"
-                        autocomplete="current-password"
-                    />
+                    <!-- OAuth-only accounts have no password: confirm by retyping
+                         the email and ticking an explicit box. -->
+                    <template v-if="oauthOnly">
+                        <p class="text-sm text-ink">
+                            {{ $t('Please type your email address to confirm you want to permanently delete your account.') }}
+                        </p>
+                        <InputField
+                            v-model="form.email"
+                            name="email"
+                            type="email"
+                            :title="$t('Email address')"
+                            :errors="form.errors"
+                            autocomplete="off"
+                        />
+                        <label class="flex items-start gap-2 text-sm text-ink">
+                            <input
+                                v-model="form.confirm_deletion"
+                                type="checkbox"
+                                name="confirm_deletion"
+                                class="mt-0.5 rounded-sm border-border"
+                            >
+                            <span>{{ $t('I understand this action is permanent and cannot be undone.') }}</span>
+                        </label>
+                        <span v-if="form.errors.confirm_deletion" class="text-xs text-danger">
+                            {{ form.errors.confirm_deletion }}
+                        </span>
+                    </template>
+
+                    <template v-else>
+                        <p class="text-sm text-ink">
+                            {{ $t('Please enter your password to confirm you want to permanently delete your account.') }}
+                        </p>
+                        <InputField
+                            v-model="form.current_password"
+                            name="current_password"
+                            type="password"
+                            :title="$t('Current password')"
+                            :errors="form.errors"
+                            autocomplete="current-password"
+                        />
+                    </template>
+
                     <div class="flex gap-3">
                         <button
                             type="submit"

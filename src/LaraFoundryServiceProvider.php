@@ -62,12 +62,16 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\RbacPolicyChecker;
 use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsCommand;
 use Dmitryisaenko\LaraFoundry\Notifications\Providers\NotificationsUserDataExporter;
+use Dmitryisaenko\LaraFoundry\Notifications\Providers\NotificationsUserDataPurger;
 use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
+use Dmitryisaenko\LaraFoundry\Profile\Console\Commands\PurgeDeletedAccountsCommand;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\ConsentExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfileExporter;
+use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfilePurger;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\UiSettingsExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\UserSessionsExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataExportRegistry;
+use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataPurgeRegistry;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
@@ -80,6 +84,7 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tickets\Models\Ticket;
 use Dmitryisaenko\LaraFoundry\Tickets\Policies\TicketPolicy;
 use Dmitryisaenko\LaraFoundry\Tickets\Providers\TicketsUserDataExporter;
+use Dmitryisaenko\LaraFoundry\Tickets\Providers\TicketsUserDataPurger;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
@@ -206,6 +211,16 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 ->addProvider($app->make(UserSessionsExporter::class))
                 ->addProvider($app->make(UiSettingsExporter::class))
                 ->addProvider($app->make(ConsentExporter::class));
+        });
+
+        // The symmetric erasure registry (phase 5.3): seeded with the core purger
+        // that anonymises the identity; the helpdesk and notification modules add
+        // their own purgers from bootTickets() / bootNotifications(), exactly as on
+        // the export side. The PurgeDeletedAccountsCommand runs it past the grace
+        // period (decision D-5.3-3).
+        $this->app->singleton(UserDataPurgeRegistry::class, function ($app) {
+            return (new UserDataPurgeRegistry)
+                ->addProvider($app->make(CoreUserProfilePurger::class));
         });
     }
 
@@ -406,6 +421,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 SyncPermissionsCommand::class,
                 PruneSignInRequestsCommand::class,
                 PruneNotificationsCommand::class,
+                PurgeDeletedAccountsCommand::class,
             ]);
         }
     }
@@ -505,6 +521,9 @@ class LaraFoundryServiceProvider extends ServiceProvider
 
         $this->app->make(UserDataExportRegistry::class)
             ->addProvider($this->app->make(TicketsUserDataExporter::class));
+
+        $this->app->make(UserDataPurgeRegistry::class)
+            ->addProvider($this->app->make(TicketsUserDataPurger::class));
     }
 
     /**
@@ -520,6 +539,9 @@ class LaraFoundryServiceProvider extends ServiceProvider
     {
         $this->app->make(UserDataExportRegistry::class)
             ->addProvider($this->app->make(NotificationsUserDataExporter::class));
+
+        $this->app->make(UserDataPurgeRegistry::class)
+            ->addProvider($this->app->make(NotificationsUserDataPurger::class));
     }
 
     /**

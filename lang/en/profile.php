@@ -37,6 +37,8 @@ return [
     'account' => [
         'deleted' => 'Your account has been deleted.',
         'owns_company' => 'You still own one or more companies. Transfer or delete them before deleting your account.',
+        'confirm_email' => 'Please type your exact email address to confirm.',
+        'confirm_required' => 'Please confirm you understand this cannot be undone.',
     ],
 
 ];

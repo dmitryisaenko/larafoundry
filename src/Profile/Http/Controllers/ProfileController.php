@@ -63,13 +63,14 @@ class ProfileController extends Controller
     /**
      * Whether the user may delete their account (mirrors the server-side guard
      * in {@see DeleteUserAccount}).
+     *
+     * Only the owner-with-company guard blocks deletion: an OAuth-only user (no
+     * local password) now deletes through the email-confirmation path (phase 5.3,
+     * decision D-5.3-11), so a missing password no longer hides the control — the
+     * danger zone branches its form on `profile.has_password` instead.
      */
     protected function canDeleteAccount(mixed $user): bool
     {
-        if (method_exists($user, 'ownedCompanies') && $user->ownedCompanies()->exists()) {
-            return false;
-        }
-
-        return $user->getAttribute('password') !== null;
+        return ! (method_exists($user, 'ownedCompanies') && $user->ownedCompanies()->exists());
     }
 }

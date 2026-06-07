@@ -158,6 +158,24 @@ class SettingsRepository
     }
 
     /**
+     * Delete every user-scoped setting row for one user and bust its cache.
+     *
+     * The erasure counterpart of the per-user reads: account purge (phase 5.3)
+     * removes the user's stored UI preferences and consent state here, so no
+     * settings row outlives the anonymised identity. The consent PROOF is kept in
+     * the activity log (decision D-5.3-8); this only clears the mutable state.
+     */
+    public function forgetAllForUser(int|string $userId): void
+    {
+        Setting::query()
+            ->where('scope', 'user')
+            ->where('scope_id', (string) $userId)
+            ->delete();
+
+        $this->forget('user', $userId);
+    }
+
+    /**
      * Every registered key of a scope with its resolved value (stored or default).
      *
      * @return array<string, mixed>

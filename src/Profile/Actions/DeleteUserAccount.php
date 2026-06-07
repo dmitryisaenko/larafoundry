@@ -21,9 +21,12 @@ use Illuminate\Validation\ValidationException;
  *
  * Deletion mirrors the operator path (phase 2.3 Admin\UserController::destroy):
  * a REVERSIBLE soft-delete via the `user_deleted_at` identity column, plus a
- * purge of the tracked sessions. True erasure / anonymisation and the personal-
- * data export are phase 5.3 — this action is their wiring point (the
- * UserDataExportRegistry seam runs here before deletion in that phase).
+ * purge of the tracked sessions. This is the START of a grace period (phase 5.3,
+ * decision D-5.3-3): the account is hidden and signed out immediately, and the
+ * `larafoundry:purge-deleted-accounts` command irreversibly anonymises it once
+ * the grace window elapses (a super-admin can still restore it until then). The
+ * personal-data export and the symmetric purge registry are the other halves of
+ * phase 5.3.
  */
 class DeleteUserAccount
 {
@@ -46,11 +49,15 @@ class DeleteUserAccount
         $user->forceFill(['user_deleted_at' => now()])->save();
 
         // Audited like the operator delete, so a self-deletion is traceable. The
-        // causer is the user themselves (still authenticated at this point).
+        // causer is the user themselves (still authenticated at this point);
+        // `purge_after` records when the irreversible erasure becomes due.
         Activity::log(
             description: 'account.self_deleted',
             logName: 'default',
-            properties: ['user_id' => $user->getKey()],
+            properties: [
+                'user_id' => $user->getKey(),
+                'purge_after' => now()->addDays((int) config('larafoundry-legal.erasure.grace_days', 30))->toIso8601String(),
+            ],
             subject: $user,
             geoSync: false,
         );
