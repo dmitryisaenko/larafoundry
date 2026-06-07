@@ -16,6 +16,7 @@ import PasswordForm from './sections/PasswordForm.vue';
 import SessionsManager from './sections/SessionsManager.vue';
 import Appearance from './sections/Appearance.vue';
 import DangerZone from './sections/DangerZone.vue';
+import DataExport from './sections/DataExport.vue';
 import PinManager from './PinManager.vue';
 
 const props = defineProps({
@@ -85,7 +86,9 @@ const activeTab = ref('profile');
                     :schema="uiSettingsSchema"
                 />
 
-                <DangerZone v-else-if="activeTab === 'danger'" :can-delete="canDeleteAccount" />
+                <DangerZone v-else-if="activeTab === 'danger'" :can-delete="canDeleteAccount">
+                    <DataExport />
+                </DangerZone>
             </div>
         </div>
     </AppLayout>

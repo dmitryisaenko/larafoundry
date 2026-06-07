@@ -25,3 +25,15 @@ it('collects the user\'s own profile as the core export section', function () {
         ->and($export['profile']['email'])->toBe('ada@x.test')
         ->and($export['profile'])->not->toHaveKey('password');
 });
+
+it('wires every core and module section onto the registry', function () {
+    $user = User::create(['name' => 'Ada', 'email' => 'ada@x.test', 'password' => 'secret-pass']);
+
+    $export = app(UserDataExportRegistry::class)->collect($user);
+
+    // The four core sections (registerProfile) plus the two module sections
+    // (bootTickets / bootNotifications), filed in priority order.
+    expect(array_keys($export))->toBe([
+        'profile', 'sessions', 'ui_settings', 'consent', 'tickets', 'notifications',
+    ]);
+});

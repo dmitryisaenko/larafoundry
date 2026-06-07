@@ -352,6 +352,12 @@ return [
                 'in' => ['comfortable', 'compact'],
             ],
         ],
+
+        // Personal-data export (phase 5.3): how often a user may pull a full JSON
+        // dump of their own data. Format "<attempts>,<minutes>" — default 3/day.
+        'data_export' => [
+            'throttle' => '3,1440',
+        ],
     ],
 
     /*

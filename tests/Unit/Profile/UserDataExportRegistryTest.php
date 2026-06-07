@@ -57,3 +57,11 @@ it('orders providers by priority, lowest first', function () {
     expect(array_keys($registry->collect(Mockery::mock(Authenticatable::class))))
         ->toBe(['a', 'b']);
 });
+
+it('rejects a second provider for an already-registered section key', function () {
+    $registry = (new UserDataExportRegistry)
+        ->addProvider(exportProvider('tickets', 10, []));
+
+    expect(fn () => $registry->addProvider(exportProvider('tickets', 20, [])))
+        ->toThrow(InvalidArgumentException::class);
+});

@@ -61,8 +61,12 @@ use Dmitryisaenko\LaraFoundry\Navigation\Providers\TenantMenuProvider;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\RbacPolicyChecker;
 use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsCommand;
+use Dmitryisaenko\LaraFoundry\Notifications\Providers\NotificationsUserDataExporter;
 use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
+use Dmitryisaenko\LaraFoundry\Profile\Providers\ConsentExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfileExporter;
+use Dmitryisaenko\LaraFoundry\Profile\Providers\UiSettingsExporter;
+use Dmitryisaenko\LaraFoundry\Profile\Providers\UserSessionsExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataExportRegistry;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
@@ -75,6 +79,7 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tickets\Models\Ticket;
 use Dmitryisaenko\LaraFoundry\Tickets\Policies\TicketPolicy;
+use Dmitryisaenko\LaraFoundry\Tickets\Providers\TicketsUserDataExporter;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
@@ -181,19 +186,26 @@ class LaraFoundryServiceProvider extends ServiceProvider
     }
 
     /**
-     * Wire the profile module (phase 5.1): the user-data export registry.
+     * Wire the profile module (phase 5.1 seam, phase 5.3 export): the user-data
+     * export registry.
      *
      * Mirrors {@see registerNavigation()} / {@see registerDashboard()} — a
-     * singleton registry seeded with the core's own provider, to which a host or
-     * module adds more by resolving it and calling addProvider. The personal-data
-     * export that consumes it is phase 5.3; the seam is wired now so it has
-     * providers to read when it lands.
+     * singleton registry to which a host or module adds more by resolving it and
+     * calling addProvider. Seeded here with the core sections the user owns
+     * directly: identity, tracked sessions, UI preferences and consent state. The
+     * helpdesk and notification modules add their own sections from
+     * {@see bootTickets()} / {@see bootNotifications()}; the
+     * {@see DataExportController} consumes {@see UserDataExportRegistry::collect()}
+     * to stream the JSON download (phase 5.3, decision D-5.3-4).
      */
     protected function registerProfile(): void
     {
         $this->app->singleton(UserDataExportRegistry::class, function ($app) {
             return (new UserDataExportRegistry)
-                ->addProvider($app->make(CoreUserProfileExporter::class));
+                ->addProvider($app->make(CoreUserProfileExporter::class))
+                ->addProvider($app->make(UserSessionsExporter::class))
+                ->addProvider($app->make(UiSettingsExporter::class))
+                ->addProvider($app->make(ConsentExporter::class));
         });
     }
 
@@ -382,6 +394,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootAdmin();
         $this->bootMedia();
         $this->bootTickets();
+        $this->bootNotifications();
         $this->bootEmail();
         $this->bootLegal();
 
@@ -481,10 +494,32 @@ class LaraFoundryServiceProvider extends ServiceProvider
      * guards the customer side. The new-ticket / reply lifecycle events
      * (TicketCreated / TicketReplied) are audited through the activity-log event
      * registry (config), not wired here.
+     *
+     * The helpdesk also contributes the user's own tickets to the personal-data
+     * export by adding its provider to the registry (phase 5.3) — the additive
+     * idiom a module/host uses to own its export section.
      */
     protected function bootTickets(): void
     {
         Gate::policy(Ticket::class, TicketPolicy::class);
+
+        $this->app->make(UserDataExportRegistry::class)
+            ->addProvider($this->app->make(TicketsUserDataExporter::class));
+    }
+
+    /**
+     * Boot the notification centre (phase 4.1): register its personal-data
+     * exporter (phase 5.3).
+     *
+     * The notification routes/console wiring lives elsewhere; this hook adds the
+     * module's section to the user-data export registry — the user's own inbox —
+     * the same additive idiom the helpdesk uses, keeping the export flow ignorant
+     * of every section.
+     */
+    protected function bootNotifications(): void
+    {
+        $this->app->make(UserDataExportRegistry::class)
+            ->addProvider($this->app->make(NotificationsUserDataExporter::class));
     }
 
     /**

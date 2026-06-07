@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Profile\Support;
 
 use Dmitryisaenko\LaraFoundry\Profile\Contracts\ExportsUserDataProvider;
 use Illuminate\Contracts\Auth\Authenticatable;
+use InvalidArgumentException;
 
 /**
  * Collects every registered {@see ExportsUserDataProvider} into one user-data
@@ -26,9 +27,24 @@ class UserDataExportRegistry
 
     /**
      * Register a provider, keeping the set ordered by priority (lower first).
+     *
+     * Section keys must be unique: providers are filed under their key, so a
+     * second provider sharing a key would silently overwrite the first's section.
+     * A host extending the export adds its own sections through here, so we fail
+     * loud on a collision rather than dropping data.
+     *
+     * @throws InvalidArgumentException when a provider with the same key() exists
      */
     public function addProvider(ExportsUserDataProvider $provider): self
     {
+        foreach ($this->providers as $existing) {
+            if ($existing->key() === $provider->key()) {
+                throw new InvalidArgumentException(
+                    "A user-data export provider for section [{$provider->key()}] is already registered.",
+                );
+            }
+        }
+
         $this->providers[] = $provider;
 
         usort(
