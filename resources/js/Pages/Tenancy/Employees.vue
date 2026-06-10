@@ -14,16 +14,21 @@ import { InputField, AppBaseLayout } from '@dmitryisaenko/larafoundry';
 const props = defineProps({
     employees: { type: Array, default: () => [] },
     invitations: { type: Array, default: () => [] },
+    // The active company's assignable roles ({ id, name }) for the optional
+    // role-on-invite select. '' = "Specify later" (no role), the default.
+    roles: { type: Array, default: () => [] },
     is_owner: { type: Boolean, default: false },
 });
 
-const inviteForm = useForm({ email: '' });
+const inviteForm = useForm({ email: '', role_id: '' });
 
 function invite() {
-    inviteForm.post('/employees/invite', {
-        preserveScroll: true,
-        onSuccess: () => inviteForm.reset('email'),
-    });
+    inviteForm
+        .transform((data) => ({ email: data.email, role_id: data.role_id || null }))
+        .post('/employees/invite', {
+            preserveScroll: true,
+            onSuccess: () => inviteForm.reset('email', 'role_id'),
+        });
 }
 
 function resend(id) {
@@ -89,6 +94,17 @@ function remove(userId) {
                         :errors="inviteForm.errors"
                         class="flex-1"
                     />
+                    <label class="flex flex-col gap-1 text-sm font-medium text-ink">
+                        <span>{{ $t('Role') }}</span>
+                        <select
+                            v-model="inviteForm.role_id"
+                            name="role_id"
+                            class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                        >
+                            <option value="">{{ $t('Specify later') }}</option>
+                            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                        </select>
+                    </label>
                     <button
                         type="submit"
                         :disabled="inviteForm.processing"

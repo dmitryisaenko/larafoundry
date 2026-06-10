@@ -17,13 +17,17 @@ import { InputField, TextareaField, AuthCard, AppBaseLayout } from '@dmitryisaen
 
 const props = defineProps({
     step: { type: Number, default: 1 },
+    // The active company's assignable roles ({ id, name }) for the optional
+    // role-on-invite select. Empty until the company exists.
+    roles: { type: Array, default: () => [] },
 });
 
 const current = ref(props.step);
 
 const step1 = useForm({ name: '', country: '', description: '' });
 const step2 = useForm({ logo: null });
-const step3 = useForm({ invitations: [''] });
+// Each invite carries an optional role_id ('' = "Specify later", the default).
+const step3 = useForm({ invitations: [{ email: '', role_id: '' }] });
 
 function submitStep1() {
     step1.post('/companies/create/step1', {
@@ -41,13 +45,15 @@ function submitStep2() {
 function submitStep3() {
     step3
         .transform((data) => ({
-            invitations: data.invitations.map((e) => e.trim()).filter(Boolean),
+            invitations: data.invitations
+                .map((invite) => ({ email: invite.email.trim(), role_id: invite.role_id || null }))
+                .filter((invite) => invite.email),
         }))
         .post('/companies/create/step3');
 }
 
 function addInvite() {
-    step3.invitations.push('');
+    step3.invitations.push({ email: '', role_id: '' });
 }
 
 function removeInvite(index) {
@@ -123,18 +129,29 @@ function removeInvite(index) {
                 </button>
             </form>
 
-            <!-- Step 3: invitations -->
+            <!-- Step 3: invitations (email + optional role) -->
             <form v-else class="flex flex-col gap-4" @submit.prevent="submitStep3">
-                <div v-for="(email, index) in step3.invitations" :key="index" class="flex items-end gap-2">
+                <div v-for="(invite, index) in step3.invitations" :key="index" class="flex items-end gap-2">
                     <InputField
-                        v-model="step3.invitations[index]"
+                        v-model="invite.email"
                         :title="index === 0 ? $t('Invite teammates by email') : ''"
-                        :name="`invitations.${index}`"
+                        :name="`invitations.${index}.email`"
                         type="email"
                         placeholder="teammate@example.com"
                         :errors="step3.errors"
                         class="flex-1"
                     />
+                    <label class="flex flex-col gap-1 text-sm font-medium text-ink">
+                        <span v-if="index === 0">{{ $t('Role') }}</span>
+                        <select
+                            v-model="invite.role_id"
+                            :name="`invitations.${index}.role_id`"
+                            class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                        >
+                            <option value="">{{ $t('Specify later') }}</option>
+                            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                        </select>
+                    </label>
                     <button
                         v-if="step3.invitations.length > 1"
                         type="button"

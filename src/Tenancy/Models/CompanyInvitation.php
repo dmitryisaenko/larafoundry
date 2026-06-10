@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Models;
 
+use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ use Illuminate\Support\Str;
  * the invited email, so a leaked token alone can't bind an attacker's account.
  *
  * @property string $email
+ * @property int|null $role_id
  * @property string $token
  * @property string $status
  * @property Carbon|null $expires_at
@@ -40,6 +42,7 @@ class CompanyInvitation extends Model
     protected $fillable = [
         'company_id',
         'email',
+        'role_id',
         'token',
         'status',
         'invited_by',
@@ -87,6 +90,21 @@ class CompanyInvitation extends Model
         $model = config('auth.providers.users.model');
 
         return $this->belongsTo($model, 'invited_by');
+    }
+
+    /**
+     * The company-scoped role to grant the invitee on acceptance (role-at-invite).
+     *
+     * Nullable — the default invite carries no role ("Specify later"). The role is
+     * always a company role (validated company-scoped at invite time); on accept
+     * the controller re-checks it still exists and belongs to this invitation's
+     * company before assigning, so a deleted/foreign role degrades to no grant.
+     *
+     * @return BelongsTo<Role, $this>
+     */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     /**

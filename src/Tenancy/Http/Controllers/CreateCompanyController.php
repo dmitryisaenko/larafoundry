@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Authorization\Actions\CloneCompanyRolesAction;
+use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Dmitryisaenko\LaraFoundry\Media\Actions\StoreUploadedFileAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateCompanyAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
@@ -12,9 +14,11 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\StoreCompanyStep1Request;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\StoreCompanyStep2Request;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\StoreCompanyStep3Request;
 use Dmitryisaenko\LaraFoundry\Tenancy\LaraFoundryTenancy;
+use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -39,10 +43,40 @@ class CreateCompanyController extends Controller
         // and clamped to a company the user actually owns, so a mid-wizard reload
         // resumes on the right step instead of silently dropping to step 1.
         $step = $this->resolveStep($request);
+        $company = $request->user()?->getActiveCompany();
 
         return Inertia::render('Tenancy/CreateCompany', [
             'step' => $step,
+            // The company's assignable roles for the step-3 role-at-invite dropdown
+            // (empty until the company exists). See assignableRoles() for why the
+            // ensure runs here.
+            'roles' => $company !== null ? $this->assignableRoles($company) : [],
         ]);
+    }
+
+    /**
+     * The active company's assignable roles (id + name), ensuring they exist first.
+     *
+     * Roles are cloned asynchronously on company creation, but the step-3 dropdown
+     * needs them NOW. The clone runs on the database+cron queue, which may not have
+     * ticked yet for a user who clicked through to step 3 quickly — so we ensure
+     * inline (idempotent + locked) right where the roles are needed. A normal user
+     * finds them already cloned and this is a fast no-op; the async job remains and
+     * keeps step 1 fast. Correctness does not depend on the cron timing.
+     *
+     * Only company-scoped roles are returned (NOT global/template roles), so the
+     * dropdown can only offer roles that are valid to assign in this company.
+     *
+     * @return Collection<int, Role>
+     */
+    protected function assignableRoles(Company $company)
+    {
+        app(CloneCompanyRolesAction::class)->execute($company);
+
+        return Role::query()
+            ->where('company_id', $company->getKey())
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     public function storeStep1(StoreCompanyStep1Request $request, CreateCompanyAction $action): RedirectResponse
@@ -100,10 +134,10 @@ class CreateCompanyController extends Controller
     {
         $company = $this->ownedActiveCompany($request);
 
-        $emails = $request->emails();
+        $invitations = $request->invitations();
 
-        if ($emails !== []) {
-            $action->execute($company, $emails, $request->user()->getAuthIdentifier());
+        if ($invitations !== []) {
+            $action->execute($company, $invitations, $request->user()->getAuthIdentifier());
         }
 
         return redirect()

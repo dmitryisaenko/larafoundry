@@ -199,7 +199,7 @@ applied automatically.
 | Action | Signature |
 |--------|-----------|
 | `CreateCompanyAction` | `execute(Authenticatable $owner, array $data): Company` |
-| `InviteEmployeesAction` | `execute(Company $company, array $emails, ?int $invitedBy = null): Collection` |
+| `InviteEmployeesAction` | `execute(Company $company, array $invites, ?int $invitedBy = null): Collection` (each invite is `['email' => string, 'role_id' => ?int]`; `role_id` is the optional company-scoped role-at-invite) |
 | `RemoveEmployeeAction` | `execute(Company $company, Authenticatable $employee): void` |
 
 ### Events (extension hooks)

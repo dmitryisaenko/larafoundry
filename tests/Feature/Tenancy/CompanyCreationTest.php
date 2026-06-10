@@ -112,7 +112,7 @@ it('queues invitations on the final wizard step', function () {
 
     $this->actingAs($owner)
         ->post('/companies/create/step3', [
-            'invitations' => ['a@x.test', 'b@x.test'],
+            'invitations' => [['email' => 'a@x.test'], ['email' => 'b@x.test']],
         ])
         ->assertRedirect();
 
@@ -141,7 +141,7 @@ it('rejects step 2/3 for a user who is not the active owner', function () {
 
     // The intruder has no active company → ownedActiveCompany() aborts 403.
     $this->actingAs($intruder)
-        ->post('/companies/create/step3', ['invitations' => ['x@x.test']])
+        ->post('/companies/create/step3', ['invitations' => [['email' => 'x@x.test']]])
         ->assertForbidden();
 });
 

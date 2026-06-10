@@ -67,6 +67,8 @@ class InvitationController extends Controller
         DB::transaction(function () use ($invitation, $user) {
             $invitation->company->addEmployee($user, addedById: $invitation->invited_by);
 
+            $this->assignInvitedRole($invitation, $user);
+
             $invitation->update([
                 'status' => CompanyInvitation::STATUS_ACCEPTED,
                 'accepted_at' => now(),
@@ -81,6 +83,32 @@ class InvitationController extends Controller
             ->with('status', __('larafoundry::tenancy.invitation.accepted', [
                 'company' => $invitation->company->name,
             ]));
+    }
+
+    /**
+     * Grant the invitation's role-at-invite to the freshly joined user, if any.
+     *
+     * No-ops unless the invite carried a role that STILL exists and belongs to
+     * this invitation's company — a role deleted between invite and accept (the
+     * FK's nullOnDelete may also have already cleared role_id) simply yields no
+     * grant, never an error. The company match is defence in depth on top of the
+     * company-scoped invite-time validation. assignRole is idempotent, so a
+     * re-accept is safe. Guarded by method_exists so a host User without the RBAC
+     * trait still accepts invitations (just without the role grant).
+     */
+    protected function assignInvitedRole(CompanyInvitation $invitation, object $user): void
+    {
+        if ($invitation->role_id === null || ! method_exists($user, 'assignRole')) {
+            return;
+        }
+
+        $role = $invitation->role;
+
+        if ($role === null || (int) $role->company_id !== (int) $invitation->company_id) {
+            return;
+        }
+
+        $user->assignRole($role, $invitation->company, assignedById: $invitation->invited_by);
     }
 
     public function reject(Request $request, string $token): RedirectResponse

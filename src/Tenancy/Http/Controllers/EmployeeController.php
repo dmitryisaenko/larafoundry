@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RemoveEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Concerns\ResolvesActiveCompany;
@@ -51,6 +52,12 @@ class EmployeeController extends Controller
                 'email' => $invitation->email,
                 'expires_at' => $invitation->expires_at,
             ]),
+            // The company's assignable roles for the optional role-on-invite select
+            // (company-scoped only — never global/template roles).
+            'roles' => Role::query()
+                ->where('company_id', $company->getKey())
+                ->orderBy('name')
+                ->get(['id', 'name']),
             'is_owner' => $request->user()->isOwnerOfActiveCompany(),
         ]);
     }
@@ -59,7 +66,11 @@ class EmployeeController extends Controller
     {
         $company = $this->ownedActiveCompany($request);
 
-        $action->execute($company, [$request->validated('email')], $request->user()->getAuthIdentifier());
+        $action->execute(
+            $company,
+            [['email' => $request->validated('email'), 'role_id' => $request->validated('role_id')]],
+            $request->user()->getAuthIdentifier(),
+        );
 
         return back()->with('status', __('larafoundry::tenancy.invitation_sent'));
     }
