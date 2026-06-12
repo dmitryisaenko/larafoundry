@@ -257,16 +257,59 @@ return [
             'poll_interval_ms' => 2000,
         ],
 
+        // Social sign-in (Socialite). The controller is provider-agnostic: any
+        // slug listed here is accepted as long as a Socialite driver is
+        // registered and `enabled` is true. The frontend renders one button per
+        // listed provider (config-driven, shared as the `auth_oauth` Inertia
+        // prop) — adding a provider here is all the core needs.
+        //
+        //  enabled   — master switch for the OAuth routes + the Login buttons.
+        //  providers — the blessed allow-list. The default set is the providers
+        //              Socialite ships built-in (no extra package): google,
+        //              facebook and twitter (OAuth 1.0a). A button only actually
+        //              works once the host supplies that provider's credentials
+        //              in `config/services.php` + `.env`; the core ships none.
+        //              Community providers (apple, microsoft, linkedin, twitter
+        //              OAuth 2.0) need a `socialiteproviders/*` package the host
+        //              installs and registers — then just add the slug here.
+        //  link_existing — when true, an OAuth login whose email matches an
+        //              existing local account links to it instead of being
+        //              refused (the anti-takeover default is false).
         'oauth' => [
             'enabled' => env('LARAFOUNDRY_OAUTH_ENABLED', false),
-            'providers' => ['google', 'facebook', 'github'],
+            'providers' => ['google', 'facebook', 'twitter'],
             'link_existing' => false,
             'redirect_after_login' => '/',
         ],
 
+        // Security alert when the super-admin account is the target of a failed
+        // auth step. One unified signal — AdminAccessAttemptFailed — is raised
+        // for a bad password/lockout, a wrong operator-console OTP, or a wrong
+        // session PIN. The core's neutral default delivery is mail; a host adds
+        // extra channels (e.g. Telegram) by listening to that same event and
+        // appending its channel name to `channels` below — no core change.
+        //
+        // Three independent axes, all checked via AdminAccessAlertPolicy so the
+        // "failure type x channel" matrix lives in one place for every channel:
         'failed_login' => [
+            // Master on/off switch for all admin-access alerts.
             'notify_admin' => env('LARAFOUNDRY_NOTIFY_LOGIN_FAIL', false),
+
+            // The super-admin email an alert protects. Falls back to
+            // security.super_admin.email via VisitorStatus when left null.
             'admin_email' => env('LARAFOUNDRY_ADMIN_EMAIL'),
+
+            // Which failure TYPES raise an alert. For "OTP only" use ['admin_otp'].
+            'alert_on' => ['password', 'lockout', 'admin_otp', 'pin'],
+
+            // Which CHANNELS deliver. The core knows 'mail'; a host listening on
+            // AdminAccessAttemptFailed appends its own (e.g. 'telegram') and
+            // checks AdminAccessAlertPolicy::shouldAlert($step, 'telegram').
+            'channels' => ['mail'],
+
+            // Optional: a host may swap the core mail notification for its own
+            // subclass of AdminLoginAttemptNotification (FQCN). Null = core default.
+            'notification' => null,
         ],
 
         'two_factor' => [

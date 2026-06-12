@@ -15,10 +15,13 @@ use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserProfileInformation;
 use Dmitryisaenko\LaraFoundry\Auth\Contracts\DeviceFingerprintResolver;
+use Dmitryisaenko\LaraFoundry\Auth\Events\AdminAccessAttemptFailed;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\EnsureAccountIsActive;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
+use Dmitryisaenko\LaraFoundry\Auth\Listeners\AlertOnAdminOtpFailure;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
+use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendAdminAccessAlertMail;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendWelcomeNotification;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SyncCookieConsentOnLogin;
 use Dmitryisaenko\LaraFoundry\Auth\Qr\Console\Commands\PruneSignInRequestsCommand;
@@ -106,6 +109,7 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
+use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 
 class LaraFoundryServiceProvider extends ServiceProvider
 {
@@ -618,6 +622,15 @@ class LaraFoundryServiceProvider extends ServiceProvider
         // several times, so only a per-request pass sees the final, live id.
         Event::listen(Failed::class, [LogFailedLoginAttempt::class, 'handleFailed']);
         Event::listen(Lockout::class, [LogFailedLoginAttempt::class, 'handleLockout']);
+
+        // Unified admin-access-failure alert: password/lockout (above), the
+        // operator-console OTP (Fortify's 2FA-failed event, gated to the
+        // super-admin) and the session PIN (raised in PinController) all funnel
+        // into AdminAccessAttemptFailed. The core's neutral default channel is
+        // mail (SendAdminAccessAlertMail); a host adds Telegram/Slack/etc. by
+        // listening to the same event — no core change needed.
+        Event::listen(TwoFactorAuthenticationFailed::class, AlertOnAdminOtpFailure::class);
+        Event::listen(AdminAccessAttemptFailed::class, SendAdminAccessAlertMail::class);
 
         // The OTP step-up is proven once per session: any fresh login or a
         // logout drops the flag, so the operator must re-clear the gate. This

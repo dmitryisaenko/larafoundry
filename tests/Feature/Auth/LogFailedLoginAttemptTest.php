@@ -21,7 +21,7 @@ it('notifies the admin when a failed attempt targets the admin email', function 
         AdminLoginAttemptNotification::class,
         function ($notification, $channels, $notifiable) {
             return $notifiable->routes['mail'] === 'admin@x.test'
-                && $notification->step === 'failed';
+                && $notification->step === 'password';
         }
     );
 });

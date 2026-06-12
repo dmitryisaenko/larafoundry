@@ -6,6 +6,8 @@ namespace Dmitryisaenko\LaraFoundry\Auth\Http\Controllers;
 
 use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
 use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
+use Dmitryisaenko\LaraFoundry\Auth\Support\AdminAccessFailureContext;
+use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -118,6 +120,13 @@ class PinController extends Controller
             responseCode: 422,
             geoSync: false,
         );
+
+        // PIN-lock exists for every user, so the admin-access alert is raised
+        // only when the super-admin's own PIN entry fails. The signal flows
+        // through the same event/config gate as the password and OTP steps.
+        if (app(VisitorStatus::class)->isAdmin($user)) {
+            app(AdminAccessFailureContext::class)->dispatch('pin');
+        }
 
         throw ValidationException::withMessages(['pin' => __('larafoundry::auth.pin.invalid')]);
     }

@@ -40,9 +40,31 @@ const form = useForm({
     remember: false,
 });
 
-// OAuth providers — the buttons render unconditionally and are guarded
-// server-side; the `/auth/oauth/{provider}` route decides availability.
-const oauthProviders = ['google', 'github'];
+// OAuth providers — config-driven, shared by the backend as `auth_oauth`
+// (whether the feature is on + the blessed provider allow-list). The buttons
+// render from this list so a provider added in `larafoundry.auth.oauth.providers`
+// appears with no frontend change, and the set can never drift from what the
+// OAuthController will actually accept. The whole block hides when OAuth is off
+// or the list is empty.
+const oauth = computed(() => page.props?.auth_oauth ?? { enabled: false, providers: [] });
+const oauthProviders = computed(() => (oauth.value.enabled ? oauth.value.providers : []));
+
+// A neutral, minimal label for an OAuth provider: the human label for the slugs
+// the core ships by default, otherwise a capitalized fallback for any provider
+// a host adds. No brand assets / heavy icon dependency — the host re-skins.
+const OAUTH_LABELS = {
+    google: 'Google',
+    facebook: 'Facebook',
+    twitter: 'Twitter',
+    github: 'GitHub',
+    apple: 'Apple',
+    microsoft: 'Microsoft',
+    linkedin: 'LinkedIn',
+};
+
+function oauthLabel(provider) {
+    return OAUTH_LABELS[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
 function submit() {
     // On success with 2FA enabled, Fortify redirects to the two-factor
@@ -140,7 +162,7 @@ function submit() {
                 </button>
             </form>
 
-            <template v-if="!qr.enabled || tab === 'password'">
+            <template v-if="(!qr.enabled || tab === 'password') && oauthProviders.length">
                 <div class="my-6 flex items-center gap-3 text-xs text-ink-soft">
                     <span class="h-px flex-1 bg-border"></span>
                     {{ $t('Or continue with') }}
@@ -152,9 +174,9 @@ function submit() {
                         v-for="provider in oauthProviders"
                         :key="provider"
                         :href="'/auth/oauth/' + provider"
-                        class="flex items-center justify-center rounded-sm border border-border bg-surface px-4 py-2 text-sm font-medium text-ink capitalize transition hover:bg-surface-subtle"
+                        class="flex items-center justify-center rounded-sm border border-border bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-subtle"
                     >
-                        {{ $t('Continue with') }} {{ provider }}
+                        {{ $t('Continue with') }} {{ oauthLabel(provider) }}
                     </a>
                 </div>
             </template>

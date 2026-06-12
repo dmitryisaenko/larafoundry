@@ -61,6 +61,7 @@ class HandleInertiaRequests extends Middleware
             'appearance' => fn () => $request->cookie('appearance') ?? 'system',
             'auth_presentation' => fn () => $this->authPresentation(),
             'auth_qr' => fn () => $this->qrSettings(),
+            'auth_oauth' => fn () => $this->oauthSettings(),
             'consent' => fn () => $this->consentState($request),
         ];
     }
@@ -112,6 +113,29 @@ class HandleInertiaRequests extends Middleware
         return [
             'enabled' => (bool) config('larafoundry.auth.qr.enabled', true),
             'poll_interval_ms' => (int) config('larafoundry.auth.qr.poll_interval_ms', 2000),
+        ];
+    }
+
+    /**
+     * Social sign-in settings the auth screens need to render OAuth buttons:
+     * whether the feature is on and the blessed provider allow-list. Driven
+     * entirely by `larafoundry.auth.oauth.*` so adding a provider in config
+     * surfaces a button with no frontend change, and the rendered set never
+     * drifts from what the OAuthController will actually accept.
+     *
+     * `providers` is filtered to strings so a host typo degrades that one entry
+     * rather than fatalling a shared prop sent on every response.
+     *
+     * @return array{enabled: bool, providers: array<int, string>}
+     */
+    protected function oauthSettings(): array
+    {
+        return [
+            'enabled' => (bool) config('larafoundry.auth.oauth.enabled', false),
+            'providers' => array_values(array_filter(
+                (array) config('larafoundry.auth.oauth.providers', []),
+                'is_string',
+            )),
         ];
     }
 

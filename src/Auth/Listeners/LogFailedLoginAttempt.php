@@ -4,24 +4,31 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Listeners;
 
-use Dmitryisaenko\LaraFoundry\Auth\Notifications\AdminLoginAttemptNotification;
+use Dmitryisaenko\LaraFoundry\Auth\Support\AdminAccessFailureContext;
+use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 
 /**
- * Records failed authentication attempts and optionally alerts an admin.
+ * Records failed authentication attempts and raises the admin-access signal.
  *
  * Subscribed to Laravel's auth events (which Fortify's pipeline fires): `Failed`
  * for a single bad-credential attempt, `Lockout` when the throttle trips. Every
- * attempt is logged to the `auth` channel; an admin notification is sent only
- * when the attempt targeted the configured admin email — mirroring the donor's
- * "someone is trying to get into the admin account" alert, without the donor's
- * hard-coded Telegram token.
+ * attempt is logged to the `auth` channel; when the attempt targeted the
+ * configured super-admin email it dispatches the unified {@see
+ * \Dmitryisaenko\LaraFoundry\Auth\Events\AdminAccessAttemptFailed} signal.
+ *
+ * This listener no longer mails directly: the core's mail delivery is itself a
+ * listener on that event ({@see SendAdminAccessAlertMail}), so password, OTP
+ * and PIN failures all flow through one extensible signal and one config gate.
  */
 class LogFailedLoginAttempt
 {
+    public function __construct(
+        protected AdminAccessFailureContext $context,
+    ) {}
+
     public function handleFailed(Failed $event): void
     {
         $email = $this->emailFrom($event->credentials);
@@ -33,7 +40,7 @@ class LogFailedLoginAttempt
             'user_agent' => request()->userAgent(),
         ]);
 
-        $this->notifyAdminIfTargeted($email, 'failed');
+        $this->signalIfTargeted($email, 'password');
     }
 
     public function handleLockout(Lockout $event): void
@@ -45,27 +52,25 @@ class LogFailedLoginAttempt
             'ip' => $event->request->ip(),
         ]);
 
-        $this->notifyAdminIfTargeted($email, 'lockout');
+        $this->signalIfTargeted($email, 'lockout');
     }
 
-    protected function notifyAdminIfTargeted(?string $email, string $step): void
+    /**
+     * Raise the unified signal when the attempt targeted the super-admin email.
+     *
+     * Gating here is identity-only (target == super-admin); the master switch,
+     * type filter and channel allow-list are applied by the event listeners via
+     * AdminAccessAlertPolicy, so every channel agrees on the matrix.
+     *
+     * @param  'password'|'lockout'  $step
+     */
+    protected function signalIfTargeted(?string $email, string $step): void
     {
-        if (! config('larafoundry.auth.failed_login.notify_admin', false)) {
+        if (! VisitorStatus::isSuperAdminEmail($email)) {
             return;
         }
 
-        $adminEmail = config('larafoundry.auth.failed_login.admin_email');
-
-        if (! is_string($adminEmail) || $adminEmail === '' || $email !== $adminEmail) {
-            return;
-        }
-
-        Notification::route('mail', $adminEmail)
-            ->notify(new AdminLoginAttemptNotification(
-                step: $step,
-                ip: (string) request()->ip(),
-                userAgent: (string) request()->userAgent(),
-            ));
+        $this->context->dispatch($step, $email);
     }
 
     /**

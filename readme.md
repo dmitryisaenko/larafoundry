@@ -12,12 +12,23 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.17.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, and the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure).**
+> ⚠️ **Status: early but growing. Current release is `v0.18.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), and optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed).**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.18.x` Role-at-invite
+
+Inviting a teammate can now carry the role they should get, instead of inviting first and assigning a role afterward. A small feature with two parts worth noting: a company-scoped guard that fails closed, and a role-template clone that no longer depends on queue timing. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Optional role on invite | An invitation (in the creation wizard and the standalone employees screen) carries an optional `role_id`; on acceptance the invitee is granted that role in the company. The default is no role ("Specify later"), so the existing email-only invite is unchanged. The role **must** belong to the inviter's active company, validated **fail-closed**: Laravel rewrites `where('company_id', null)` to `whereNull('company_id')`, and global/template roles have a null `company_id`, so a null active company would otherwise match them - the rule coalesces a missing company to an impossible id and asserts the column is not null. The same company-scope check is repeated in the action and again at accept time. Three checks, defence in depth. |
+| Synchronous role-clone ensure | Role templates clone into a new company asynchronously (database + cron queue, no daemon, no Redis), but the invite role dropdown needs them immediately. So the clone is also exposed as a synchronous, **idempotent, locked** ensure that runs exactly where the roles are needed: a fast no-op once the queued job has run, an inline clone for the user who reached the screen first. Correctness stops depending on the cron tick. The queued clone-on-create stays for the common case. |
+
+> No new trait on `User` and no new dependency. The host runs `php artisan migrate` (the `role_id` column) and re-publishes the tenancy Vue pages (`vendor:publish --tag=larafoundry-pages`) for the role dropdown; attribution, the clone ensure and the grant are automatic. Concrete domain roles stay in the host's permission config - the core ships only the mechanism.
 
 ### `v0.17.x` Legal / GDPR
 
@@ -199,7 +210,7 @@ Tenant-scoped RBAC, **self-written, not** `spatie/laravel-permission`, because e
 |-----------|--------------|
 | `HasRolesAndPermissions` trait | Permission checks in a strict priority order: super-admin bypass, then company-owner bypass, then the resolved set (company roles + global roles + individual grants, minus revokes), memoized per request. |
 | Catalog + `larafoundry:permissions:sync` | Permissions, global roles and role templates declared in `config/larafoundry-permissions.php` and upserted idempotently. The core ships only its own permissions and one neutral starter role; domain permissions are the host's. |
-| Clone-on-create | A queued, idempotent listener on `CompanyCreated` clones the template roles into every new company. |
+| Clone-on-create | A queued, idempotent listener on `CompanyCreated` clones the template roles into every new company, also exposed as a synchronous locked ensure (`v0.18.x`) for flows that need the roles before the queue runs. |
 | Role management | `RoleController` + `EmployeeAccessController` with a holder-check (you can only grant or assign what you already hold) and structural anti-IDOR scoping, plus the `Roles` Vue pages and a `PermissionsSelector`. |
 
 > Super-admin is an identity flag resolved through `VisitorStatus`, never a role, so it can't be granted from a role-management screen.
@@ -211,7 +222,7 @@ Tenant-scoped RBAC, **self-written, not** `spatie/laravel-permission`, because e
 | `BelongsToTenancy` (User) / `BelongsToTenant` (domain models) | Companies, ownership and membership on the user; an automatic, **fail-closed** tenant scope on domain models (no resolved tenant means no rows, never all rows). |
 | `TenantScope` + resolvers | Session-based resolver for `teams` mode (active company tracked on the session row) and a `personal` mode where the user is their own tenant, behind one `TenantResolver` contract. |
 | Company creation wizard | Multi-step company setup (no billing), `CompanySwitcher`, and the `SetActiveTenant` / `EnsureActiveTenant` middleware. |
-| Invitations | Token invitations with a verified-email join guard, expiry, and IDOR-safe resend / delete scoped to the active company. |
+| Invitations | Token invitations with a verified-email join guard, expiry, an optional company-scoped role granted on acceptance (`v0.18.x`), and IDOR-safe resend / delete scoped to the active company. |
 
 ### `v0.2.x` Authentication + Users
 
@@ -220,7 +231,7 @@ Authentication built on top of Laravel Fortify (the official, headless auth back
 | Component | What it does |
 |-----------|--------------|
 | `IsLaraFoundryUser` trait | Identity slice for the host's User model: name parts, phone, avatar, locale, OAuth provider linkage, blocking state, per-user 2FA (`TwoFactorAuthenticatable`), session tracking. Adds nothing about companies or roles; those arrive as their own traits in later phases. |
-| OAuth (`OAuthController`) | Social sign-in via Socialite. Resolves strictly by provider identity first, then email, with an account-takeover guard: an OAuth login whose email matches an existing local account is refused by default rather than silently linked. |
+| OAuth (`OAuthController`) | Social sign-in via Socialite, provider-agnostic. Resolves strictly by provider identity first, then email, with an account-takeover guard: an OAuth login whose email matches an existing local account is refused by default rather than silently linked. The provider set is config-driven (`larafoundry.auth.oauth.providers`, shared to the frontend as the `auth_oauth` Inertia prop so buttons render from config with no Vue change). Default set is the providers Socialite ships built-in: `google`, `facebook`, `twitter` (OAuth 1.0a). Community providers (Apple, Microsoft, LinkedIn, Twitter/X OAuth 2.0) are a host concern — see below. |
 | Login pipeline + Fortify actions | Hardened `CreateNewUser` / `ResetUserPassword` / `UpdateUserPassword` bound over Fortify's contracts, with a password policy stronger than the donor's. |
 | `TrackSessionActivity` middleware | Records one tracked session row per device (fingerprint, IP, login method, last activity, last route) on every authenticated request. Powers an "active sessions" view and "log out other devices". |
 | `EnsureAccountIsActive` middleware | Per-request gate that logs out blocked or soft-deleted accounts. |
@@ -229,6 +240,16 @@ Authentication built on top of Laravel Fortify (the official, headless auth back
 | Inertia + Vue auth pages | Login, Register, ForgotPassword, ResetPassword, VerifyEmail, ConfirmPassword, TwoFactorChallenge, TwoFactorSettings, UserBlocked, built on the form UI kit. Published into the host and rendered through Fortify's view resolvers. |
 
 Two-factor (TOTP + recovery codes + QR enrolment) and passkeys come from Fortify out of the box.
+
+**Enabling an OAuth provider (host side).** The core ships no credentials. To turn a built-in provider on in your host app: add the provider's credentials to `config/services.php` + `.env` (e.g. `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`), make sure its slug is in `larafoundry.auth.oauth.providers`, and set `LARAFOUNDRY_OAUTH_ENABLED=true`. The button renders and the `OAuthController` accepts the slug automatically.
+
+**Adding a community provider (Apple, Microsoft, LinkedIn, Twitter/X OAuth 2.0).** These need a `socialiteproviders/*` package the host installs (they are listed under `suggest`, never required by the core). The flow is host-only — the controller is driver-agnostic and needs no change:
+
+```bash
+composer require socialiteproviders/apple
+```
+
+Register its driver in the host (its event subscriber / `Socialite::extend(...)`), add `apple` to `larafoundry.auth.oauth.providers`, add the credentials in `config/services.php`, and the button + callback work like any built-in provider. Note: the built-in Socialite `twitter` driver is OAuth 1.0a; for the modern Twitter/X API v2 use `socialiteproviders/twitter` (OAuth 2.0) the same way.
 
 ### `v0.1.0` Foundation layer
 
@@ -476,7 +497,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 743 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, the settings / profile / email-template modules, and the legal / GDPR layer (editable legal pages, the fail-open Terms gate, consent, data export and the grace-period account-erasure cron), many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, and a QR sign-in token that the donor stored in plaintext and leaked into the audit log, and an email-template editor built so a database-stored template can never execute code) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
+- **Pest** on every piece of the core: 755 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, the settings / profile / email-template modules, the legal / GDPR layer (editable legal pages, the fail-open Terms gate, consent, data export and the grace-period account-erasure cron), and optional role-at-invite, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, a QR sign-in token that the donor stored in plaintext and leaked into the audit log, an email-template editor built so a database-stored template can never execute code, and a tenant-scoped invite-role rule made fail-closed so a null company id can't fall through to `whereNull` and match a global role) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

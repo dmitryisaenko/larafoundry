@@ -33,7 +33,11 @@
     },
     "suggest": {
         "ext-gd": "Required only to process image uploads (avatars, logos) with the default GD image driver; the initials placeholder avatar needs no extension.",
-        "ext-imagick": "Alternative image driver — set larafoundry-media.image_driver to 'imagick' to use it instead of GD."
+        "ext-imagick": "Alternative image driver — set larafoundry-media.image_driver to 'imagick' to use it instead of GD.",
+        "socialiteproviders/apple": "Optional OAuth provider: add 'apple' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
+        "socialiteproviders/microsoft": "Optional OAuth provider: add 'microsoft' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
+        "socialiteproviders/linkedin": "Optional OAuth provider: add 'linkedin' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
+        "socialiteproviders/twitter": "Optional OAuth 2.0 Twitter/X provider (the built-in Socialite 'twitter' driver is OAuth 1.0a); install and register it, then list 'twitter' in larafoundry.auth.oauth.providers."
     },
     "autoload": {
         "psr-4": {

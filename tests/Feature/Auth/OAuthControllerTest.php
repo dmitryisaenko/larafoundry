@@ -232,3 +232,28 @@ it('redirects off to the provider on the redirect route', function () {
     $this->get(route('larafoundry.oauth.redirect', ['provider' => 'google']))
         ->assertRedirect('https://accounts.google.test/o/oauth2');
 });
+
+it('accepts any provider in the configured allow-list (provider-agnostic, new default set)', function () {
+    // The controller is driver-agnostic: a provider in the allow-list reaches
+    // the redirect handoff (we mock the driver so no real network is hit). This
+    // guards that the default set google/facebook/twitter — and any host-added
+    // slug — flows through `providerAllowed` without per-provider backend code.
+    foreach (['google', 'facebook', 'twitter'] as $provider) {
+        config()->set('larafoundry.auth.oauth.providers', ['google', 'facebook', 'twitter']);
+
+        $driver = Mockery::mock();
+        $driver->shouldReceive('redirect')->andReturn(redirect("https://{$provider}.test/o/oauth2"));
+        Socialite::shouldReceive('driver')->with($provider)->andReturn($driver);
+
+        $this->get(route('larafoundry.oauth.redirect', ['provider' => $provider]))
+            ->assertRedirect("https://{$provider}.test/o/oauth2");
+    }
+});
+
+it('ships google/facebook/twitter as the packaged default provider set', function () {
+    // Read the packaged default straight from the config file so a stray edit to
+    // the blessed set (or sneaking a community provider in) is caught here.
+    $providers = require __DIR__.'/../../../config/larafoundry.php';
+
+    expect($providers['auth']['oauth']['providers'])->toBe(['google', 'facebook', 'twitter']);
+});

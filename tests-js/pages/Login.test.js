@@ -17,7 +17,13 @@ vi.mock('@inertiajs/vue3', () => {
     });
     return {
         useForm: () => form,
-        usePage: () => ({ props: { flash: {} } }),
+        usePage: () => ({
+            props: {
+                flash: {},
+                auth_qr: { enabled: false, poll_interval_ms: 2000 },
+                auth_oauth: { enabled: true, providers: ['google', 'facebook', 'twitter'] },
+            },
+        }),
         router: { visit: vi.fn() },
         Link: {
             name: 'Link',
@@ -42,13 +48,19 @@ describe('Login page', () => {
         expect(wrapper.find('input[name="password"]').attributes('type')).toBe('password');
     });
 
-    it('renders OAuth buttons including the google provider href', () => {
+    it('renders one OAuth button per configured provider, driven by the auth_oauth prop', () => {
         const wrapper = mount(Login);
-        const googleLink = wrapper.find('a[href="/auth/oauth/google"]');
-        expect(googleLink.exists()).toBe(true);
 
-        const githubLink = wrapper.find('a[href="/auth/oauth/github"]');
-        expect(githubLink.exists()).toBe(true);
+        // The mocked auth_oauth prop lists google/facebook/twitter — each renders.
+        expect(wrapper.find('a[href="/auth/oauth/google"]').exists()).toBe(true);
+        expect(wrapper.find('a[href="/auth/oauth/facebook"]').exists()).toBe(true);
+        expect(wrapper.find('a[href="/auth/oauth/twitter"]').exists()).toBe(true);
+
+        // github is not in the configured list, so no button is rendered for it.
+        expect(wrapper.find('a[href="/auth/oauth/github"]').exists()).toBe(false);
+
+        // The label maps the slug to a human brand name (capitalized fallback otherwise).
+        expect(wrapper.find('a[href="/auth/oauth/google"]').text()).toContain('Google');
     });
 
     it('submits the form via form.post to /login', async () => {

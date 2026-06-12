@@ -78,11 +78,18 @@ return [
     ],
 
     'admin_alert' => [
-        'subject' => 'Security alert: admin login attempt',
-        'intro' => 'A :step login attempt was made on the admin account.',
+        'subject' => 'Security alert: admin access attempt',
+        'intro' => 'A failed :step attempt was made on the admin account.',
         'ip' => 'IP address: :ip',
         'agent' => 'User agent: :agent',
+        'device' => 'Device: :device',
         'outro' => 'If this was not you, review your account security immediately.',
+        'step' => [
+            'password' => 'password sign-in',
+            'lockout' => 'sign-in (too many attempts, locked out)',
+            'admin_otp' => 'operator-console two-factor',
+            'pin' => 'session PIN',
+        ],
     ],
 
 ];
