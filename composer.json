@@ -68,6 +68,12 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "scripts": {
+        "post-autoload-dump": [
+            "@purge-testbench-config"
+        ],
+        "purge-testbench-config": [
+            "@php -r \"array_map('unlink', glob(__DIR__.'/vendor/orchestra/testbench-core/laravel/config/larafoundry*.php') ?: []);\""
+        ],
         "test": "pest",
         "lint": "pint",
         "lint:test": "pint --test"

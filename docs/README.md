@@ -48,6 +48,7 @@ module's accurate page does not exist yet, an early planning draft lives under
 | Module | Phase | Reference |
 |--------|-------|-----------|
 | Multi-tenancy | 1.2 | [multi-tenancy.md](multi-tenancy.md) |
+| Admin-access security alert | 1.4 | [admin-access-alert.md](admin-access-alert.md) |
 | Notifications | 4.1 | [notifications.md](notifications.md) |
 | Tickets and helpdesk | 4.2 | [tickets.md](tickets.md) |
 | Settings, profile and email templates | 5.1 | [settings-profile-email.md](settings-profile-email.md) |

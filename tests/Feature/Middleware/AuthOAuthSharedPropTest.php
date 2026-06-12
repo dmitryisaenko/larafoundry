@@ -56,9 +56,9 @@ it('returns an empty provider list when none are configured', function () {
 });
 
 it('ships google/facebook/twitter as the packaged default provider set', function () {
-    // Read the package's own config file (the source of truth that mergeConfigFrom
-    // ships), not the resolved runtime value: the testbench skeleton keeps a
-    // published copy that can lag behind a freshly edited default.
+    // Assert against the package's own config file — the source of truth that
+    // mergeConfigFrom ships — rather than the resolved runtime value, so this
+    // pins the shipped default regardless of any host/test-env overrides.
     $config = require __DIR__.'/../../../config/larafoundry.php';
 
     expect($config['auth']['oauth']['providers'])->toBe(['google', 'facebook', 'twitter']);
