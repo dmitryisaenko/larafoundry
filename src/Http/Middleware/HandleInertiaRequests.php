@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Http\Middleware;
 
 use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
+use Dmitryisaenko\LaraFoundry\Profile\Support\UiSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
@@ -16,10 +17,12 @@ use Tighten\Ziggy\Ziggy;
  * Core Inertia shared-props middleware.
  *
  * Shares only cross-cutting infrastructure every page needs: flash messages,
- * the active locale, its translation bag, Ziggy routing and the appearance
- * preference. This is the backend half of the core contract consumed by the
- * frontend (`app.js` reads `locale` + `translations` to boot vue-i18n; the
- * `flash` shape feeds AppFlashMessage; `ziggy` powers `route()`).
+ * the active locale, its translation bag, Ziggy routing, the appearance
+ * preference and the signed-in user's UI preferences (`ui_settings`, e.g. the
+ * date_format the shared `useDateFormat()` composable reads on every page). This
+ * is the backend half of the core contract consumed by the frontend (`app.js`
+ * reads `locale` + `translations` to boot vue-i18n; the `flash` shape feeds
+ * AppFlashMessage; `ziggy` powers `route()`).
  *
  * Host apps extend this class and merge their own props (auth, tenancy,
  * navigation, business data):
@@ -59,6 +62,12 @@ class HandleInertiaRequests extends Middleware
                 'location' => $request->url(),
             ],
             'appearance' => fn () => $request->cookie('appearance') ?? 'system',
+            // Per-user UI preferences (theme, table density, date_format…), resolved
+            // and allowlisted. Shared globally so every page's useDateFormat()/UI
+            // controls honour the preference out of the box; null for a guest.
+            'ui_settings' => fn () => ($user = $request->user()) !== null
+                ? UiSettings::resolved($user)
+                : null,
             'auth_presentation' => fn () => $this->authPresentation(),
             'auth_qr' => fn () => $this->qrSettings(),
             'auth_oauth' => fn () => $this->oauthSettings(),

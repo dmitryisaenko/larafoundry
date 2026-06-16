@@ -7,10 +7,14 @@
  * Revoking the current device is intentionally not offered — that is "log out".
  */
 import { router } from '@inertiajs/vue3';
+import { useDateFormat } from '../../../composables/useDateFormat.js';
 
 defineProps({
     sessions: { type: Array, default: () => [] },
 });
+
+// Honours the user's date_format preference (auto/dmy/mdy/iso) + app locale.
+const { formatDateTime } = useDateFormat();
 
 function revoke(id) {
     router.delete(`/auth/sessions/${id}`, { preserveScroll: true });
@@ -18,13 +22,6 @@ function revoke(id) {
 
 function revokeOthers() {
     router.delete('/auth/sessions/others', { preserveScroll: true });
-}
-
-function formatDate(value) {
-    if (!value) {
-        return '';
-    }
-    return new Date(value).toLocaleString();
 }
 </script>
 
@@ -60,7 +57,7 @@ function formatDate(value) {
                     </p>
                     <p class="truncate text-xs text-ink-soft">
                         {{ session.device_name || session.device_type || $t('Unknown device') }}
-                        · {{ session.ip_address }} · {{ formatDate(session.last_activity) }}
+                        · {{ session.ip_address }} · {{ formatDateTime(session.last_activity) }}
                     </p>
                     <p v-if="session.login_method && session.login_method !== 'native'" class="text-xs text-warning">
                         {{ $t('Signed in through a third-party provider.') }}

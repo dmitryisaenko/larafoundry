@@ -18,6 +18,10 @@ import Appearance from './sections/Appearance.vue';
 import DangerZone from './sections/DangerZone.vue';
 import DataExport from './sections/DataExport.vue';
 import PinManager from './PinManager.vue';
+// Imported by relative path, not the package barrel: this page IS published into
+// host apps where the barrel is the package, and the barrel does not re-export
+// every leaf — keeping it relative avoids a resolution gap.
+import SettingsForm from '../../components/settings/SettingsForm.vue';
 
 const props = defineProps({
     profile: { type: Object, required: true },
@@ -26,6 +30,9 @@ const props = defineProps({
     uiSettingsSchema: { type: Array, default: () => [] },
     canDeleteAccount: { type: Boolean, default: false },
     pin: { type: Object, default: () => ({ enabled: false, has_pin: false, length: 4 }) },
+    // User-scope generic settings (e.g. email_notifications), folded into the
+    // Preferences tab so there is no separate account-settings page.
+    accountSettings: { type: Object, default: () => ({ schema: [], values: {} }) },
 });
 
 const tabs = computed(() => [
@@ -33,7 +40,7 @@ const tabs = computed(() => [
     { key: 'avatar', label: 'Photo' },
     { key: 'security', label: 'Security' },
     { key: 'sessions', label: 'Sessions' },
-    { key: 'appearance', label: 'Appearance' },
+    { key: 'appearance', label: 'Preferences' },
     { key: 'danger', label: 'Danger zone' },
 ]);
 
@@ -80,11 +87,24 @@ const activeTab = ref('profile');
 
                 <SessionsManager v-else-if="activeTab === 'sessions'" :sessions="sessions" />
 
-                <Appearance
-                    v-else-if="activeTab === 'appearance'"
-                    :settings="uiSettings"
-                    :schema="uiSettingsSchema"
-                />
+                <div v-else-if="activeTab === 'appearance'" class="flex flex-col gap-8">
+                    <Appearance :settings="uiSettings" :schema="uiSettingsSchema" />
+
+                    <!-- Folded-in account settings (the old /settings page): the
+                         user-scope generic preferences. Hidden when nothing is
+                         registered so the tab never shows an empty block. -->
+                    <section v-if="accountSettings.schema.length" class="flex max-w-xl flex-col gap-3">
+                        <header>
+                            <h2 class="text-base font-semibold text-ink">{{ $t('Account') }}</h2>
+                            <p class="text-sm text-ink-soft">{{ $t('Manage your account preferences.') }}</p>
+                        </header>
+                        <SettingsForm
+                            :schema="accountSettings.schema"
+                            :values="accountSettings.values"
+                            endpoint="/settings/account"
+                        />
+                    </section>
+                </div>
 
                 <DangerZone
                     v-else-if="activeTab === 'danger'"

@@ -6,6 +6,7 @@
  */
 import { computed } from 'vue';
 import WidgetCard from './WidgetCard.vue';
+import { useDateFormat } from '../../../composables/useDateFormat.js';
 
 const props = defineProps({
     titleKey: { type: String, default: '' },
@@ -15,13 +16,8 @@ const props = defineProps({
 
 const recent = computed(() => props.data.recent ?? []);
 
-function when(iso) {
-    if (!iso) {
-        return '';
-    }
-
-    return new Date(iso).toLocaleString();
-}
+// Honours the user's date_format preference (auto/dmy/mdy/iso) + app locale.
+const { formatDateTime } = useDateFormat();
 </script>
 
 <template>
@@ -35,7 +31,7 @@ function when(iso) {
             <li v-for="entry in recent" :key="entry.id" class="flex items-center justify-between gap-3 py-2">
                 <span class="min-w-0 flex-1 truncate text-ink">{{ entry.description }}</span>
                 <span class="shrink-0 text-xs text-ink-soft">{{ entry.causer || $t('Guest') }}</span>
-                <span class="shrink-0 text-xs text-ink-faint">{{ when(entry.created_at) }}</span>
+                <span class="shrink-0 text-xs text-ink-faint">{{ formatDateTime(entry.created_at) }}</span>
             </li>
         </ul>
         <p v-else class="text-sm text-ink-soft">{{ $t('No recent activity') }}</p>

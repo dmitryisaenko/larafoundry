@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Profile\Http\Controllers;
 use Dmitryisaenko\LaraFoundry\Profile\Actions\DeleteUserAccount;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Resources\ProfileResource;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UiSettings;
+use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
@@ -24,6 +25,8 @@ use Inertia\Response;
  */
 class ProfileController extends Controller
 {
+    public function __construct(private readonly SettingsRepository $settings) {}
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -57,7 +60,31 @@ class ProfileController extends Controller
                 'has_pin' => method_exists($user, 'hasPin') && $user->hasPin(),
                 'length' => (int) config('larafoundry.pin.length', 4),
             ],
+            // The user's own generic settings (e.g. email_notifications), folded
+            // into the hub's Preferences tab so there is no separate /settings
+            // account page/menu entry. Writes still go to /settings/account
+            // (SettingsController@updateAccount); this only SUPPLIES the form.
+            // Values are limited to the form-visible keys — consent flags
+            // (form=false, written by the phase-5.3 flow) are never shipped here.
+            'accountSettings' => $this->accountSettings(),
         ]);
+    }
+
+    /**
+     * The user-scope generic settings shaped for the hub's folded form: the
+     * form-visible schema and only those keys' current values.
+     *
+     * @return array{schema: array<int, array<string, mixed>>, values: array<string, mixed>}
+     */
+    protected function accountSettings(): array
+    {
+        $schema = $this->settings->schemaForScope('user');
+        $values = array_intersect_key(
+            $this->settings->allForScope('user'),
+            array_flip(array_column($schema, 'key')),
+        );
+
+        return ['schema' => $schema, 'values' => $values];
     }
 
     /**

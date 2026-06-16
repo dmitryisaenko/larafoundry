@@ -5,6 +5,8 @@ enableAutoUnmount(afterEach);
 
 vi.mock('@inertiajs/vue3', () => ({
     router: { delete: vi.fn() },
+    // SessionsManager now formats dates via useDateFormat() → usePage().
+    usePage: () => ({ props: {} }),
 }));
 
 import SessionsManager from '../resources/js/Pages/Profile/sections/SessionsManager.vue';

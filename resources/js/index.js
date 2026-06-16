@@ -19,6 +19,8 @@
 import { installI18n } from './i18n/index.js';
 
 export { useT } from './composables/useT.js';
+export { useDateFormat } from './composables/useDateFormat.js';
+export { formatDate, formatDateTime } from './composables/dateFormat.js';
 export { installI18n, createAppI18n } from './i18n/index.js';
 
 // Shared components

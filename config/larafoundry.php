@@ -423,6 +423,18 @@ return [
                 'default' => 'comfortable',
                 'in' => ['comfortable', 'compact'],
             ],
+            // How dates are rendered for this user. 'auto' (default) derives the
+            // order from the active app locale (en→month-first, uk→day-first)
+            // with a browser fallback — keeping today's behaviour — while the
+            // explicit values let a user override it regardless of language
+            // (format ≠ language: a Ukrainian in the US, an English speaker in
+            // Europe). dmy=DD.MM.YYYY, mdy=MM/DD/YYYY, iso=YYYY-MM-DD. The shared
+            // `useDateFormat()` composable reads this preference everywhere.
+            'date_format' => [
+                'type' => 'string',
+                'default' => 'auto',
+                'in' => ['auto', 'dmy', 'mdy', 'iso'],
+            ],
         ],
 
         // Personal-data export (phase 5.3): how often a user may pull a full JSON
