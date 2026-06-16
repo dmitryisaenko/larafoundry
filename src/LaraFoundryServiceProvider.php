@@ -406,6 +406,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
 
         $this->registerAuthMiddleware();
         $this->registerAuthEventListeners();
+        $this->bootOAuthCommunityDrivers();
         $this->localizeAuthMail();
         $this->registerTenancy();
         $this->registerAuthorization();
@@ -647,6 +648,59 @@ class LaraFoundryServiceProvider extends ServiceProvider
         // Welcome the user once their address is verified (phase 5.1) — on
         // Verified, not Registered, so it follows the verification mail.
         Event::listen(Verified::class, SendWelcomeNotification::class);
+    }
+
+    /**
+     * Auto-register community OAuth drivers (socialiteproviders/* packages).
+     *
+     * Native Socialite drivers (google, facebook, github, …) need no wiring. The
+     * community ones normally require each host to hang a SocialiteWasCalled
+     * listener in its own provider. This closes that over: for any slug mapped in
+     * `larafoundry.auth.oauth.community_drivers` that is ALSO enabled in
+     * `providers` AND whose handler class is installed, the core registers the
+     * listener — so a host just `composer require`s the package and lists the slug.
+     *
+     * The core keeps NO hard dependency on socialiteproviders/*: every reference
+     * is a class_exists guard. With no package installed, SocialiteWasCalled does
+     * not exist and this returns immediately; a slug mapped without its package is
+     * a valid (if non-working) config and never throws — the button simply fails
+     * gracefully at redirect time (OAuthController catches the missing driver).
+     *
+     * SECURITY: the handler FQCN is registered verbatim as an event listener, so
+     * it is read ONLY from config (a trusted, static source) — never from the
+     * request or any user input — preventing an attacker from coercing the core
+     * into wiring an arbitrary class.
+     */
+    protected function bootOAuthCommunityDrivers(): void
+    {
+        // socialiteproviders/manager ships SocialiteWasCalled; if it is absent no
+        // community package is installed at all, so there is nothing to wire.
+        // class_exists() takes a leading backslash; Event::listen() does NOT
+        // normalize it, and the dispatched event's get_class() has no leading
+        // slash — so the listener key must be the bare FQCN or it would never fire.
+        $eventClass = 'SocialiteProviders\Manager\SocialiteWasCalled';
+
+        if (! class_exists($eventClass)) {
+            return;
+        }
+
+        $active = (array) config('larafoundry.auth.oauth.providers', []);
+        $map = (array) config('larafoundry.auth.oauth.community_drivers', []);
+
+        foreach ($map as $slug => $handler) {
+            // Only wire slugs the host has actually enabled.
+            if (! in_array($slug, $active, true)) {
+                continue;
+            }
+
+            // Slug enabled but its package is not installed: a valid configuration
+            // (the button just will not work) — skip silently, never throw.
+            if (! is_string($handler) || ! class_exists($handler)) {
+                continue;
+            }
+
+            Event::listen($eventClass, [ltrim($handler, '\\'), 'handle']);
+        }
     }
 
     /**

@@ -269,9 +269,15 @@ return [
         //              facebook and twitter (OAuth 1.0a). A button only actually
         //              works once the host supplies that provider's credentials
         //              in `config/services.php` + `.env`; the core ships none.
-        //              Community providers (apple, microsoft, linkedin, twitter
-        //              OAuth 2.0) need a `socialiteproviders/*` package the host
-        //              installs and registers — then just add the slug here.
+        //              Community providers (apple, microsoft, …) need a
+        //              `socialiteproviders/*` package the host installs — then
+        //              just add the slug here AND map it under `community_drivers`
+        //              below. The core auto-registers the package's driver (no
+        //              manual SocialiteWasCalled listener in the host anymore).
+        //  community_drivers — slug => handler FQCN for socialiteproviders/*
+        //              packages. For every slug here that is ALSO in `providers`
+        //              AND whose handler class is installed, the core registers
+        //              the SocialiteWasCalled listener for it. See the key below.
         //  link_existing — when true, an OAuth login whose email matches an
         //              existing local account links to it instead of being
         //              refused (the anti-takeover default is false).
@@ -280,6 +286,29 @@ return [
             'providers' => ['google', 'facebook', 'twitter'],
             'link_existing' => false,
             'redirect_after_login' => '/',
+
+            // Community Socialite drivers (socialiteproviders/* packages). The
+            // core auto-registers the SocialiteWasCalled listener for any slug
+            // here that is ALSO listed in `providers` AND whose handler class is
+            // actually installed (class_exists guard) — so a host only needs
+            // `composer require socialiteproviders/<x>` + creds, no manual event
+            // listener. A host may add/override entries for any other community
+            // package. Values are plain strings (never ::class) so a missing
+            // package never trips the autoloader. Keys MUST stay static config —
+            // the FQCN is registered verbatim, so it must never be request-derived.
+            //
+            // Default map ships apple + microsoft, the two community providers
+            // verified against their current packages. Deliberately NOT shipped:
+            //   - 'linkedin' — Socialite 5 has a native `linkedin-openid` driver,
+            //     so the community `linkedin` driver is redundant/conflicting.
+            //   - 'twitter'  — the OAuth-2 X community package registers driver
+            //     name 'twitter', colliding with the native OAuth-1.0a `twitter`
+            //     already in `providers`. A host that wants OAuth-2 X must resolve
+            //     the slug first (e.g. expose it as 'x') before mapping it here.
+            'community_drivers' => [
+                'apple' => '\SocialiteProviders\Apple\AppleExtendSocialite',
+                'microsoft' => '\SocialiteProviders\Microsoft\MicrosoftExtendSocialite',
+            ],
         ],
 
         // Security alert when the super-admin account is the target of a failed

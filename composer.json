@@ -34,10 +34,10 @@
     "suggest": {
         "ext-gd": "Required only to process image uploads (avatars, logos) with the default GD image driver; the initials placeholder avatar needs no extension.",
         "ext-imagick": "Alternative image driver — set larafoundry-media.image_driver to 'imagick' to use it instead of GD.",
-        "socialiteproviders/apple": "Optional OAuth provider: add 'apple' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
-        "socialiteproviders/microsoft": "Optional OAuth provider: add 'microsoft' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
-        "socialiteproviders/linkedin": "Optional OAuth provider: add 'linkedin' to larafoundry.auth.oauth.providers after installing and registering its Socialite driver in the host.",
-        "socialiteproviders/twitter": "Optional OAuth 2.0 Twitter/X provider (the built-in Socialite 'twitter' driver is OAuth 1.0a); install and register it, then list 'twitter' in larafoundry.auth.oauth.providers."
+        "socialiteproviders/apple": "Optional OAuth provider: install it, then add 'apple' to larafoundry.auth.oauth.providers (the core auto-registers the driver from larafoundry.auth.oauth.community_drivers).",
+        "socialiteproviders/microsoft": "Optional OAuth provider: install it, then add 'microsoft' to larafoundry.auth.oauth.providers (the core auto-registers the driver from larafoundry.auth.oauth.community_drivers).",
+        "socialiteproviders/linkedin": "Optional OAuth provider; note Socialite 5 already ships a native 'linkedin-openid' driver. To use the community one, install it, map its slug under larafoundry.auth.oauth.community_drivers, then add that slug to providers.",
+        "socialiteproviders/twitter": "Optional OAuth 2.0 Twitter/X provider (the built-in Socialite 'twitter' driver is OAuth 1.0a). It registers driver name 'twitter', which collides with the native one; resolve the slug (e.g. 'x') before mapping it under larafoundry.auth.oauth.community_drivers and adding it to providers."
     },
     "autoload": {
         "psr-4": {
