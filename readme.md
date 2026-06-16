@@ -12,12 +12,16 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.19.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), and an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels).**
+> ⚠️ **Status: early but growing. Current release is `v0.20.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), and an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels).**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.20.x` OAuth community-driver auto-registration
+
+A host enabling Apple, Microsoft or any other `socialiteproviders/*` provider no longer wires a `SocialiteWasCalled` listener by hand. A `larafoundry.auth.oauth.community_drivers` map (slug → handler) ships Apple and Microsoft by default; the core registers each mapped driver whose package is installed and whose slug is enabled, guarded by `class_exists` so the core keeps no hard dependency on those packages. FREE core, so the code is open.
 
 ### `v0.19.x` Admin-access security alert (+ OAuth provider expansion)
 
@@ -256,13 +260,15 @@ Two-factor (TOTP + recovery codes + QR enrolment) and passkeys come from Fortify
 
 **Enabling an OAuth provider (host side).** The core ships no credentials. To turn a built-in provider on in your host app: add the provider's credentials to `config/services.php` + `.env` (e.g. `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`), make sure its slug is in `larafoundry.auth.oauth.providers`, and set `LARAFOUNDRY_OAUTH_ENABLED=true`. The button renders and the `OAuthController` accepts the slug automatically.
 
-**Adding a community provider (Apple, Microsoft, LinkedIn, Twitter/X OAuth 2.0).** These need a `socialiteproviders/*` package the host installs (they are listed under `suggest`, never required by the core). The flow is host-only — the controller is driver-agnostic and needs no change:
+**Adding a community provider (Apple, Microsoft, …).** Some providers are not built into Socialite and come from a `socialiteproviders/*` package the host installs (they are listed under `suggest`, never required by the core). Since `v0.20.x` the core wires the driver for you — no manual event listener:
 
 ```bash
 composer require socialiteproviders/apple
 ```
 
-Register its driver in the host (its event subscriber / `Socialite::extend(...)`), add `apple` to `larafoundry.auth.oauth.providers`, add the credentials in `config/services.php`, and the button + callback work like any built-in provider. Note: the built-in Socialite `twitter` driver is OAuth 1.0a; for the modern Twitter/X API v2 use `socialiteproviders/twitter` (OAuth 2.0) the same way.
+Add `apple` to `larafoundry.auth.oauth.providers`, add the credentials in `config/services.php` + `.env`, and the button + callback work like any built-in provider. Apple and Microsoft ship in the default `larafoundry.auth.oauth.community_drivers` map, so the core registers their `SocialiteWasCalled` driver automatically once the package is present — guarded by `class_exists`, so the core keeps no hard dependency on those packages. To add any other community package, map its slug to the package's `*ExtendSocialite` handler under `community_drivers` and list the slug in `providers`.
+
+Note: `linkedin` and Twitter/X (OAuth 2.0) are deliberately not in the default map — Socialite 5 already ships a native `linkedin-openid` driver, and the OAuth-2 X package registers the driver name `twitter`, which collides with the built-in OAuth-1.0a `twitter`; resolve the slug (e.g. expose it as `x`) before mapping it.
 
 ### `v0.1.0` Foundation layer
 
