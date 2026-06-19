@@ -489,11 +489,15 @@ return [
         ],
 
         // Company scope — правит владелец/роль с company.settings.update.
+        // `in` drives the form dropdown (schemaForScope -> options); the
+        // `timezone` rule still validates the value, so the full IANA list keeps
+        // options and validation consistent without hardcoding a curated subset.
         'timezone' => [
             'scope' => 'company',
             'label' => 'Time zone',
             'type' => 'string',
             'default' => 'UTC',
+            'in' => timezone_identifiers_list(),
             'validation' => ['string', 'timezone'],
         ],
 
