@@ -300,6 +300,8 @@ The cross-cutting primitives every later module depends on.
 
 ## Installation
 
+> **Integrating into an existing app?** Read the end-to-end walkthrough first — installation, the User model on an existing `users` table, `personal` mode (no companies), login-only, Google OAuth + QR, super-admin, and the Inertia/Vite frontend wiring: **[docs/integrating-into-an-existing-app.md](docs/integrating-into-an-existing-app.md)**.
+
 ```bash
 composer require dmitryisaenko/larafoundry
 ```
@@ -481,6 +483,16 @@ createInertiaApp({
 /* host app.css */
 @import 'tailwindcss';
 @import '../../vendor/dmitryisaenko/larafoundry/resources/css/theme.css';
+```
+
+### For AI coding agents
+
+The [integration guide](docs/integrating-into-an-existing-app.md) is written to be handed to a coding agent. To make every agent in your host project aware of it automatically, add this to your host app's root `CLAUDE.md` / `AGENTS.md` (agents do not read `vendor/` on their own):
+
+```markdown
+This app is built on `dmitryisaenko/larafoundry`. Before touching the core,
+read `vendor/dmitryisaenko/larafoundry/docs/integrating-into-an-existing-app.md`.
+Never edit the package in `vendor/`; extend it only through its documented seams.
 ```
 
 ---

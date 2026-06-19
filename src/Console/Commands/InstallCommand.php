@@ -23,6 +23,10 @@ class InstallCommand extends Command
         $this->line('  1. php artisan migrate');
         $this->line('  2. php artisan larafoundry:permissions:sync   (seeds permissions, the `authenticated` role and role templates)');
 
+        $this->newLine();
+        $this->line('Integrating into an existing app (User model, frontend wiring, OAuth/QR, super-admin)?');
+        $this->line('See docs/integrating-into-an-existing-app.md (installed at vendor/dmitryisaenko/larafoundry/docs/).');
+
         return self::SUCCESS;
     }
 }
