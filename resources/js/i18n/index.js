@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n';
+import { router } from '@inertiajs/vue3';
 
 /**
  * Build a vue-i18n instance from Inertia shared props.
@@ -54,5 +55,47 @@ export function installI18n(app, pageProps = {}) {
     // Plain JS outside components (legacy compatibility).
     globalThis.t = translate;
 
+    // Keep the active locale in sync with what the backend re-shares on every
+    // Inertia visit. The LocaleSwitcher POSTs to change the session locale and
+    // redirects back; `HandleInertiaRequests` then shares the new `locale` and
+    // `translations` on the response. Without this bridge those props would land
+    // but vue-i18n — built once at boot — would keep rendering the old language
+    // until a full page reload (F5). Registering the freshly-shared messages here
+    // is also what lets a host ship only the active language to the client.
+    //
+    // Bind both events: `success` covers server responses (the switch itself,
+    // reloads, partial reloads); `navigate` covers history back/forward and
+    // bfcache restores, which fire `navigate` only (no `success`). Both carry the
+    // same `{ detail: { page } }` payload and `applyLocaleFromProps` is
+    // idempotent, so the overlap on a normal forward visit is harmless.
+    const sync = (event) => applyLocaleFromProps(i18n, event.detail.page?.props ?? {});
+    router.on('success', sync);
+    router.on('navigate', sync);
+
     return i18n;
+}
+
+/**
+ * Adopt the locale and messages carried by an Inertia page's shared props.
+ *
+ * Registers the shared `translations` under the shared `locale` (so a language
+ * the client has not seen yet gets its messages) and then activates that locale.
+ * A no-op when no `locale` prop is present.
+ *
+ * @param {import('vue-i18n').I18n} i18n
+ * @param {object} pageProps
+ */
+function applyLocaleFromProps(i18n, pageProps = {}) {
+    const locale = pageProps.locale;
+    if (!locale) {
+        return;
+    }
+
+    if (pageProps.translations) {
+        i18n.global.setLocaleMessage(locale, pageProps.translations);
+    }
+
+    if (i18n.global.locale.value !== locale) {
+        i18n.global.locale.value = locale;
+    }
 }
