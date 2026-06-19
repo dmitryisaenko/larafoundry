@@ -9,6 +9,8 @@ You do not need to read the core's source to use it. You need to know two things
 what a module gives you, and which seam you plug into. This index covers the
 second; each module page covers the first.
 
+> **Start here:** [Integrating LaraFoundry into an existing Laravel app](integrating-into-an-existing-app.md) — the end-to-end walkthrough (install, the User model on an existing `users` table, `personal` mode without companies, login-only, Google OAuth + QR, super-admin, and the Inertia/Vite frontend wiring).
+
 ## How the core extends your host
 
 The core never asks you to edit it. Instead it exposes a small, fixed set of
