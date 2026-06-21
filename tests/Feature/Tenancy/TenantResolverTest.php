@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
+use Dmitryisaenko\LaraFoundry\Tenancy\LaraFoundryTenancy;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
@@ -103,6 +104,38 @@ describe('teams mode (SessionTenantResolver)', function () {
         $resolver->forget($user);
 
         expect($resolver->current($user))->toBeNull();
+    });
+});
+
+describe('activeCompany shared prop', function () {
+    it('reports is_owner true for the owner of the active company', function () {
+        $store = startedSession('ownersess');
+        $user = resolverUser();
+        $company = ownedCompany($user);
+        UserSession::create(['user_id' => $user->id, 'session_id' => $store->getId(), 'login_method' => 'native']);
+        app(SessionTenantResolver::class)->setCurrent($user, $company);
+        $this->actingAs($user);
+
+        $prop = LaraFoundryTenancy::sharedProps()['activeCompany']();
+
+        expect($prop)->not->toBeNull()
+            ->and($prop['id'])->toBe($company->id)
+            ->and($prop['is_owner'])->toBeTrue();
+    });
+
+    it('reports is_owner false for a non-owner member', function () {
+        $store = startedSession('membersess');
+        $owner = resolverUser();
+        $company = ownedCompany($owner);
+        $member = resolverUser();
+        $company->addEmployee($member, addedById: $owner->id, isOwner: false);
+        UserSession::create(['user_id' => $member->id, 'session_id' => $store->getId(), 'login_method' => 'native']);
+        app(SessionTenantResolver::class)->setCurrent($member, $company);
+        $this->actingAs($member);
+
+        $prop = LaraFoundryTenancy::sharedProps()['activeCompany']();
+
+        expect($prop['is_owner'])->toBeFalse();
     });
 });
 

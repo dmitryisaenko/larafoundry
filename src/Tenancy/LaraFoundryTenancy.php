@@ -36,7 +36,7 @@ class LaraFoundryTenancy
     }
 
     /**
-     * @return array{id: int|string, uuid: string, name: string}|null
+     * @return array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool}|null
      */
     protected static function activeCompany(): ?array
     {
@@ -57,6 +57,11 @@ class LaraFoundryTenancy
             'uuid' => $company->uuid,
             'name' => $company->name,
             'logo_url' => $company->logo_url,
+            // Active company is resolved through the user's companies() relation
+            // (withPivot includes is_owner), so the pivot is loaded here. Shipped
+            // so the shell can show the user's role in the active company without a
+            // separate lookup — keeps activeCompany in step with the companies list.
+            'is_owner' => (bool) $company->pivot->is_owner,
         ];
     }
 
