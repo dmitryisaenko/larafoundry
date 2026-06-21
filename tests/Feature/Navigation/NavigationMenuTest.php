@@ -72,10 +72,15 @@ it('lets an owner see all tenant menu items via owner bypass', function () {
     navActivate($owner, $company);
 
     $menu = app(MenuBuilder::class)->build('tenant', $owner);
-    $labels = array_column($menu, 'labelKey');
 
-    expect($labels)->toContain('Employees')
-        ->and($labels)->toContain('Roles');
+    // The core tenant screens now live under one collapsible "My company" group.
+    $group = collect($menu)->firstWhere('labelKey', 'My company');
+    expect($group)->not->toBeNull();
+
+    $childLabels = array_column($group['submenu'], 'labelKey');
+    expect($childLabels)->toContain('Employees')
+        ->and($childLabels)->toContain('Roles')
+        ->and($childLabels)->toContain('Company settings');
 });
 
 it('hides tenant items a member lacks permission for', function () {
@@ -87,8 +92,9 @@ it('hides tenant items a member lacks permission for', function () {
 
     $menu = app(MenuBuilder::class)->build('tenant', $member);
 
-    // A bare member has no company.employees.view / company.roles.view, so the
-    // core tenant items are filtered out.
+    // A bare member has no company.* permissions, so every child of the
+    // "My company" group is filtered out — and a pure group with an empty
+    // surviving submenu is dropped entirely (unreachable empty group).
     expect(array_column($menu, 'labelKey'))->toBe([]);
 });
 

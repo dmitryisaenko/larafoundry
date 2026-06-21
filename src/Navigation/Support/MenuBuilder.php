@@ -80,6 +80,7 @@ class MenuBuilder
         }
 
         $items = $this->collectItems($level);
+        $items = $this->mergeGroups($items);
         $items = $this->filter($items, $user);
         $items = $this->sort($items);
 
@@ -114,6 +115,67 @@ class MenuBuilder
         }
 
         return $items;
+    }
+
+    /**
+     * Merge top-level PURE groups (no own route/url) that share a labelKey into
+     * one, concatenating their submenus.
+     *
+     * This lets the core and the host grow the SAME sidebar group from separate
+     * providers: the core's TenantMenuProvider ships a "My company" group with
+     * Employees/Roles/Company settings, and the host adds a "My company" group
+     * carrying its Dashboard child — both land under one parent instead of
+     * rendering as two identically-named groups.
+     *
+     * Only pure groups merge. Two leaf items with the same labelKey are distinct
+     * links and are left untouched. The merged group keeps the LOWEST `order`
+     * among the merged copies (so a host with order 0 can pull the shared group
+     * to the top); the merged submenu is later sorted by the normal `sort()`.
+     * Runs BEFORE filter/sort so policy filtering and the empty-group drop see
+     * the fully merged submenu. Originals are cloned, never mutated in place.
+     *
+     * @param  array<int, MenuItem>  $items
+     * @return array<int, MenuItem>
+     */
+    protected function mergeGroups(array $items): array
+    {
+        /** @var array<string, MenuItem> $groups  merged pure-group accumulator, keyed by labelKey */
+        $groups = [];
+        $result = [];
+
+        foreach ($items as $item) {
+            $isPureGroup = $item->route === null
+                && $item->url === null
+                && $item->submenu !== [];
+
+            if (! $isPureGroup) {
+                $result[] = $item;
+
+                continue;
+            }
+
+            if (! isset($groups[$item->labelKey])) {
+                // First copy of this group — clone it (and reassign its own
+                // submenu array) so we never mutate the provider's instance.
+                // The same object instance is held in both $groups (for folding
+                // later copies into) and $result (to keep output order), so
+                // mutating it via $groups is visible in $result.
+                $clone = clone $item;
+                $clone->submenu = $item->submenu;
+                $groups[$item->labelKey] = $clone;
+                $result[] = $clone;
+
+                continue;
+            }
+
+            // Subsequent copy — fold its submenu into the shared instance and
+            // keep the lowest order so any provider can pull the group up.
+            $existing = $groups[$item->labelKey];
+            $existing->submenu = array_merge($existing->submenu, $item->submenu);
+            $existing->order = min($existing->order, $item->order);
+        }
+
+        return $result;
     }
 
     /**
@@ -176,12 +238,24 @@ class MenuBuilder
     }
 
     /**
+     * Sort items by `order` ascending, recursively into submenus.
+     *
+     * Recursion matters once groups are merged: a group's children can come from
+     * different providers (e.g. host Dashboard order 10 + core Employees order
+     * 80), so the submenu must be re-sorted by order, not left in merge order.
+     *
      * @param  array<int, MenuItem>  $items
      * @return array<int, MenuItem>
      */
     protected function sort(array $items): array
     {
         usort($items, static fn (MenuItem $a, MenuItem $b) => $a->order <=> $b->order);
+
+        foreach ($items as $item) {
+            if ($item->submenu !== []) {
+                $item->submenu = $this->sort($item->submenu);
+            }
+        }
 
         return $items;
     }

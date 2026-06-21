@@ -173,6 +173,100 @@ it('filters submenus recursively and drops empty groups', function () {
         ->and($menu[0]['submenu'][0]['labelKey'])->toBe('Allowed');
 });
 
+it('merges top-level pure groups that share a labelKey', function () {
+    // The core ships a "My company" group; the host grows the same group from
+    // its own provider. They must collapse into one parent with both children.
+    $builder = (new MenuBuilder)
+        ->setPolicyChecker(allowOnly([]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', order: 90, submenu: [
+                new MenuItem(labelKey: 'Employees', url: '/e', order: 80),
+            ]),
+        ]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', order: 10, submenu: [
+                new MenuItem(labelKey: 'Dashboard', url: '/d', order: 10),
+            ]),
+        ]));
+
+    $menu = $builder->build('tenant', fakeUser());
+
+    expect($menu)->toHaveCount(1)
+        ->and($menu[0]['labelKey'])->toBe('My company')
+        // Lowest order among merged copies wins (host's 10).
+        ->and($menu[0]['order'])->toBe(10)
+        // Merged submenu, sorted by child order.
+        ->and(array_column($menu[0]['submenu'], 'labelKey'))->toBe(['Dashboard', 'Employees']);
+});
+
+it('applies policy filtering inside a merged group', function () {
+    $builder = (new MenuBuilder)
+        ->setPolicyChecker(allowOnly(['ok']))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', submenu: [
+                new MenuItem(labelKey: 'Allowed', url: '/a', policy: 'ok'),
+            ]),
+        ]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', submenu: [
+                new MenuItem(labelKey: 'Denied', url: '/d', policy: 'nope'),
+            ]),
+        ]));
+
+    $menu = $builder->build('tenant', fakeUser());
+
+    expect($menu)->toHaveCount(1)
+        ->and(array_column($menu[0]['submenu'], 'labelKey'))->toBe(['Allowed']);
+});
+
+it('drops a merged group whose entire submenu is filtered out', function () {
+    $builder = (new MenuBuilder)
+        ->setPolicyChecker(allowOnly([]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', submenu: [
+                new MenuItem(labelKey: 'X', url: '/x', policy: 'nope'),
+            ]),
+        ]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', submenu: [
+                new MenuItem(labelKey: 'Y', url: '/y', policy: 'nope'),
+            ]),
+        ]));
+
+    expect($builder->build('tenant', fakeUser()))->toBe([]);
+});
+
+it('does not merge two leaf items that share a labelKey', function () {
+    // Same label, but they are real links (have a url), not pure groups.
+    $builder = (new MenuBuilder)
+        ->setPolicyChecker(allowOnly([]))
+        ->addProvider(fakeProvider('admin', [new MenuItem(labelKey: 'Same', url: '/one')]))
+        ->addProvider(fakeProvider('admin', [new MenuItem(labelKey: 'Same', url: '/two')]));
+
+    expect($builder->build('admin', fakeUser()))->toHaveCount(2);
+});
+
+it('does not mutate a provider MenuItem instance when merging', function () {
+    $shared = new MenuItem(labelKey: 'My company', submenu: [
+        new MenuItem(labelKey: 'Employees', url: '/e'),
+    ]);
+
+    $builder = (new MenuBuilder)
+        ->setPolicyChecker(allowOnly([]))
+        ->addProvider(fakeProvider('tenant', [$shared]))
+        ->addProvider(fakeProvider('tenant', [
+            new MenuItem(labelKey: 'My company', submenu: [
+                new MenuItem(labelKey: 'Dashboard', url: '/d'),
+            ]),
+        ]));
+
+    $builder->build('tenant', fakeUser());
+
+    // The original provider instance still has only its own child.
+    expect($shared->submenu)->toHaveCount(1)
+        ->and($shared->submenu[0]->labelKey)->toBe('Employees');
+});
+
 it('drops items explicitly marked not visible', function () {
     $builder = (new MenuBuilder)
         ->setPolicyChecker(allowOnly([]))
