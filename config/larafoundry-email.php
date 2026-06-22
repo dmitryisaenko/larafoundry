@@ -6,50 +6,50 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | LaraFoundry email templates (phase 5.1)
 |--------------------------------------------------------------------------
-| Реестр редактируемых шаблонов писем. ЕДИНЫЙ источник истины (как реестр
-| larafoundry.settings): editable ТОЛЬКО зарегистрированные здесь шаблоны
-| (fail-closed) — super-admin не может завести произвольный `code`, а письмо
-| отправляется лишь если есть Notification с этим `code`.
+| Registry of editable email templates. The SINGLE source of truth (like the
+| larafoundry.settings registry): ONLY the templates registered here are editable
+| (fail-closed) — the super-admin cannot create an arbitrary `code`, and an email
+| is sent only if there is a Notification with that `code`.
 |
-| Поток данных:
-|   реестр (этот файл)  — ДЕФОЛТЫ: subject / body_html / body_text по локалям
-|                         + whitelist переменных `variables`.
-|   larafoundry_email_templates (БД) — ТОЛЬКО переопределения super-admin'а.
-|   Нет БД-строки → письмо рендерится из дефолта реестра (graceful, D-5.1-8).
+| Data flow:
+|   the registry (this file) — DEFAULTS: subject / body_html / body_text per locale
+|                              + the `variables` placeholder whitelist.
+|   larafoundry_email_templates (DB) — ONLY the super-admin's overrides.
+|   No DB row → the email renders from the registry default (graceful, D-5.1-8).
 |
-| Добавить новое письмо = +1 запись здесь (code + variables + дефолтный текст)
-| и +1 Notification-класс с тем же `code`. UI-редактор подхватит его
-| автоматически (показывает объединение реестр ∪ БД).
+| Adding a new email = +1 entry here (code + variables + default text) and +1
+| Notification class with the same `code`. The UI editor picks it up automatically
+| (it shows the union registry ∪ DB).
 |
-| Рендер — строгий `{{переменная}}` str_replace (НЕ Blade, см. TemplateRenderer
-| + тест-страж). body_html чистится email-friendly HTML-purifier'ом на записи
-| (HtmlSanitizer, ezyang/htmlpurifier). Доступные переменные ОБЯЗАНЫ входить в
-| `variables` шаблона — иначе сохранение отклоняется (STRICT, D-5.1-11).
+| Rendering is strict `{{variable}}` str_replace (NOT Blade, see TemplateRenderer
+| + the test guard). body_html is sanitised by the email-friendly HTML purifier on
+| write (HtmlSanitizer, ezyang/htmlpurifier). The variables used MUST be listed in
+| the template's `variables` — otherwise the save is rejected (STRICT, D-5.1-11).
 |
-| Доменные письма host (employee_, payment_, company_ …) ядро НЕ закладывает —
-| host добавляет их, публикуя этот конфиг.
+| The host's domain emails (employee_, payment_, company_ …) are NOT shipped by
+| the core — the host adds them by publishing this config.
 */
 
 return [
 
     /*
-    | Отправка тест-письма из редактора. throttle — «попыток,минут» для роута
-    | (защита от рассылки спама на чужие адреса — донор её не имел).
+    | Sending a test email from the editor. throttle — "attempts,minutes" for the
+    | route (protection against spamming other people's addresses — the donor lacked it).
     */
     'test_email' => [
         'throttle' => '5,1',
     ],
 
     /*
-    | Реестр шаблонов. Ключ = `code` (совпадает с lookup в Notification).
-    |   variables  — whitelist плейсхолдеров {{...}}, разрешённых в этом шаблоне.
-    |   subject    — тема по локалям.
-    |   body_html  — HTML-тело по локалям (чистится санитайзером на записи).
-    |   body_text  — plain-text тело по локалям (fallback для текстовых клиентов).
+    | The template registry. Key = `code` (matches the lookup in the Notification).
+    |   variables  — whitelist of {{...}} placeholders allowed in this template.
+    |   subject    — the subject per locale.
+    |   body_html  — the HTML body per locale (sanitised on write).
+    |   body_text  — the plain-text body per locale (fallback for text clients).
     */
     'templates' => [
 
-        // Приветствие после регистрации.
+        // Welcome message after registration.
         'welcome_email' => [
             'variables' => ['name', 'app_name', 'login_url', 'support_url'],
             'subject' => [
@@ -66,7 +66,7 @@ return [
             ],
         ],
 
-        // Сброс пароля.
+        // Password reset.
         'password_reset' => [
             'variables' => ['name', 'reset_url'],
             'subject' => [
@@ -83,7 +83,7 @@ return [
             ],
         ],
 
-        // Подтверждение email.
+        // Email verification.
         'email_verification' => [
             'variables' => ['name', 'verification_url'],
             'subject' => [
@@ -100,7 +100,7 @@ return [
             ],
         ],
 
-        // Приглашение в компанию.
+        // Company invitation.
         'company_invitation' => [
             'variables' => ['company_name', 'inviter_name', 'accept_url', 'expires_at'],
             'subject' => [

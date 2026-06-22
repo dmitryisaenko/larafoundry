@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 | {role} and {user} are bound as raw ids and resolved THROUGH the active company in
 | the controllers (anti-IDOR), so a global route-model binding can't leak another
-| tenant's row. Naming: `authorization.*` (distinct from Ф1.2 `tenancy.*`).
+| tenant's row. Naming: `authorization.*` (distinct from phase 1.2 `tenancy.*`).
 */
 
 Route::middleware(['web', 'auth'])->group(function () {

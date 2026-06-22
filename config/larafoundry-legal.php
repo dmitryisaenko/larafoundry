@@ -6,29 +6,29 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | LaraFoundry legal pages (phase 5.3)
 |--------------------------------------------------------------------------
-| Реестр редактируемых правовых страниц (Terms / Privacy / Cookie policy).
-| ЕДИНЫЙ источник истины (как реестр larafoundry-email.templates): editable
-| ТОЛЬКО зарегистрированные здесь slug'и (fail-closed) — super-admin не может
-| завести произвольный slug, а публичная страница `/legal/{slug}` отдаётся лишь
-| для зарегистрированного slug'а.
+| Registry of editable legal pages (Terms / Privacy / Cookie policy). The SINGLE
+| source of truth (like the larafoundry-email.templates registry): ONLY the slugs
+| registered here are editable (fail-closed) — the super-admin cannot create an
+| arbitrary slug, and the public page `/legal/{slug}` is served only for a
+| registered slug.
 |
-| Поток данных:
-|   реестр (этот файл) — ПЛЕЙСХОЛДЕР-ДЕФОЛТЫ: title / body_html по локалям.
-|   larafoundry_legal_pages (БД) — ТОЛЬКО опубликованная super-admin'ом страница.
-|   Нет БД-строки (или не опубликована) → публичная страница 404 (плейсхолдер
-|   НИКОГДА не отдаётся как настоящий юр-текст — его сперва правит и публикует
-|   владелец проекта под свою юрисдикцию).
+| Data flow:
+|   the registry (this file) — PLACEHOLDER DEFAULTS: title / body_html per locale.
+|   larafoundry_legal_pages (DB) — ONLY the page published by the super-admin.
+|   No DB row (or not published) → the public page 404s (a placeholder is NEVER
+|   served as real legal text — the project owner edits and publishes it first
+|   under their own jurisdiction).
 |
-| Добавить новую правовую страницу = +1 запись здесь (slug + дефолтный текст).
-| UI-редактор подхватит её автоматически.
+| Adding a new legal page = +1 entry here (slug + default text). The UI editor
+| picks it up automatically.
 |
-| body_html чистится email-friendly HTML-purifier'ом (общий HtmlSanitizer) на
-| записи И на отдаче. Рендера переменных НЕТ — страницы статичны (в отличие от
-| писем), что убирает этот класс уязвимостей.
+| body_html is sanitised by the email-friendly HTML purifier (the shared
+| HtmlSanitizer) on write AND on output. There is NO variable rendering — the
+| pages are static (unlike emails), which removes that class of vulnerability.
 |
-| Контент юр-страниц host-специфичен (юрисдикция, текст юриста); ядро даёт лишь
-| механизм + плейсхолдеры. Версия (`version`) бампится владельцем при
-| существенном изменении и кормит re-accept gate (фаза 5.3 часть B).
+| Legal-page content is host-specific (jurisdiction, lawyer's text); the core
+| provides only the mechanism + placeholders. The `version` is bumped by the
+| owner on a material change and feeds the re-accept gate (phase 5.3 part B).
 */
 
 return [
@@ -94,7 +94,7 @@ return [
 
     'pages' => [
 
-        // Условия использования.
+        // Terms of Service.
         'terms' => [
             'title' => [
                 'en' => 'Terms of Service',
@@ -106,7 +106,7 @@ return [
             ],
         ],
 
-        // Политика конфиденциальности.
+        // Privacy Policy.
         'privacy' => [
             'title' => [
                 'en' => 'Privacy Policy',
@@ -118,7 +118,7 @@ return [
             ],
         ],
 
-        // Политика cookie.
+        // Cookie Policy.
         'cookies' => [
             'title' => [
                 'en' => 'Cookie Policy',

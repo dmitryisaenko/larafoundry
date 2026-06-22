@@ -22,7 +22,7 @@ use Inertia\Response;
  * CRUD for the active company's roles (phase 1.3).
  *
  * Every role is resolved THROUGH the active company (anti-IDOR, the same
- * structural-isolation idiom as Ф1.2 invitations): a role belonging to another
+ * structural-isolation idiom as phase 1.2 invitations): a role belonging to another
  * company simply isn't found (404), so cross-tenant access can't slip past a
  * forgotten guard. On top of that the `roles.*` gates enforce the permission and
  * the structural rules (editable / deletable). Server sets the role flags and

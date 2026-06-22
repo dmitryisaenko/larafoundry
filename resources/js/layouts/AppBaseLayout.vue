@@ -4,9 +4,9 @@ import AppFlashMessage from '../components/AppFlashMessage.vue';
 /**
  * Minimal de-branded application layout.
  *
- * The honest Ф0.4 baseline: a themed page wrapper with flash toasts wired in,
+ * The honest phase 0.4 baseline: a themed page wrapper with flash toasts wired in,
  * nothing more. Header / footer / navigation are intentionally absent — they
- * couple to navigation (Ф2.3) and tenancy (Ф1.2/1.3) and will arrive with the
+ * couple to navigation (phase 2.3) and tenancy (phase 1.2/1.3) and will arrive with the
  * full role-aware LayoutSwitcher. Until then host pages get a working,
  * branded-by-the-host shell from day one.
  *

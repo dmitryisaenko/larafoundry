@@ -10,20 +10,20 @@ return [
     | Tenancy (phase 1.2)
     |--------------------------------------------------------------------------
     | mode:
-    |   'teams'    — мультикомпании, тенант = Company (как kohana.io). Включает
-    |                company-creation визард, приглашения, переключение компании.
-    |   'personal' — тенант = сам User (без компаний). Company-флоу не
-    |                регистрируется; BelongsToTenant фильтрует по user_id.
+    |   'teams'    — multi-company, tenant = Company (like kohana.io). Enables the
+    |                company-creation wizard, invitations, company switching.
+    |   'personal' — tenant = the User itself (no companies). The company flow is
+    |                not registered; BelongsToTenant filters by user_id.
     |
-    | company_model — модель компании. Host наследует базовую и подставляет свою
-    |                 (`App\Models\Company extends ...\Tenancy\Models\Company`).
-    | foreign_key   — имя FK-колонки тенанта на доменных моделях. В teams это
-    |                 'company_id'; BelongsToTenant читает его отсюда. В personal
-    |                 трейт фильтрует по user_id независимо от этого значения.
-    | invitation_expiry_days — срок жизни приглашения сотрудника.
-    | routes_without_active_tenant — имена роутов (fnmatch), доступные company-
-    |                 пользователю БЕЗ выбранной активной компании (напр. запрос
-    |                 на удаление себя из компании). Используется EnsureActiveTenant.
+    | company_model — the company model. The host extends the base one and supplies
+    |                 its own (`App\Models\Company extends ...\Tenancy\Models\Company`).
+    | foreign_key   — the tenant FK column name on domain models. In teams it is
+    |                 'company_id'; BelongsToTenant reads it from here. In personal
+    |                 the trait filters by user_id regardless of this value.
+    | invitation_expiry_days — employee invitation lifetime.
+    | routes_without_active_tenant — route names (fnmatch) available to a company
+    |                 user WITHOUT a selected active company (e.g. a request to
+    |                 remove oneself from a company). Used by EnsureActiveTenant.
     */
     'tenancy' => [
         'mode' => env('LARAFOUNDRY_TENANCY_MODE', 'teams'),
@@ -43,27 +43,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Billing (шов, phase 3.1)
+    | Billing (seam, phase 3.1)
     |--------------------------------------------------------------------------
-    | В бесплатном ядре живёт только ШОВ: контракты + драйвер-менеджер + null-
-    | реализации. Реальные платежи (Cashier Stripe/Paddle, promo, trial-UI,
-    | portal, метрики) — в платном аддоне `dmitryisaenko/larafoundry-billing`,
-    | который встаёт в эти контракты.
+    | The free core ships only the SEAM: contracts + driver manager + null
+    | implementations. Real payments (Cashier Stripe/Paddle, promo, trial UI,
+    | portal, metrics) live in the paid add-on `dmitryisaenko/larafoundry-billing`,
+    | which plugs into these contracts.
     |
-    | enabled — главный рубильник доступа. false (по умолчанию) = бесплатный
-    |           self-host без ограничений: Company::hasAccess() всегда true,
-    |           ворота не блокируют. true (обычно вместе с аддоном) = hasAccess()
-    |           читает реальное состояние подписки из billing-колонок companies
-    |           (fail-closed: нет валидного trial/подписки → нет доступа).
+    | enabled — the master access switch. false (default) = free self-host with no
+    |           restrictions: Company::hasAccess() is always true, gates do not
+    |           block. true (usually together with the add-on) = hasAccess() reads
+    |           the real subscription state from the companies billing columns
+    |           (fail-closed: no valid trial/subscription → no access).
     |
-    | gateway.default — имя драйвера платёжного шлюза по умолчанию. В ядре
-    |           зарегистрирован только 'null' (ничего не принимает). Аддон/host
-    |           регистрируют 'stripe'/'paddle'/локальный PSP через
-    |           PaymentGatewayManager::extend() и указывают его здесь.
+    | gateway.default — the default payment gateway driver name. The core registers
+    |           only 'null' (accepts nothing). The add-on/host register
+    |           'stripe'/'paddle'/a local PSP via PaymentGatewayManager::extend()
+    |           and point to it here.
     |
-    | region.default_currency — валюта по умолчанию (ISO 4217), когда нет
-    |           маппинга страна→валюта. Per-country цены/валюты/выбор шлюза —
-    |           зона аддона/host через свою реализацию RegionContext.
+    | region.default_currency — the default currency (ISO 4217) when there is no
+    |           country→currency mapping. Per-country prices/currencies/gateway
+    |           selection are the add-on/host's domain via their RegionContext.
     */
     'billing' => [
         'enabled' => env('LARAFOUNDRY_BILLING_ENABLED', false),
@@ -81,26 +81,27 @@ return [
     |--------------------------------------------------------------------------
     | Locale
     |--------------------------------------------------------------------------
-    | ОДИН источник истины: locale = код ISO 639-1 ('en', 'uk', 'de'). Этот код
-    | используется ВЕЗДЕ — в URL, cookie, БД, переводах. Никаких 'ua', 'English'
-    | в роли ключа, никаких параллельных списков. Всё остальное (название языка,
-    | флаг) — это метаданные ОДНОЙ локали, а не отдельные массивы.
+    | ONE source of truth: locale = an ISO 639-1 code ('en', 'uk', 'de'). This code
+    | is used EVERYWHERE — in the URL, cookie, DB, translations. No 'ua', 'English'
+    | as a key, no parallel lists. Everything else (language name, flag) is metadata
+    | of a SINGLE locale, not separate arrays.
     |
-    | available  — белый список доступных локалей (ISO 639-1). Единственный
-    |              список, по которому валидируется ВСЁ. Невалидный код (напр.
-    |              'ua') физически не применится — SetLocale его отбросит.
-    | default    — fallback-локаль (обязана быть в available).
-    | cookie     — имя cookie, где хранится выбор гостя.
-    | locales    — метаданные на локаль (native-название, флаг) для UI-свитчера.
-    | detect_map — ТОЛЬКО исключения для авто-определения по браузеру. Код,
-    |              совпадающий с одной из available, берётся как есть и его сюда
-    |              писать НЕ нужно. Здесь живут лишь «не-тождественные» случаи
-    |              (напр. русскоязычный браузер → украинский интерфейс).
-    | geoip      — опциональный гео-резолвер по IP. По умолчанию OFF: синхронный
-    |              внешний HTTP на каждый запрос — медленно, утечка IP третьей
-    |              стороне, точка отказа. Host может включить и подставить свой
-    |              класс (implements LocaleGeoResolver). Маппинг страна→локаль —
-    |              забота этого резолвера, не ядра (страны = бизнес-сущность host).
+    | available  — the allowlist of available locales (ISO 639-1). The only list
+    |              EVERYTHING validates against. An invalid code (e.g. 'ua') simply
+    |              won't apply — SetLocale discards it.
+    | default    — the fallback locale (must be in available).
+    | cookie     — the cookie name where a guest's choice is stored.
+    | locales    — per-locale metadata (native name, flag) for the UI switcher.
+    | detect_map — ONLY exceptions for browser auto-detection. A code that matches
+    |              one of available is taken as-is and need NOT be listed here. Only
+    |              the "non-identical" cases live here (e.g. a Russian-language
+    |              browser → Ukrainian interface).
+    | geoip      — an optional IP geo-resolver. OFF by default: a synchronous
+    |              external HTTP call on every request — slow, leaks the IP to a
+    |              third party, a point of failure. The host may enable it and supply
+    |              its own class (implements LocaleGeoResolver). The country→locale
+    |              mapping is that resolver's job, not the core's (countries are a
+    |              host business entity).
     */
     'locale' => [
         'available' => ['en', 'uk'],
@@ -123,26 +124,26 @@ return [
     |--------------------------------------------------------------------------
     | Security
     |--------------------------------------------------------------------------
-    | admin_ips         — список IP (CSV или массив), которым разрешён вход в
-    |                     admin/auth-зону на проде. Пусто = ограничения нет.
-    |                     Используется RestrictAuthByIp middleware.
-    | super_admin       — платформенный супер-админ (phase 1.4):
-    |   email           — эксклюзивный email оператора. Когда задан, ТОЛЬКО он
-    |                     (вместе с флагом is_admin) получает admin-статус в
-    |                     VisitorStatus, И этот email зарезервирован: не может
-    |                     зарегистрироваться обычным юзером и не может владеть
-    |                     компанией (operator-личность отделена от tenant-личностей).
-    |                     Пусто = fallback на auth.failed_login.admin_email
-    |                     (обратная совместимость), затем «флага достаточно».
-    |   console_route   — имя роута, в который изолируется супер-админ
-    |                     (RedirectSuperAdminToConsole редиректит его сюда из
-    |                     tenant-зон).
-    |   allowed_routes  — имена роутов (fnmatch), доступные супер-админу ВНЕ
-    |                     редиректа в консоль (сама консоль, OTP-gate, PIN, logout).
-    | email_verification — настройки EnsureEmailIsVerified middleware:
-    |   redirect_route  — куда отправлять непроверенного пользователя.
-    |   except_routes   — имена роутов (fnmatch-паттерны), доступные без проверки.
-    |   except_prefixes — префиксы путей, доступные без проверки.
+    | admin_ips         — list of IPs (CSV or array) allowed to enter the
+    |                     admin/auth zone in production. Empty = no restriction.
+    |                     Used by the RestrictAuthByIp middleware.
+    | super_admin       — the platform super-admin (phase 1.4):
+    |   email           — the operator's exclusive email. When set, ONLY it
+    |                     (together with the is_admin flag) gets admin status in
+    |                     VisitorStatus, AND this email is reserved: it cannot
+    |                     register as an ordinary user and cannot own a company
+    |                     (the operator identity is separate from tenant identities).
+    |                     Empty = fall back to auth.failed_login.admin_email
+    |                     (backward compatibility), then "the flag is enough".
+    |   console_route   — the route name the super-admin is isolated into
+    |                     (RedirectSuperAdminToConsole redirects them here from
+    |                     tenant zones).
+    |   allowed_routes  — route names (fnmatch) available to the super-admin OUTSIDE
+    |                     the console redirect (the console itself, OTP gate, PIN, logout).
+    | email_verification — settings for the EnsureEmailIsVerified middleware:
+    |   redirect_route  — where to send an unverified user.
+    |   except_routes   — route names (fnmatch patterns) available without verification.
+    |   except_prefixes — path prefixes available without verification.
     */
     'security' => [
         'admin_ips' => env('LARAFOUNDRY_ADMIN_IPS', ''),
@@ -185,18 +186,18 @@ return [
     |--------------------------------------------------------------------------
     | Session PIN-lock (phase 1.4)
     |--------------------------------------------------------------------------
-    | Telegram-style быстрый повторный вход: после простоя (или ручной блокировки)
-    | активная веб-сессия требует короткий PIN вместо полного релогина. PIN —
-    | опционален, любой пользователь включает его в профиле; хранится хешем.
+    | Telegram-style quick re-entry: after idle time (or a manual lock) the active
+    | web session requires a short PIN instead of a full re-login. The PIN is
+    | optional — any user enables it in their profile; stored as a hash.
     |
-    | enabled         — главный рубильник. false = PIN-механика не применяется
-    |                   (CheckPinLock middleware = no-op), даже если PIN задан.
-    | length          — длина PIN (цифр). Донорский дефолт — 4.
-    | idle_timeout    — секунд бездействия, после которых сессия авто-блокируется
-    |                   (только та сессия, что простаивала).
-    | max_attempts    — неверных вводов подряд до временной блокировки ввода.
-    | lockout_minutes — на сколько минут запирается ВВОД PIN после превышения
-    |                   max_attempts (анти-brute-force; донор этого не имел).
+    | enabled         — the master switch. false = the PIN mechanic is not applied
+    |                   (CheckPinLock middleware = no-op), even if a PIN is set.
+    | length          — PIN length (digits). The donor default is 4.
+    | idle_timeout    — seconds of inactivity after which the session auto-locks
+    |                   (only the session that went idle).
+    | max_attempts    — wrong entries in a row before input is temporarily locked.
+    | lockout_minutes — how many minutes PIN INPUT is locked after exceeding
+    |                   max_attempts (anti-brute-force; the donor lacked this).
     */
     'pin' => [
         'enabled' => env('LARAFOUNDRY_PIN_ENABLED', true),
@@ -380,10 +381,10 @@ return [
     |--------------------------------------------------------------------------
     | Inertia shared props
     |--------------------------------------------------------------------------
-    | Управляет core-частью Inertia::share (flash/locale/translations/…).
+    | Controls the core part of Inertia::share (flash/locale/translations/…).
     | intended_url:
-    |   except_routes — роуты (имена), которые НЕ должны сохраняться как
-    |                   "intended url" (JSON-эндпоинты, polling и т.п.).
+    |   except_routes — routes (names) that must NOT be stored as the
+    |                   "intended url" (JSON endpoints, polling, etc.).
     */
     'inertia' => [
         'intended_url' => [
@@ -395,17 +396,17 @@ return [
     |--------------------------------------------------------------------------
     | Profile (phase 5.1)
     |--------------------------------------------------------------------------
-    | ui_settings — БЕЛЫЙ СПИСОК пользовательских UI-предпочтений, хранимых в
-    | колонке users.ui_settings (JSON). В донорe в эту колонку писался ЛЮБОЙ
-    | ключ/значение (recon finding #2) — здесь fail-closed: пишутся и читаются
-    | ТОЛЬКО зарегистрированные ключи, каждый со своим типом (значение кастуется,
-    | не доверяется) и опциональным enum `in`. Host добавляет свои предпочтения,
-    | публикуя этот конфиг; доменные настройки (per-company/app) — это уже модуль
-    | Settings (под-фаза B), не сюда.
+    | ui_settings — the ALLOWLIST of user UI preferences stored in the
+    | users.ui_settings column (JSON). In the donor ANY key/value was written to
+    | this column (recon finding #2) — here it is fail-closed: ONLY registered keys
+    | are written and read, each with its own type (the value is cast, not trusted)
+    | and an optional `in` enum. The host adds its own preferences by publishing
+    | this config; domain settings (per-company/app) belong to the Settings module
+    | (sub-phase B), not here.
     |
-    |   type    — 'boolean' | 'integer' | 'float' | 'string' (каст значения).
-    |   default — значение по умолчанию, когда ключ ещё не сохранён.
-    |   in      — (опц.) допустимый набор значений (enum).
+    |   type    — 'boolean' | 'integer' | 'float' | 'string' (value cast).
+    |   default — the default value when the key is not yet stored.
+    |   in      — (optional) the allowed set of values (enum).
     */
     'profile' => [
         'ui_settings' => [
@@ -448,29 +449,30 @@ return [
     |--------------------------------------------------------------------------
     | Settings (phase 5.1)
     |--------------------------------------------------------------------------
-    | Реестр generic key-value настроек (таблица larafoundry_settings). ЕДИНЫЙ
-    | источник истины: writable/readable ТОЛЬКО зарегистрированные ключи
-    | (fail-closed) — произвольный key в store не попадёт. Каждый ключ:
+    | Registry of generic key-value settings (the larafoundry_settings table). The
+    | SINGLE source of truth: ONLY registered keys are writable/readable
+    | (fail-closed) — an arbitrary key never reaches the store. Each key:
     |
-    |   scope      — app | company | user (где живёт значение и кто им владеет:
-    |                app=супер-админ, company=активная компания[RBAC
-    |                company.settings.*], user=сам пользователь).
-    |   type       — boolean | integer | float | string | array (каст значения).
-    |   default    — значение по умолчанию, когда ничего не сохранено.
-    |   validation — Laravel-правило валидации значения при записи.
-    |   in         — (опц.) enum допустимых значений (для select в UI).
-    |   public     — (опц., только app) отдавать ли значение во фронт (host
-    |                шарит через Inertia::share).
-    |   form       — (опц., default true) показывать ли ключ в self-service форме.
-    |                false = ключ хранится в store, но пишется не формой, а другим
-    |                флоу (напр. consent-флаги — пишет визард согласий Ф5.3).
+    |   scope      — app | company | user (where the value lives and who owns it:
+    |                app=super-admin, company=active company [RBAC
+    |                company.settings.*], user=the user itself).
+    |   type       — boolean | integer | float | string | array (value cast).
+    |   default    — the default value when nothing is stored.
+    |   validation — the Laravel validation rule for the value on write.
+    |   in         — (optional) enum of allowed values (for a select in the UI).
+    |   public     — (optional, app only) whether to expose the value to the front
+    |                end (the host shares it via Inertia::share).
+    |   form       — (optional, default true) whether to show the key in the
+    |                self-service form. false = the key is stored, but written by
+    |                another flow, not the form (e.g. consent flags — written by the
+    |                phase 5.3 consent wizard).
     |
-    | Host добавляет свои настройки, публикуя этот конфиг. Доменных настроек ядро
-    | не закладывает — только инфраструктурные + швы под Ф5.3 (consent).
+    | The host adds its own settings by publishing this config. The core ships no
+    | domain settings — only infrastructural ones + seams for phase 5.3 (consent).
     */
     'settings' => [
 
-        // App scope — платформенные, правит только супер-админ.
+        // App scope — platform-level, editable only by the super-admin.
         'support_email' => [
             'scope' => 'app',
             'label' => 'Support email',
@@ -488,7 +490,7 @@ return [
             'public' => true,
         ],
 
-        // Company scope — правит владелец/роль с company.settings.update.
+        // Company scope — editable by the owner / a role with company.settings.update.
         // `in` drives the form dropdown (schemaForScope -> options); the
         // `timezone` rule still validates the value, so the full IANA list keeps
         // options and validation consistent without hardcoding a curated subset.
@@ -501,7 +503,7 @@ return [
             'validation' => ['string', 'timezone'],
         ],
 
-        // User scope — правит сам пользователь.
+        // User scope — editable by the user itself.
         'email_notifications' => [
             'scope' => 'user',
             'label' => 'Email notifications',
@@ -510,9 +512,9 @@ return [
             'validation' => ['boolean'],
         ],
 
-        // User scope — швы согласий под Ф5.3 (Legal/GDPR). Зарегистрированы,
-        // чтобы store мог их держать, но НЕ в self-service форме (form=false):
-        // их пишет флоу согласий Ф5.3, не страница настроек.
+        // User scope — consent seams for phase 5.3 (Legal/GDPR). Registered so the
+        // store can hold them, but NOT in the self-service form (form=false):
+        // they are written by the phase 5.3 consent flow, not the settings page.
         'cookie_consent' => [
             'scope' => 'user',
             'type' => 'boolean',

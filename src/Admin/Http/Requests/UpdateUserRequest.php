@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 /**
  * Update a user from the super-admin console (phase 2.3).
  *
- * Inherits {@see StoreUserRequest} (the Ф1.3 idiom) and relaxes two rules for
+ * Inherits {@see StoreUserRequest} (the phase 1.3 idiom) and relaxes two rules for
  * edits: the password is optional (omit to keep it), and email uniqueness
  * ignores the row being edited. Privilege/state columns remain off-limits to
  * input, exactly as on create.
