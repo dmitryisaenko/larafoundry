@@ -16,10 +16,12 @@
  */
 import { computed } from 'vue';
 import Modal from './Modal.vue';
-import { useT } from '../../composables/useT.js';
 import { settleConfirm, useConfirmState } from '../../composables/useConfirm.js';
 
-const t = useT();
+// Labels fall back to the global `$t` IN THE TEMPLATE (not useT()/useI18n in
+// setup): this component is mounted app-wide via the layouts, so depending on a
+// composition i18n instance would force every page test to mock vue-i18n. The
+// global `$t` is always present at runtime (installI18n) and stubbed in tests.
 const state = useConfirmState();
 
 const opts = computed(() => state.options ?? {});
@@ -58,9 +60,6 @@ const badgeClass = computed(() => (VARIANTS[variant.value] ?? VARIANTS.primary).
 const confirmClass = computed(() => (VARIANTS[variant.value] ?? VARIANTS.primary).confirm);
 const iconPaths = computed(() => ICONS[variant.value] ?? ICONS.primary);
 
-const confirmLabel = computed(() => opts.value.confirmLabel || t('Confirm'));
-const cancelLabel = computed(() => opts.value.cancelLabel || t('Cancel'));
-
 function onConfirm() {
     settleConfirm(true);
 }
@@ -91,7 +90,7 @@ function onCancel() {
                     class="inline-flex h-10 min-w-24 items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium text-ink-soft transition hover:bg-surface-subtle"
                     @click="onCancel"
                 >
-                    {{ cancelLabel }}
+                    {{ opts.cancelLabel || $t('Cancel') }}
                 </button>
                 <button
                     type="button"
@@ -99,7 +98,7 @@ function onCancel() {
                     :class="confirmClass"
                     @click="onConfirm"
                 >
-                    {{ confirmLabel }}
+                    {{ opts.confirmLabel || $t('Confirm') }}
                 </button>
             </div>
         </template>
