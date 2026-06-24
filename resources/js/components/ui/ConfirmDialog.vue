@@ -1,3 +1,15 @@
+<script>
+// TRUE module scope (shared across every instance) — a `<script setup>` var is
+// compiled into setup() and would be per-instance, defeating the election below.
+import { reactive } from 'vue';
+
+// Ids of currently-mounted ConfirmDialog instances; the lowest-id one renders.
+const mountedInstances = reactive(new Set());
+let instanceSeq = 0;
+
+export default { name: 'ConfirmDialog' };
+</script>
+
 <script setup>
 /**
  * Reusable confirm dialog (SweetAlert-style, dependency-free).
@@ -14,7 +26,7 @@
  * Every dismissal path resolves the promise `false`; only the confirm button
  * resolves `true`.
  */
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import Modal from './Modal.vue';
 import { settleConfirm, useConfirmState } from '../../composables/useConfirm.js';
 
@@ -23,6 +35,19 @@ import { settleConfirm, useConfirmState } from '../../composables/useConfirm.js'
 // composition i18n instance would force every page test to mock vue-i18n. The
 // global `$t` is always present at runtime (installI18n) and stubbed in tests.
 const state = useConfirmState();
+
+// Render-once election (uses the module-scoped registry above). The dialog is
+// intentionally mounted in more than one layout (core AppLayout + AdminLayout,
+// and a host may add its own), but the state is a singleton, so two live
+// instances would stack two overlays. Only the lowest-id mounted instance
+// renders; it re-elects on unmount, so swapping layouts never leaves it unshown.
+const instanceId = ++instanceSeq;
+onMounted(() => mountedInstances.add(instanceId));
+onUnmounted(() => mountedInstances.delete(instanceId));
+const isPrimaryInstance = computed(() => {
+    const ids = [...mountedInstances];
+    return ids.length > 0 && Math.min(...ids) === instanceId;
+});
 
 const opts = computed(() => state.options ?? {});
 const variant = computed(() => opts.value.variant ?? 'primary');
@@ -69,8 +94,8 @@ function onCancel() {
 </script>
 
 <template>
-    <Modal :open="state.open" @close="onCancel">
-        <div class="text-center" role="alertdialog" aria-modal="true">
+    <Modal v-if="isPrimaryInstance" :open="state.open" @close="onCancel">
+        <div class="text-center">
             <div class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full" :class="badgeClass">
                 <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                     <path v-for="(d, i) in iconPaths" :key="i" :d="d" />

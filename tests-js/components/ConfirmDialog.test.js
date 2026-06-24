@@ -46,6 +46,47 @@ describe('ConfirmDialog', () => {
         wrapper.unmount();
     });
 
+    it('resolves false when dismissed via backdrop', async () => {
+        const wrapper = mount(ConfirmDialog, mountOpts);
+
+        const result = confirm({ title: 'Backdrop' });
+        await flushPromises();
+
+        await wrapper.get('[aria-hidden="true"]').trigger('click');
+
+        await expect(result).resolves.toBe(false);
+        wrapper.unmount();
+    });
+
+    it('resolves false when dismissed via Escape', async () => {
+        const wrapper = mount(ConfirmDialog, mountOpts);
+
+        const result = confirm({ title: 'Esc' });
+        await flushPromises();
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await flushPromises();
+
+        await expect(result).resolves.toBe(false);
+        wrapper.unmount();
+    });
+
+    it('settles the previous promise false when a new confirm() pre-empts it', async () => {
+        const wrapper = mount(ConfirmDialog, mountOpts);
+
+        const first = confirm({ title: 'First' });
+        const second = confirm({ title: 'Second' });
+        await flushPromises();
+
+        // The pre-empted first promise resolves false without any user action.
+        await expect(first).resolves.toBe(false);
+        expect(wrapper.text()).toContain('Second');
+
+        await wrapper.findAll('button').find((b) => b.text() === 'Confirm').trigger('click');
+        await expect(second).resolves.toBe(true);
+        wrapper.unmount();
+    });
+
     it('falls back to the global $t labels when none are given', async () => {
         const wrapper = mount(ConfirmDialog, mountOpts);
 
