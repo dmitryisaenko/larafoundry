@@ -104,6 +104,12 @@ export { default as TextareaField } from './components/ui/TextareaField.vue';
 export { default as SelectField } from './components/ui/SelectField.vue';
 export { default as DateField } from './components/ui/DateField.vue';
 
+// Confirm dialog (SweetAlert-style, dependency-free): a singleton dialog driven
+// by the promise-based `confirm()` API. Mount <ConfirmDialog/> once per app (the
+// core layouts already do); call `confirm(options)` from anywhere.
+export { default as ConfirmDialog } from './components/ui/ConfirmDialog.vue';
+export { confirm, useConfirmState } from './composables/useConfirm.js';
+
 // Layouts
 export { default as AppBaseLayout } from './layouts/AppBaseLayout.vue';
 export { default as AppLayout } from './layouts/AppLayout.vue';

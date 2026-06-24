@@ -19,6 +19,7 @@ import SidebarNav from '../components/navigation/SidebarNav.vue';
 import MobileNav from '../components/navigation/MobileNav.vue';
 import NotificationBell from '../components/notifications/NotificationBell.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 
 defineProps({
     title: { type: String, default: '' },
@@ -59,5 +60,8 @@ const navigation = computed(() => page.props.navigation ?? []);
                 <slot />
             </main>
         </div>
+
+        <!-- App-wide confirm dialog (singleton, driven by the confirm() API). -->
+        <ConfirmDialog />
     </div>
 </template>

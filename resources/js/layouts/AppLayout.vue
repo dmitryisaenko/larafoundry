@@ -21,6 +21,7 @@ import MobileNav from '../components/navigation/MobileNav.vue';
 import NotificationBell from '../components/notifications/NotificationBell.vue';
 import SupportLink from '../components/tickets/SupportLink.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 
 const page = usePage();
 
@@ -59,5 +60,8 @@ const activeCompany = computed(() => page.props.activeCompany ?? null);
                 <slot />
             </main>
         </div>
+
+        <!-- App-wide confirm dialog (singleton, driven by the confirm() API). -->
+        <ConfirmDialog />
     </div>
 </template>
