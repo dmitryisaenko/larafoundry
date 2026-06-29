@@ -82,11 +82,20 @@ User UI preferences are written to the `users.ui_settings` JSON column through a
         'theme'             => ['type' => 'string',  'default' => 'system', 'in' => ['light', 'dark', 'system']],
         'sidebar_collapsed' => ['type' => 'boolean', 'default' => false],
         'table_density'     => ['type' => 'string',  'default' => 'comfortable', 'in' => ['comfortable', 'compact']],
+        // per-user date format (v0.21.x). 'auto' derives the order from the
+        // active locale (en -> month-first, uk -> day-first); the explicit
+        // values override it regardless of language (format is not language).
+        'date_format'       => ['type' => 'string',  'default' => 'auto', 'in' => ['auto', 'dmy', 'mdy', 'iso']],
     ],
 ],
 ```
 
 A host adds its own preferences here. Only declared keys are stored, each cast to its declared type, so a client can never stuff arbitrary data into the column.
+
+> **Updates since `v0.16.x`.** Two changes worth noting if you wired this module before `v0.21`:
+> - **Profile hub consolidation (`v0.21.0`).** The separate account-settings screen folded into the one `/profile` hub, so name/email, password, two-factor, PIN, sessions, avatar and preferences now live on a single tabbed page. If your user menu linked to a standalone account screen, point it at `/profile`.
+> - **Per-user date format (`v0.21.0`).** The `date_format` preference above lets each user choose day-first, month-first or ISO independently of the interface language. The shared `useDateFormat()` composable reads it everywhere, so host pages that render dates through it follow the user's choice automatically.
+> - **Company time zone as a dropdown (`v0.21.4`).** The `timezone` company setting now ships `'in' => timezone_identifiers_list()`, so the form renders a searchable select instead of a free-text field while the `timezone` validation rule still guards the value.
 
 ### Email templates (in `config/larafoundry-email.php`)
 

@@ -12,12 +12,29 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.20.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules, the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), and an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels).**
+> ⚠️ **Status: early but growing. Current release is `v0.22.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules (incl. a consolidated profile hub with a per-user date format and a searchable company-time-zone dropdown), the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels), config-driven OAuth with community-driver auto-registration, AI dev-context shipped inside the package (`AGENTS.md` / `CLAUDE.md`) so a coding agent understands the engine on require, a collapsible "My company" navigation group, and a hardened themed confirm dialog.**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.22.x` Navigation grouping and dialog polish
+
+A polish pass on the tenant shell. The core's navigation groups the company-scoped items (members, roles, settings) under one collapsible "My company" section instead of a flat list, and the themed confirm dialog was hardened so it renders once across layouts and answers to the backdrop and the Esc key, so a destructive action always asks first. FREE core, so the code is open. Re-publish the Vue pages (`vendor:publish --tag=larafoundry-pages`) to pick the changes up.
+
+### `v0.21.x` Profile hub, per-user preferences, and in-package AI dev-context
+
+Two strands in this band: the profile module consolidated and grew per-user preferences, and the package began shipping its own AI dev-context so a coding agent understands the engine the moment it is required. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Profile hub consolidation | The separate account-settings screen folds into the one `/profile` hub: name and email, password, two-factor, PIN, sessions, avatar and preferences on a single tabbed page. If your user menu linked to a standalone account screen, point it at `/profile`. |
+| Per-user date format | Each user picks day-first, month-first or ISO, independent of the interface language (format is not the same thing as language). The shared `useDateFormat()` composable reads it everywhere; the `auto` default derives the order from the active locale. Stored through the `ui_settings` allowlist, so no migration. |
+| Company time zone dropdown | The company `timezone` setting renders as a searchable select (`timezone_identifiers_list()`), while the `timezone` validation rule still guards the value, so a typo can't slip through. |
+| In-package AI dev-context | `AGENTS.md` and `CLAUDE.md` ship at the repo root and `docs/integrating-into-an-existing-app.md` is the consumer walkthrough. A coding agent reads the golden rules (never edit the host, extend through seams, fail-closed, config-driven registries) instead of guessing them. |
+
+> No new trait and no migration for the profile changes (the preferences live in the existing `ui_settings` column). Re-publish the Vue pages (`vendor:publish --tag=larafoundry-pages`) to pick up the consolidated hub and the date-format control. Full reference: [docs/settings-profile-email.md](docs/settings-profile-email.md).
 
 ### `v0.20.x` OAuth community-driver auto-registration
 
@@ -487,7 +504,7 @@ createInertiaApp({
 
 ### For AI coding agents
 
-The [integration guide](docs/integrating-into-an-existing-app.md) is written to be handed to a coding agent. To make every agent in your host project aware of it automatically, add this to your host app's root `CLAUDE.md` / `AGENTS.md` (agents do not read `vendor/` on their own):
+Since `v0.21.x` the package ships its own AI dev-context at the repo root: `AGENTS.md` (the golden rules and layout for working *on* the engine) and `CLAUDE.md` (a short pointer to it). The [integration guide](docs/integrating-into-an-existing-app.md) is the companion for *consuming* the core, written to be handed to a coding agent. To make every agent in your host project aware of it automatically, add this to your host app's root `CLAUDE.md` / `AGENTS.md` (agents do not read `vendor/` on their own):
 
 ```markdown
 This app is built on `dmitryisaenko/larafoundry`. Before touching the core,
@@ -520,7 +537,8 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |
 | 5.3 | [Legal / GDPR](docs/legal-gdpr.md) (legal pages editor, cookie / terms consent, data export, grace-period account erasure) | ✅ Shipped (`v0.17.x`) |
-| 4.x / 5.x | Feature voting, affiliate program, documentation, SEO, onboarding | 📋 Planned |
+| 5.5 | AI dev-context (`AGENTS.md` / `CLAUDE.md` + [existing-app integration guide](docs/integrating-into-an-existing-app.md)) | ✅ Shipped (`v0.21.x`) |
+| 4.x / 5.x | Feature voting, documentation, SEO, onboarding | 📋 Planned |
 
 Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/d_isaenko_dev).
 
@@ -528,7 +546,7 @@ Build-in-public write-ups for each shipped phase are on [Dev.to](https://dev.to/
 
 ## Quality
 
-- **Pest** on every piece of the core: 774 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, the settings / profile / email-template modules, the legal / GDPR layer (editable legal pages, the fail-open Terms gate, consent, data export and the grace-period account-erasure cron), optional role-at-invite, and the admin-access security alert (the unified failure event, the three config axes of its policy, and the per-source gating to the super-admin), many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, a QR sign-in token that the donor stored in plaintext and leaked into the audit log, an email-template editor built so a database-stored template can never execute code, and a tenant-scoped invite-role rule made fail-closed so a null company id can't fall through to `whereNull` and match a global role) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
+- **Pest** on every piece of the core: 796 tests across foundation, auth, tenancy, RBAC, the activity log, multilanguage, the navigation/operator-console layer, the file/media library, the billing seam, the admin-companies console, the admin dashboard, the auth-entry layer (super-admin OTP gate, session PIN-lock, QR cross-device login), the in-app notification centre, the support helpdesk, the settings / profile / email-template modules (incl. the consolidated profile hub and per-user date format), the legal / GDPR layer (editable legal pages, the fail-open Terms gate, consent, data export and the grace-period account-erasure cron), optional role-at-invite, the admin-access security alert (the unified failure event, the three config axes of its policy, and the per-source gating to the super-admin), and the config-driven OAuth providers with community-driver auto-registration, many of which caught real bugs during extraction and review (a broken default-locale fallback, a mass-method-invocation gap in the filter dispatcher, a fail-open tenant scope, a privilege-escalation hole in delegated permission grants, a misrecorded audit subject, an open redirect on the language switch, the donor's wide-open impersonation now policy-gated and audited, a media-default that upsized small avatars into blurry thumbnails, an empty-string gateway config that would have thrown on every access check, a company-block cascade that would have looped a single-company member until it was made self-healing, a QR sign-in token that the donor stored in plaintext and leaked into the audit log, an email-template editor built so a database-stored template can never execute code, and a tenant-scoped invite-role rule made fail-closed so a null company id can't fall through to `whereNull` and match a global role) with the billing access gate pinned fail-closed both ways and the settings store fail-closed to its registry.
 - **Frontend tests** with Vitest + Vue Test Utils on the UI kit, pages, navigation and media components, including a stored-XSS guard on the activity-log table.
 - **CI** runs Pest + Pint across PHP 8.2 / 8.3 / 8.4 plus the frontend suite on every push.
 - Every module passes `/security-review` + `/code-review` before its tag.

@@ -11,6 +11,8 @@ second; each module page covers the first.
 
 > **Start here:** [Integrating LaraFoundry into an existing Laravel app](integrating-into-an-existing-app.md) — the end-to-end walkthrough (install, the User model on an existing `users` table, `personal` mode without companies, login-only, Google OAuth + QR, super-admin, and the Inertia/Vite frontend wiring).
 
+> **Working with a coding agent?** Since `v0.21.x` the package ships its own AI dev-context at the repo root: `AGENTS.md` (the rules for building the engine) and `CLAUDE.md` (a pointer to it). Point your agent at `vendor/dmitryisaenko/larafoundry/docs/integrating-into-an-existing-app.md` to consume the core, and at `AGENTS.md` only if it is working *on* the package. See "For AI coding agents" in the project [readme](../readme.md).
+
 ## How the core extends your host
 
 The core never asks you to edit it. Instead it exposes a small, fixed set of
