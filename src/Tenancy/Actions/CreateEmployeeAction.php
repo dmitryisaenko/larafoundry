@@ -9,6 +9,7 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Provisions a brand-new user AND adds them to a company as a member in one step —
@@ -36,28 +37,34 @@ class CreateEmployeeAction
     {
         $model = config('auth.providers.users.model', User::class);
 
-        $user = $model::create([
-            'name' => trim((string) $data['name']),
-            'lastname' => ($lastname = trim((string) ($data['lastname'] ?? ''))) !== '' ? $lastname : null,
-            'email' => mb_strtolower(trim((string) $data['email'])),
-            'password' => $data['password'],
-            'locale' => config('larafoundry.locale.default', 'en'),
-        ]);
+        // One unit of work: the account, its membership and its roles are written
+        // together. A mid-way failure (pivot/role write) must not leave an orphaned
+        // user row holding the unique email, which the owner could never see or
+        // re-create. Mirrors CreateCompanyAction / InvitationController::accept.
+        return DB::transaction(function () use ($model, $company, $data, $createdById): Authenticatable {
+            $user = $model::create([
+                'name' => trim((string) $data['name']),
+                'lastname' => ($lastname = trim((string) ($data['lastname'] ?? ''))) !== '' ? $lastname : null,
+                'email' => mb_strtolower(trim((string) $data['email'])),
+                'password' => $data['password'],
+                'locale' => config('larafoundry.locale.default', 'en'),
+            ]);
 
-        // email_verified_at is a state column (not fillable) — set it explicitly.
-        $user->forceFill(['email_verified_at' => now()])->save();
+            // email_verified_at is a state column (not fillable) — set it explicitly.
+            $user->forceFill(['email_verified_at' => now()])->save();
 
-        $company->addEmployee($user, $createdById, isOwner: false);
+            $company->addEmployee($user, $createdById, isOwner: false);
 
-        // Grant the chosen roles (company-scoped, idempotent). Guarded so a host
-        // User without the RBAC trait still gets created + added, just without roles.
-        if (method_exists($user, 'assignRole')) {
-            foreach ($this->resolveRoles($company, $data['role_ids'] ?? []) as $role) {
-                $user->assignRole($role, $company, assignedById: $createdById);
+            // Grant the chosen roles (company-scoped, idempotent). Guarded so a host
+            // User without the RBAC trait still gets created + added, just without roles.
+            if (method_exists($user, 'assignRole')) {
+                foreach ($this->resolveRoles($company, $data['role_ids'] ?? []) as $role) {
+                    $user->assignRole($role, $company, assignedById: $createdById);
+                }
             }
-        }
 
-        return $user;
+            return $user;
+        });
     }
 
     /**

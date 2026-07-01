@@ -144,3 +144,37 @@ it('SECURITY: rejects a duplicate email', function () {
         'password_confirmation' => 'Secret-Password-123',
     ])->assertSessionHasErrors('email');
 });
+
+it('rejects a mismatched password confirmation', function () {
+    rbacSeed();
+    $owner = rbacUser('owner@x.test');
+    app(CreateCompanyAction::class)->execute($owner, ['name' => 'Acme']);
+
+    $this->actingAs($owner)->post('/employees', [
+        'name' => 'Mismatch',
+        'email' => 'mismatch@x.test',
+        'password' => 'Secret-Password-123',
+        'password_confirmation' => 'DIFFERENT-Password-999',
+    ])->assertSessionHasErrors('password');
+
+    expect(($owner::query())->where('email', 'mismatch@x.test')->exists())->toBeFalse();
+});
+
+it('rolls back the new user when membership provisioning fails (atomicity)', function () {
+    // The account, its membership and its roles are one unit of work: if a later
+    // write throws, the user INSERT must not survive to squat on the unique email.
+    rbacSeed();
+    $owner = rbacUser('owner@x.test');
+
+    // A company whose addEmployee blows up mid-provisioning (a DB error stand-in).
+    $company = Mockery::mock(Company::class)->makePartial();
+    $company->shouldReceive('addEmployee')->once()->andThrow(new RuntimeException('boom'));
+
+    expect(fn () => app(CreateEmployeeAction::class)->execute($company, [
+        'name' => 'Ghost',
+        'email' => 'ghost@x.test',
+        'password' => 'Secret-Password-123',
+    ], $owner->id))->toThrow(RuntimeException::class);
+
+    expect(($owner::query())->where('email', 'ghost@x.test')->exists())->toBeFalse();
+});
