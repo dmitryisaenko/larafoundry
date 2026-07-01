@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
 use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
+use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RemoveEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Concerns\ResolvesActiveCompany;
+use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\CreateEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\InviteEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Jobs\SendCompanyInvitationJob;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
@@ -73,6 +75,23 @@ class EmployeeController extends Controller
         );
 
         return back()->with('status', __('larafoundry::tenancy.invitation_sent'));
+    }
+
+    /**
+     * Create a member account directly (owner-only), bypassing the email invite.
+     * The company is the caller's ACTIVE, OWNED company — never an id from input.
+     */
+    public function store(CreateEmployeeRequest $request, CreateEmployeeAction $action): RedirectResponse
+    {
+        $company = $this->ownedActiveCompany($request);
+
+        $action->execute(
+            $company,
+            $request->validated(),
+            $request->user()->getAuthIdentifier(),
+        );
+
+        return back()->with('status', __('larafoundry::tenancy.employee_created'));
     }
 
     public function resendInvitation(Request $request, int $invitation): RedirectResponse

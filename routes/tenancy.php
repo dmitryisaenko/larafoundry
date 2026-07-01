@@ -61,6 +61,7 @@ Route::middleware(['web', 'auth'])->group(function () {
             ->name('tenancy.employees.')
             ->group(function () {
                 Route::get('/', [EmployeeController::class, 'index'])->name('index');
+                Route::post('/', [EmployeeController::class, 'store'])->name('store');
                 Route::post('invite', [EmployeeController::class, 'invite'])->name('invite');
                 Route::post('invitations/{invitation}/resend', [EmployeeController::class, 'resendInvitation'])->name('invitations.resend');
                 Route::delete('invitations/{invitation}', [EmployeeController::class, 'deleteInvitation'])->name('invitations.delete');
