@@ -21,6 +21,7 @@ return [
     'invitation_sent' => 'Invitation sent.',
     'invitation_revoked' => 'Invitation revoked.',
     'employee_created' => 'Employee created.',
+    'employee_updated' => 'Employee updated.',
     'employee_removed' => 'Employee removed.',
     'removal_requested' => 'Your removal request has been sent.',
     'removal_cancelled' => 'Your removal request has been cancelled.',

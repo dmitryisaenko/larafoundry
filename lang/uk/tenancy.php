@@ -21,6 +21,7 @@ return [
     'invitation_sent' => 'Запрошення надіслано.',
     'invitation_revoked' => 'Запрошення відкликано.',
     'employee_created' => 'Співробітника створено.',
+    'employee_updated' => 'Дані співробітника оновлено.',
     'employee_removed' => 'Співробітника видалено.',
     'removal_requested' => 'Ваш запит на видалення надіслано.',
     'removal_cancelled' => 'Ваш запит на видалення скасовано.',

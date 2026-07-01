@@ -8,9 +8,11 @@ use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RemoveEmployeeAction;
+use Dmitryisaenko\LaraFoundry\Tenancy\Actions\UpdateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Concerns\ResolvesActiveCompany;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\CreateEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\InviteEmployeeRequest;
+use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\UpdateEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Jobs\SendCompanyInvitationJob;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\CompanyInvitation;
@@ -41,14 +43,28 @@ class EmployeeController extends Controller
         $company = $this->activeCompany($request);
 
         return Inertia::render('Tenancy/Employees', [
-            'employees' => $company->users()->get()->map(fn ($user) => [
-                'id' => $user->getKey(),
-                'name' => $user->name,
-                'email' => $user->email,
-                'is_owner' => (bool) $user->pivot->is_owner,
-                'joined_at' => $user->pivot->created_at,
-                'removal_requested' => $user->pivot->removal_requested_at !== null,
-            ]),
+            // Owner(s) first, then the rest in join order; each row carries the
+            // display identity (name + lastname + avatar), the roles held in THIS
+            // company, and the join date. The sort is stable, so non-owners keep
+            // their query order.
+            'employees' => $company->users()->get()->map(function ($user) use ($company) {
+                $roles = method_exists($user, 'getRolesInCompany')
+                    ? $user->getRolesInCompany($company)
+                    : collect();
+
+                return [
+                    'id' => $user->getKey(),
+                    'name' => $user->name,
+                    'lastname' => $user->lastname,
+                    'avatar_url' => $user->avatar_url,
+                    'email' => $user->email,
+                    'is_owner' => (bool) $user->pivot->is_owner,
+                    'roles' => $roles->pluck('name')->values(),
+                    'role_ids' => $roles->pluck('id')->values(),
+                    'joined_at' => $user->pivot->created_at,
+                    'removal_requested' => $user->pivot->removal_requested_at !== null,
+                ];
+            })->sortByDesc('is_owner')->values(),
             'invitations' => $company->invitations()->pending()->get()->map(fn ($invitation) => [
                 'id' => $invitation->id,
                 'email' => $invitation->email,
@@ -92,6 +108,24 @@ class EmployeeController extends Controller
         );
 
         return back()->with('status', __('larafoundry::tenancy.employee_created'));
+    }
+
+    /**
+     * Update a member's identity (name, lastname, avatar) and roles (owner-only).
+     * The target is resolved THROUGH the owner's active company (anti-IDOR); the
+     * owner themselves is not editable here (they manage their own profile).
+     */
+    public function update(UpdateEmployeeRequest $request, int $user, UpdateEmployeeAction $action): RedirectResponse
+    {
+        $company = $this->ownedActiveCompany($request);
+
+        $employee = $company->users()->find($user);
+        abort_if($employee === null, 404);
+        abort_if((bool) $employee->pivot->is_owner, 403);
+
+        $action->execute($company, $employee, $request->validated(), $request->user()->getAuthIdentifier());
+
+        return back()->with('status', __('larafoundry::tenancy.employee_updated'));
     }
 
     public function resendInvitation(Request $request, int $invitation): RedirectResponse
