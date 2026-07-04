@@ -407,6 +407,14 @@ return [
     |   type    — 'boolean' | 'integer' | 'float' | 'string' (value cast).
     |   default — the default value when the key is not yet stored.
     |   in      — (optional) the allowed set of values (enum).
+    |   label   — (optional) the human field label. It is an i18n key (translated
+    |             on the front by the shared dictionary), so ship a plain-English
+    |             string here. Falls back to the raw key when absent — which is why
+    |             the core sets one for every key it ships: a host must never see a
+    |             machine key (theme, date_format…) leak into the appearance form.
+    |   labels  — (optional, enum keys only) per-value human labels, value => i18n
+    |             key. The option select shows these instead of the raw token
+    |             (dmy, 24h…); an unlisted value falls back to the token itself.
     */
     'profile' => [
         'ui_settings' => [
@@ -414,15 +422,20 @@ return [
                 'type' => 'string',
                 'default' => 'system',
                 'in' => ['light', 'dark', 'system'],
+                'label' => 'Theme',
+                'labels' => ['light' => 'Light', 'dark' => 'Dark', 'system' => 'System'],
             ],
             'sidebar_collapsed' => [
                 'type' => 'boolean',
                 'default' => false,
+                'label' => 'Collapse sidebar',
             ],
             'table_density' => [
                 'type' => 'string',
                 'default' => 'comfortable',
                 'in' => ['comfortable', 'compact'],
+                'label' => 'Table density',
+                'labels' => ['comfortable' => 'Comfortable', 'compact' => 'Compact'],
             ],
             // How dates are rendered for this user. 'auto' (default) derives the
             // order from the active app locale (en→month-first, uk→day-first)
@@ -435,6 +448,27 @@ return [
                 'type' => 'string',
                 'default' => 'auto',
                 'in' => ['auto', 'dmy', 'mdy', 'iso'],
+                'label' => 'Date format',
+                'labels' => [
+                    'auto' => 'Automatic',
+                    'dmy' => 'DD.MM.YYYY',
+                    'mdy' => 'MM/DD/YYYY',
+                    'iso' => 'YYYY-MM-DD',
+                ],
+            ],
+            // How the TIME part is rendered, independent of the date order above.
+            // 'auto' (default) keeps the prior behaviour — the clock follows the
+            // date format / locale (US month-first → 12h, everything else → 24h;
+            // in auto date mode Intl decides). '24h'/'12h' force it regardless, so
+            // a user who wants a 24-hour clock with a US date order (or the
+            // reverse) can have it. Read together with date_format by the shared
+            // `useDateFormat()` composable's formatDateTime().
+            'time_format' => [
+                'type' => 'string',
+                'default' => 'auto',
+                'in' => ['auto', '24h', '12h'],
+                'label' => 'Time format',
+                'labels' => ['auto' => 'Automatic', '24h' => '24-hour', '12h' => '12-hour'],
             ],
         ],
 

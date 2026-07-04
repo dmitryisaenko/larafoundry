@@ -31,7 +31,9 @@ function save(key, value) {
 }
 
 function optionsFor(item) {
-    return item.options.map((value) => ({ value, name: value }));
+    // Show the human option label (an i18n key) when the schema supplies one,
+    // else fall back to the raw value token. SelectField translates the name.
+    return item.options.map((value) => ({ value, name: item.option_labels?.[value] ?? value }));
 }
 </script>
 
@@ -47,7 +49,7 @@ function optionsFor(item) {
                 v-if="item.type === 'string' && item.options.length"
                 :model-value="state[item.key]"
                 :name="item.key"
-                :title="$t(item.key)"
+                :title="$t(item.label)"
                 :value-name-array="optionsFor(item)"
                 translate
                 @update:model-value="(value) => save(item.key, value)"
@@ -60,7 +62,7 @@ function optionsFor(item) {
                     :checked="state[item.key]"
                     @change="(event) => save(item.key, event.target.checked)"
                 >
-                {{ $t(item.key) }}
+                {{ $t(item.label) }}
             </label>
         </div>
     </section>

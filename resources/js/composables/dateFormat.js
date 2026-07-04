@@ -87,15 +87,22 @@ export function formatDate(value, format = 'auto', locale = 'en') {
 }
 
 /**
- * Format a date AND time by the given preference. Time is 24-hour for dmy/iso
- * (and auto-non-US, decided by Intl), 12-hour for mdy (US convention).
+ * Format a date AND time by the given preferences.
+ *
+ * The time part's clock is chosen by `timeFormat`:
+ *   - '12h' / '24h' — force a 12- or 24-hour clock, whatever the date order.
+ *   - 'auto' (default) — derive it from the date format / locale, keeping the
+ *     behaviour before the preference existed: 24-hour for dmy/iso, 12-hour for
+ *     mdy (US convention), and in 'auto' date mode whatever Intl picks for the
+ *     locale.
  *
  * @param {string|number|Date|null} value
  * @param {'auto'|'dmy'|'mdy'|'iso'} [format]
  * @param {string} [locale]  app locale code, used only when format === 'auto'
+ * @param {'auto'|'24h'|'12h'} [timeFormat]  the time-of-day clock preference
  * @returns {string}  '' for empty input, '—' for an unparseable value
  */
-export function formatDateTime(value, format = 'auto', locale = 'en') {
+export function formatDateTime(value, format = 'auto', locale = 'en', timeFormat = 'auto') {
     const date = toDate(value);
     if (date === null) {
         return '';
@@ -104,25 +111,35 @@ export function formatDateTime(value, format = 'auto', locale = 'en') {
         return '—';
     }
 
+    // An explicit clock preference wins; 'auto' leaves the choice to the date
+    // format / locale below (null = "not forced").
+    const hour12 = timeFormat === '12h' ? true : timeFormat === '24h' ? false : null;
+
     if (format === 'auto') {
-        return autoFormat(date, locale, {
+        const options = {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-        });
+        };
+        if (hour12 !== null) {
+            options.hour12 = hour12;
+        }
+
+        return autoFormat(date, locale, options);
     }
 
     const datePart = formatDate(value, format, locale);
     const minute = pad(date.getMinutes());
+    const use12 = hour12 !== null ? hour12 : format === 'mdy';
 
-    if (format === 'mdy') {
+    if (use12) {
         const hour24 = date.getHours();
         const meridiem = hour24 < 12 ? 'AM' : 'PM';
-        const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+        const hour12h = hour24 % 12 === 0 ? 12 : hour24 % 12;
 
-        return `${datePart} ${hour12}:${minute} ${meridiem}`;
+        return `${datePart} ${hour12h}:${minute} ${meridiem}`;
     }
 
     return `${datePart} ${pad(date.getHours())}:${minute}`;

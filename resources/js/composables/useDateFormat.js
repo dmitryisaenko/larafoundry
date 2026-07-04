@@ -2,9 +2,9 @@ import { usePage } from '@inertiajs/vue3';
 import { formatDate, formatDateTime } from './dateFormat.js';
 
 /**
- * Date formatters bound to the current user's `date_format` preference and the
- * active app locale, both read from Inertia shared props (`ui_settings` and
- * `locale`). Use inside `<script setup>`:
+ * Date formatters bound to the current user's `date_format` and `time_format`
+ * preferences and the active app locale, all read from Inertia shared props
+ * (`ui_settings` and `locale`). Use inside `<script setup>`:
  *
  *   const { formatDate, formatDateTime } = useDateFormat();
  *   ...
@@ -24,6 +24,7 @@ export function useDateFormat() {
 
         return {
             format: props.ui_settings?.date_format ?? 'auto',
+            timeFormat: props.ui_settings?.time_format ?? 'auto',
             locale: props.locale ?? 'en',
         };
     };
@@ -35,9 +36,9 @@ export function useDateFormat() {
             return formatDate(value, format, locale);
         },
         formatDateTime: (value) => {
-            const { format, locale } = resolve();
+            const { format, timeFormat, locale } = resolve();
 
-            return formatDateTime(value, format, locale);
+            return formatDateTime(value, format, locale, timeFormat);
         },
     };
 }

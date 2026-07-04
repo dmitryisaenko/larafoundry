@@ -79,23 +79,30 @@ User UI preferences are written to the `users.ui_settings` JSON column through a
 ```php
 'profile' => [
     'ui_settings' => [
-        'theme'             => ['type' => 'string',  'default' => 'system', 'in' => ['light', 'dark', 'system']],
-        'sidebar_collapsed' => ['type' => 'boolean', 'default' => false],
-        'table_density'     => ['type' => 'string',  'default' => 'comfortable', 'in' => ['comfortable', 'compact']],
+        // 'label' is the human field label and 'labels' maps each enum value to
+        // its option label — both are i18n keys, so the appearance form renders
+        // words, never a machine key. Omit 'label' and it falls back to the key.
+        'theme'             => ['type' => 'string',  'default' => 'system', 'in' => ['light', 'dark', 'system'], 'label' => 'Theme', 'labels' => ['light' => 'Light', 'dark' => 'Dark', 'system' => 'System']],
+        'sidebar_collapsed' => ['type' => 'boolean', 'default' => false, 'label' => 'Collapse sidebar'],
+        'table_density'     => ['type' => 'string',  'default' => 'comfortable', 'in' => ['comfortable', 'compact'], 'label' => 'Table density', 'labels' => ['comfortable' => 'Comfortable', 'compact' => 'Compact']],
         // per-user date format (v0.21.x). 'auto' derives the order from the
         // active locale (en -> month-first, uk -> day-first); the explicit
         // values override it regardless of language (format is not language).
-        'date_format'       => ['type' => 'string',  'default' => 'auto', 'in' => ['auto', 'dmy', 'mdy', 'iso']],
+        'date_format'       => ['type' => 'string',  'default' => 'auto', 'in' => ['auto', 'dmy', 'mdy', 'iso'], 'label' => 'Date format', 'labels' => ['auto' => 'Automatic', 'dmy' => 'DD.MM.YYYY', 'mdy' => 'MM/DD/YYYY', 'iso' => 'YYYY-MM-DD']],
+        // per-user time-of-day clock, independent of the date order above. 'auto'
+        // follows the date format / locale; '24h'/'12h' force the clock outright.
+        'time_format'       => ['type' => 'string',  'default' => 'auto', 'in' => ['auto', '24h', '12h'], 'label' => 'Time format', 'labels' => ['auto' => 'Automatic', '24h' => '24-hour', '12h' => '12-hour']],
     ],
 ],
 ```
 
-A host adds its own preferences here. Only declared keys are stored, each cast to its declared type, so a client can never stuff arbitrary data into the column.
+A host adds its own preferences here. Only declared keys are stored, each cast to its declared type, so a client can never stuff arbitrary data into the column. Give every key a `label` (and enum keys a `labels` map) so the appearance form shows human labels out of the box — the core ships English + Ukrainian for its own keys; a host translates them for any other locale like any other UI string.
 
 > **Updates since `v0.16.x`.** Two changes worth noting if you wired this module before `v0.21`:
 > - **Profile hub consolidation (`v0.21.0`).** The separate account-settings screen folded into the one `/profile` hub, so name/email, password, two-factor, PIN, sessions, avatar and preferences now live on a single tabbed page. If your user menu linked to a standalone account screen, point it at `/profile`.
 > - **Per-user date format (`v0.21.0`).** The `date_format` preference above lets each user choose day-first, month-first or ISO independently of the interface language. The shared `useDateFormat()` composable reads it everywhere, so host pages that render dates through it follow the user's choice automatically.
 > - **Company time zone as a dropdown (`v0.21.4`).** The `timezone` company setting now ships `'in' => timezone_identifiers_list()`, so the form renders a searchable select instead of a free-text field while the `timezone` validation rule still guards the value.
+> - **Per-user time format + labelled appearance form (`v0.25.0`).** A new `time_format` preference (`auto`/`24h`/`12h`) sets the time-of-day clock independently of the date order; `useDateFormat().formatDateTime()` honours it. The `ui_settings` registry now also carries `label`/`labels`, so the appearance form renders human labels instead of the raw keys (`theme`, `date_format`, `dmy`…) — a host on a locale the core does not ship (anything but en/uk) sees plain-English labels rather than machine tokens, and translates them like any other string.
 
 ### Email templates (in `config/larafoundry-email.php`)
 

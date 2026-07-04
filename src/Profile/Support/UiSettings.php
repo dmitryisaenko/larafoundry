@@ -86,9 +86,13 @@ class UiSettings
     }
 
     /**
-     * The registry shaped for the frontend appearance form: key => {type,
-     * default, options}. `options` is the enum (or empty) so the UI can render a
-     * select without re-deriving it.
+     * The registry shaped for the frontend appearance form: key => {type, label,
+     * default, options, option_labels}.
+     *
+     * `label` is the human field label (i18n key), falling back to the raw key so
+     * the form never renders a bare machine key. `options` is the enum (or empty)
+     * and `option_labels` maps each value to its human label (i18n key) — both let
+     * the UI render a labelled select without re-deriving anything.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -96,11 +100,15 @@ class UiSettings
     {
         $schema = [];
         foreach (self::registry() as $key => $definition) {
+            $labels = $definition['labels'] ?? [];
+
             $schema[] = [
                 'key' => $key,
                 'type' => $definition['type'] ?? 'string',
+                'label' => $definition['label'] ?? $key,
                 'default' => $definition['default'] ?? null,
                 'options' => array_values($definition['in'] ?? []),
+                'option_labels' => is_array($labels) ? $labels : [],
             ];
         }
 

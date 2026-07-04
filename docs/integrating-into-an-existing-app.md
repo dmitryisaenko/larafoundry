@@ -146,7 +146,7 @@ The migration `..._add_larafoundry_columns_to_users_table.php` is **idempotent**
 **Coexistence notes for an existing table:**
 - The migration **unconditionally** runs `$table->string('password')->nullable()->change()` (OAuth-only users have no password). If your `password` is currently `NOT NULL`, it becomes nullable — required for Google-only accounts.
 - `avatar` is a **single string column** holding a stored path, an external OAuth URL, or null; `getAvatarUrlAttribute()` resolves all three (path → media disk, URL → as-is, empty → generated initials).
-- `locale` is a real column; **`theme` is NOT a column** — it lives inside `ui_settings` JSON, allow-listed in `config('larafoundry.profile.ui_settings')` (`theme`, `sidebar_collapsed`, `table_density`, `date_format`). Arbitrary keys are rejected (fail-closed).
+- `locale` is a real column; **`theme` is NOT a column** — it lives inside `ui_settings` JSON, allow-listed in `config('larafoundry.profile.ui_settings')` (`theme`, `sidebar_collapsed`, `table_density`, `date_format`, `time_format`). Arbitrary keys are rejected (fail-closed).
 - `provider_*` columns are the Socialite linkage; lookup is on `(provider_name, provider_id)`.
 
 ---
@@ -245,7 +245,7 @@ class HandleInertiaRequests extends CoreHandleInertiaRequests
 | `translations` | `object` | vue-i18n bag (core `lang/frontend/*` ∪ host `lang/*.json` ∪ host `lang/<loc>/*.php`) |
 | `ziggy` | Ziggy routes + `location` | `route()` on the client |
 | `appearance` | `system\|light\|dark` | from cookie |
-| `ui_settings` | per-user allow-listed map or `null` | `theme`, `table_density`, `date_format`, … |
+| `ui_settings` | per-user allow-listed map or `null` | `theme`, `table_density`, `date_format`, `time_format`, … |
 | `auth_presentation` | `page\|modal` | how auth screens render |
 | `auth_qr` | `{enabled, poll_interval_ms}` | QR tab on Login |
 | `auth_oauth` | `{enabled, providers[]}` | one OAuth button per provider |

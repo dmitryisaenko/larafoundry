@@ -22,7 +22,7 @@ describe('Appearance', () => {
         const wrapper = mount(Appearance, {
             props: {
                 settings: { sidebar_collapsed: false },
-                schema: [{ key: 'sidebar_collapsed', type: 'boolean', default: false, options: [] }],
+                schema: [{ key: 'sidebar_collapsed', type: 'boolean', default: false, options: [], label: 'Collapse sidebar' }],
             },
         });
 
@@ -33,5 +33,17 @@ describe('Appearance', () => {
             { key: 'sidebar_collapsed', value: true },
             { preserveScroll: true, preserveState: true },
         );
+    });
+
+    it('renders the human label from the schema, never the raw machine key', () => {
+        const wrapper = mount(Appearance, {
+            props: {
+                settings: { sidebar_collapsed: false },
+                schema: [{ key: 'sidebar_collapsed', type: 'boolean', default: false, options: [], label: 'Collapse sidebar' }],
+            },
+        });
+
+        expect(wrapper.text()).toContain('Collapse sidebar');
+        expect(wrapper.text()).not.toContain('sidebar_collapsed');
     });
 });

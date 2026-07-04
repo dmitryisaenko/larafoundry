@@ -42,6 +42,18 @@ describe('formatDateTime', () => {
         expect(formatDateTime(new Date(2026, 1, 5, 12, 0), 'mdy')).toBe('02/05/2026 12:00 PM');
     });
 
+    it('lets an explicit time-format preference override the date-derived clock', () => {
+        // 24-hour forced onto a US date order, 12-hour forced onto European/ISO.
+        expect(formatDateTime(date, 'mdy', 'en', '24h')).toBe('02/05/2026 14:30');
+        expect(formatDateTime(date, 'dmy', 'en', '12h')).toBe('05.02.2026 2:30 PM');
+        expect(formatDateTime(date, 'iso', 'en', '12h')).toBe('2026-02-05 2:30 PM');
+    });
+
+    it('keeps the date-derived clock when the time format is auto', () => {
+        expect(formatDateTime(date, 'mdy', 'en', 'auto')).toBe('02/05/2026 2:30 PM');
+        expect(formatDateTime(date, 'dmy', 'en', 'auto')).toBe('05.02.2026 14:30');
+    });
+
     it('returns an empty string for empty input', () => {
         expect(formatDateTime('', 'dmy')).toBe('');
     });
