@@ -39,6 +39,14 @@ return [
         // dashboard is host territory, so the core only knows a route name (or
         // path) to redirect to; default '/' keeps the package self-contained.
         'home_route' => env('LARAFOUNDRY_TENANCY_HOME', '/'),
+
+        // Route name EnsureActiveTenant redirects a NON-owner member to when their
+        // active company has been archived by its owner (phase 7). The host owns
+        // the archived-company screen (an owner unarchives there; a member sees an
+        // explanation), so the core only knows a route name. Null falls back to the
+        // company-create flow with a flashed message. The company OWNER is never
+        // redirected — they pass the boundary so they can unarchive.
+        'archived_redirect_route' => null,
     ],
 
     /*

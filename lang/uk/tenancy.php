@@ -14,6 +14,9 @@ return [
 
     'no_active_company' => 'Спершу оберіть або створіть компанію.',
     'company_blocked' => 'Цю компанію заблоковано. Зверніться до підтримки.',
+    'company_archived' => 'Цю компанію заархівовано. Попросіть власника відновити її.',
+    'company_archived_done' => 'Компанію заархівовано.',
+    'company_unarchived' => 'Компанію відновлено.',
     'company_created' => 'Компанію створено.',
     'company_switched' => 'Тепер ви працюєте як :company.',
     'setup_complete' => 'Вашу компанію готово.',

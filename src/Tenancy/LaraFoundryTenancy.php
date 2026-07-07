@@ -36,7 +36,7 @@ class LaraFoundryTenancy
     }
 
     /**
-     * @return array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool}|null
+     * @return array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool, is_archived: bool}|null
      */
     protected static function activeCompany(): ?array
     {
@@ -62,11 +62,16 @@ class LaraFoundryTenancy
             // so the shell can show the user's role in the active company without a
             // separate lookup — keeps activeCompany in step with the companies list.
             'is_owner' => (bool) $company->pivot->is_owner,
+            // Archived companies are NOT filtered out of the payload: an owner must
+            // still see (and be able to unarchive) one. The host decides how to
+            // present it — hide it, grey it out — from this flag. Filtering here
+            // would strand the owner with no way back in.
+            'is_archived' => $company->isArchived(),
         ];
     }
 
     /**
-     * @return array<int, array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool}>
+     * @return array<int, array{id: int|string, uuid: string, name: string, logo_url: string|null, is_owner: bool, is_archived: bool}>
      */
     protected static function companyList(): array
     {
@@ -86,6 +91,9 @@ class LaraFoundryTenancy
             'name' => $company->name,
             'logo_url' => $company->logo_url,
             'is_owner' => (bool) $company->pivot->is_owner,
+            // Archived companies stay in the list (see activeCompany) so an owner
+            // can reach and unarchive them; the host greys/hides from this flag.
+            'is_archived' => $company->isArchived(),
         ])->all();
     }
 

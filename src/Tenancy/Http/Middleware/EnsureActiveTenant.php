@@ -23,6 +23,11 @@ use Symfony\Component\HttpFoundation\Response;
  * The block is enforced at this single tenancy boundary rather than scattered
  * across controllers, so there is no screen a blocked company's member can reach.
  *
+ * The owner-driven ARCHIVE (phase 7) is enforced at the same boundary but is
+ * narrower: an archived company denies these screens only to NON-owner members;
+ * the owner passes through so they can unarchive it. Members self-heal onto
+ * another company or land on a host-owned archived screen.
+ *
  * Always passes in personal mode (the user is always their own tenant).
  *
  * Alias: `larafoundry.tenant.required`.
@@ -50,6 +55,10 @@ class EnsureActiveTenant
             return $this->handleBlocked($request, $user);
         }
 
+        if ($company !== null && $this->isArchivedForMember($company, $user)) {
+            return $this->handleArchived($request, $user);
+        }
+
         if ($company !== null) {
             return $next($request);
         }
@@ -68,6 +77,23 @@ class EnsureActiveTenant
     protected function isBlocked(object $company): bool
     {
         return method_exists($company, 'isBlocked') && $company->isBlocked();
+    }
+
+    /**
+     * Whether the active company is archived AND the user is a non-owner (phase 7).
+     *
+     * The archive gate is narrower than the block: an archived company denies its
+     * tenant screens only to members. The OWNER passes straight through so they
+     * can reach the company and unarchive it — so this returns false for them even
+     * when the company is archived.
+     */
+    protected function isArchivedForMember(object $company, object $user): bool
+    {
+        if (! method_exists($company, 'isArchived') || ! $company->isArchived()) {
+            return false;
+        }
+
+        return ! (method_exists($user, 'isOwnerOfActiveCompany') && $user->isOwnerOfActiveCompany());
     }
 
     /**
@@ -103,6 +129,38 @@ class EnsureActiveTenant
 
         return redirect()->route('tenancy.companies.create')
             ->with('error', __('larafoundry::tenancy.company_blocked'));
+    }
+
+    /**
+     * Handle a NON-owner member whose active company was archived (phase 7).
+     *
+     * Same self-healing shape as handleBlocked: first try to move them to another
+     * available company (setNextAvailableCompany skips both blocked AND archived
+     * ones), which replays the request on a working tenant. If they have no other
+     * company, the active one is now cleared — so the redirect below cannot loop
+     * back into this branch. The member is NOT logged out: they may own healthy
+     * companies elsewhere. The redirect target is a host-owned archived screen; it
+     * is distinct from the block redirect so the host can word it differently.
+     */
+    protected function handleArchived(Request $request, object $user): Response
+    {
+        if (method_exists($user, 'setNextAvailableCompany') && $user->setNextAvailableCompany()) {
+            return redirect($request->fullUrl());
+        }
+
+        if ($request->expectsJson()) {
+            abort(403, __('larafoundry::tenancy.company_archived'));
+        }
+
+        $route = config('larafoundry.tenancy.archived_redirect_route');
+
+        if (is_string($route) && app('router')->has($route)) {
+            return redirect()->route($route)
+                ->with('error', __('larafoundry::tenancy.company_archived'));
+        }
+
+        return redirect()->route('tenancy.companies.create')
+            ->with('error', __('larafoundry::tenancy.company_archived'));
     }
 
     /**

@@ -191,8 +191,8 @@ applied automatically.
 
 `users()` (active members), `owners()`, `createdBy()`, `invitations()`;
 `addEmployee($user, $addedById, $isOwner)`, `removeEmployee($user)`;
-`isInSetup()`, `isBlocked()`, `hasAccess()`. Implements the `Tenant` contract
-(`getTenantKey()`).
+`isInSetup()`, `isBlocked()`, `isArchived()`, `hasAccess()`. Implements the
+`Tenant` contract (`getTenantKey()`).
 
 ### Actions
 
@@ -246,6 +246,17 @@ Tenancy is built fail-closed. The guarantees worth knowing:
   (super-admin only, not fillable) takes the whole company offline at one
   boundary (`EnsureActiveTenant`), which self-heals a multi-company user onto
   another available company.
+- **An owner can archive a company.** Setting `company_archived_at` (owner only,
+  not fillable; written by `ArchiveCompanyController` via the
+  `tenancy.companies.archive` / `unarchive` routes) locks the company for
+  NON-owner members at the same boundary while leaving the OWNER full access so
+  they can restore it. Unlike the block, archiving is asymmetric: the switcher
+  and `EnsureActiveTenant` let the owner in and turn members away, and
+  `setNextAvailableCompany()` skips archived companies for auto-selection. The
+  `companies`/`activeCompany` shared props expose `is_archived` so the host can
+  grey out or hide archived companies in its switcher. Non-owner members are
+  redirected to `tenancy.archived_redirect_route` (a host-owned screen; falls
+  back to the create flow).
 
 ## Testing
 

@@ -14,6 +14,9 @@ return [
 
     'no_active_company' => 'Select or create a company first.',
     'company_blocked' => 'This company has been blocked. Contact support.',
+    'company_archived' => 'This company has been archived. Ask its owner to restore it.',
+    'company_archived_done' => 'Company archived.',
+    'company_unarchived' => 'Company restored.',
     'company_created' => 'Company created.',
     'company_switched' => 'You are now working as :company.',
     'setup_complete' => 'Your company is ready.',

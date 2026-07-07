@@ -90,6 +90,7 @@ class Company extends Model implements Tenant
             'subscription_ends_at' => 'datetime',
             'free_month_used_at' => 'datetime',
             'company_blocked_at' => 'datetime',
+            'company_archived_at' => 'datetime',
         ];
     }
 
@@ -174,6 +175,21 @@ class Company extends Model implements Tenant
     public function isBlocked(): bool
     {
         return $this->company_blocked_at !== null;
+    }
+
+    /**
+     * Whether the owner has archived this company (phase 7 host request).
+     *
+     * Unlike {@see isBlocked()} (a super-admin cascade that denies EVERY member),
+     * archiving denies only NON-owner members: the owner keeps full access so they
+     * can read the company and unarchive it. The gate lives at the tenancy
+     * boundary (SwitchCompanyController + EnsureActiveTenant) and lets the owner
+     * through while turning members away. Written server-side only (not $fillable);
+     * cleared by the owner's unarchive action.
+     */
+    public function isArchived(): bool
+    {
+        return $this->company_archived_at !== null;
     }
 
     /**

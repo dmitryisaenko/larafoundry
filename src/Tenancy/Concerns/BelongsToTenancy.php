@@ -84,10 +84,12 @@ trait BelongsToTenancy
     /**
      * Promote the next available company to active (owned first, then member).
      *
-     * Skips blocked companies (phase 3.3): a company a super-admin has blocked is
-     * not an eligible landing spot, so a multi-company member auto-lands on a
-     * working one instead of being bounced to the blocked screen. Returns false
-     * when the user has no UNBLOCKED company left — the caller then knows to send
+     * Skips blocked companies (phase 3.3) AND archived ones (phase 7): neither is
+     * an eligible landing spot, so a multi-company member auto-lands on a working
+     * one instead of being bounced to the blocked/archived screen. (An owner CAN
+     * reach their own archived company, but not via this auto-selection — they
+     * pick it deliberately from the switcher.) Returns false when the user has no
+     * usable company left — the caller then knows to send
      * them to the "create a company" flow (or, for a member whose only company is
      * blocked, the blocked screen, with no active company set so it cannot loop).
      */
@@ -95,8 +97,14 @@ trait BelongsToTenancy
     {
         $this->clearActiveCompany();
 
-        $next = $this->ownedCompanies()->whereNull('company_blocked_at')->first()
-            ?? $this->employeeCompanies()->whereNull('company_blocked_at')->first();
+        $next = $this->ownedCompanies()
+            ->whereNull('company_blocked_at')
+            ->whereNull('company_archived_at')
+            ->first()
+            ?? $this->employeeCompanies()
+                ->whereNull('company_blocked_at')
+                ->whereNull('company_archived_at')
+                ->first();
 
         if ($next === null) {
             return false;

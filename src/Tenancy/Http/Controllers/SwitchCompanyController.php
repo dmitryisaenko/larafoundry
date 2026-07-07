@@ -21,6 +21,9 @@ use Illuminate\Routing\Controller;
  * switch in and immediately bounce off the tenancy boundary: switching into a
  * company they cannot use is a dead end, so we reject it with a clear message and
  * leave their current active company untouched.
+ *
+ * An archived company (phase 7) is refused the same way, but only for NON-owner
+ * members — the owner is allowed to switch in so they can unarchive it.
  */
 class SwitchCompanyController extends Controller
 {
@@ -37,6 +40,15 @@ class SwitchCompanyController extends Controller
 
         if (method_exists($company, 'isBlocked') && $company->isBlocked()) {
             return back()->with('error', __('larafoundry::tenancy.company_blocked'));
+        }
+
+        // An archived company (phase 7) is owner-only: the owner may switch in to
+        // read it and unarchive it, but a non-owner member is refused up front —
+        // same dead-end reasoning as the block, only narrower. Ownership is read
+        // from the pivot loaded by companies() (withPivot is_owner).
+        if (method_exists($company, 'isArchived') && $company->isArchived()
+            && ! (bool) $company->pivot->is_owner) {
+            return back()->with('error', __('larafoundry::tenancy.company_archived'));
         }
 
         $user->setActiveCompany($company);

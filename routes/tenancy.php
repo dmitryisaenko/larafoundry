@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\SettingsController;
+use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\ArchiveCompanyController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\CreateCompanyController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\EmployeeController;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers\InvitationController;
@@ -53,6 +54,13 @@ Route::middleware(['web', 'auth'])->group(function () {
         // Switch the active company.
         Route::put('companies/{uuid}/switch', SwitchCompanyController::class)
             ->name('tenancy.companies.switch');
+
+        // Archive / unarchive a company (owner-only, enforced in the controller
+        // against the ownedCompanies() relation). PUT — it flips a state flag.
+        Route::put('companies/{uuid}/archive', [ArchiveCompanyController::class, 'archive'])
+            ->name('tenancy.companies.archive');
+        Route::put('companies/{uuid}/unarchive', [ArchiveCompanyController::class, 'unarchive'])
+            ->name('tenancy.companies.unarchive');
 
         // Employee management — requires an active company (with two exemptions
         // configured for self-removal).
