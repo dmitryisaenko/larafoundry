@@ -145,3 +145,48 @@ it('forbids archiving a company the user does not belong to (403)', function () 
         ->put("/companies/{$company->uuid}/archive")
         ->assertForbidden();
 });
+
+it('forbids a NON-owner member from unarchiving a company (403, IDOR guard)', function () {
+    $owner = arcUser('arcunowner@x.test');
+    $member = arcUser('arcunmember@x.test');
+    $company = arcCompany($owner, 'HeldArchived', archived: true);
+    $company->addEmployee($member, addedById: $owner->id, isOwner: false);
+
+    $this->actingAs($member)
+        ->put("/companies/{$company->uuid}/unarchive")
+        ->assertForbidden();
+
+    // The member could not clear the owner's archive flag.
+    expect($company->fresh()->isArchived())->toBeTrue();
+});
+
+it('archive is idempotent — a second call leaves the company archived, still succeeds', function () {
+    $user = arcUser('arcidem@x.test');
+    $company = arcCompany($user, 'Twice', archived: true);
+    $stamp = $company->company_archived_at;
+
+    $this->actingAs($user)
+        ->from('/dashboard')
+        ->put("/companies/{$company->uuid}/archive")
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    // Already-archived: the guard skips the write, so the original timestamp is
+    // untouched (no silent re-stamp) and the company stays archived.
+    $fresh = $company->fresh();
+    expect($fresh->isArchived())->toBeTrue()
+        ->and($fresh->company_archived_at->equalTo($stamp))->toBeTrue();
+});
+
+it('unarchive is idempotent — a second call on an active company still succeeds', function () {
+    $user = arcUser('arcidem2@x.test');
+    $company = arcCompany($user, 'NotArchived');
+
+    $this->actingAs($user)
+        ->from('/dashboard')
+        ->put("/companies/{$company->uuid}/unarchive")
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    expect($company->fresh()->isArchived())->toBeFalse();
+});
