@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\Admin;
 
+use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
 use Dmitryisaenko\LaraFoundry\Settings\Http\Requests\UpdateSettingRequest;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Illuminate\Http\RedirectResponse;
@@ -46,6 +47,13 @@ class SettingsController extends Controller
         }
 
         $this->settings->set($key, $request->input('value'), null);
+
+        Activity::log(
+            description: 'admin.settings.updated',
+            logName: 'admin',
+            properties: ['key' => $key],
+            geoSync: false,
+        );
 
         return back()->with('status', __('larafoundry::settings.saved'));
     }

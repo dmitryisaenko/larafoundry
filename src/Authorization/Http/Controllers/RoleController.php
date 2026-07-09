@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Authorization\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleCreated;
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleDeleted;
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleUpdated;
 use Dmitryisaenko\LaraFoundry\Authorization\Http\Requests\StoreRoleRequest;
 use Dmitryisaenko\LaraFoundry\Authorization\Http\Requests\UpdateRoleRequest;
 use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
@@ -83,6 +86,8 @@ class RoleController extends Controller
 
         $role->syncPermissions($request->validated('permissions', []));
 
+        RoleCreated::dispatch($role);
+
         return redirect()
             ->route('authorization.roles.index')
             ->with('status', __('larafoundry::authorization.role_created'));
@@ -113,6 +118,8 @@ class RoleController extends Controller
 
         $roleModel->syncPermissions($request->validated('permissions', []));
 
+        RoleUpdated::dispatch($roleModel);
+
         return redirect()
             ->route('authorization.roles.index')
             ->with('status', __('larafoundry::authorization.role_updated'));
@@ -125,6 +132,8 @@ class RoleController extends Controller
         $this->authorize('roles.delete', $roleModel);
 
         $roleModel->delete();
+
+        RoleDeleted::dispatch($roleModel);
 
         return back()->with('status', __('larafoundry::authorization.role_deleted'));
     }

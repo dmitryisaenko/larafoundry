@@ -3,6 +3,13 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\ActivityLog\Geo\IpApiGeoResolver;
+use Dmitryisaenko\LaraFoundry\Auth\Events\AdminAccessAttemptFailed;
+use Dmitryisaenko\LaraFoundry\Auth\Events\PasswordUpdated;
+use Dmitryisaenko\LaraFoundry\Auth\Events\ProfileUpdated;
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleCreated;
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleDeleted;
+use Dmitryisaenko\LaraFoundry\Authorization\Events\RoleUpdated;
+use Dmitryisaenko\LaraFoundry\Media\Events\FileUploaded;
 use Dmitryisaenko\LaraFoundry\Notifications\Events\BroadcastNotificationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyArchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
@@ -60,9 +67,8 @@ return [
     |
     | Each registered event is logged automatically. If the event object exposes
     | a `getLogProperties(): array` method, its return value is merged into the
-    | entry's properties. The core ships its auth + tenancy events; RBAC has no
-    | event classes (phase 1.3 emits none), so there is nothing to register there
-    | yet — the host adds domain events the same way.
+    | entry's properties. The core ships its auth, tenancy, RBAC, media, tickets and
+    | notification events; the host adds its own domain events the same way.
     */
     'events' => [
 
@@ -76,6 +82,19 @@ return [
         Logout::class => ['group' => 'Auth', 'description' => 'User logged out', 'code' => 200],
         Failed::class => ['group' => 'Auth', 'description' => 'Login failed', 'code' => 401],
         PasswordReset::class => ['group' => 'Auth', 'description' => 'Password reset', 'code' => 200],
+        // Phase 1 (activity completeness): in-session profile/password edits + the
+        // super-admin access-failure signal (previously fired but unlogged).
+        ProfileUpdated::class => ['group' => 'Auth', 'description' => 'Profile updated', 'code' => 200],
+        PasswordUpdated::class => ['group' => 'Auth', 'description' => 'Password changed', 'code' => 200],
+        AdminAccessAttemptFailed::class => ['group' => 'Auth', 'description' => 'Admin access attempt failed', 'code' => 401],
+
+        // --- Authorization / RBAC (phase 1, activity completeness) ---
+        RoleCreated::class => ['group' => 'Authorization', 'description' => 'Role created', 'code' => 201],
+        RoleUpdated::class => ['group' => 'Authorization', 'description' => 'Role updated', 'code' => 200],
+        RoleDeleted::class => ['group' => 'Authorization', 'description' => 'Role deleted', 'code' => 200],
+
+        // --- Media (phase 2.4; registered phase 1, activity completeness) ---
+        FileUploaded::class => ['group' => 'Media', 'description' => 'File uploaded', 'code' => 201],
 
         // --- Tenancy (phase 1.2) — the core's own events ---
         CompanyCreated::class => ['group' => 'Tenancy', 'description' => 'Company created', 'code' => 201],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Actions;
 
+use Dmitryisaenko\LaraFoundry\Auth\Events\PasswordUpdated;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
@@ -35,5 +36,7 @@ class UpdateUserPassword implements UpdatesUserPasswords
         $user->forceFill([
             'password' => $input['password'],
         ])->save();
+
+        PasswordUpdated::dispatch($user);
     }
 }

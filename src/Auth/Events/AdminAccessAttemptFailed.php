@@ -49,4 +49,19 @@ class AdminAccessAttemptFailed
         public readonly ?DeviceFingerprint $device = null,
         public readonly ?string $email = null,
     ) {}
+
+    /**
+     * Surfaced into the activity-log entry (phase 1, activity completeness): the
+     * auth step that failed. IP / user-agent are captured as first-class columns
+     * by the log service; the targeted email drives causer resolution, so it is
+     * not duplicated here.
+     *
+     * @return array<string, mixed>
+     */
+    public function getLogProperties(): array
+    {
+        return [
+            'step' => $this->step,
+        ];
+    }
 }

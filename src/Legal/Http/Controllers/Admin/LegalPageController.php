@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin;
 
+use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Requests\PreviewLegalPageRequest;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Requests\UpdateLegalPageRequest;
 use Dmitryisaenko\LaraFoundry\Legal\Models\LegalPage;
@@ -66,6 +67,13 @@ class LegalPageController extends Controller
             'is_published' => $request->boolean('is_published'),
             'bump_version' => $request->boolean('bump_version'),
         ]);
+
+        Activity::log(
+            description: 'admin.legal_page.updated',
+            logName: 'admin',
+            properties: ['slug' => $slug, 'published' => $request->boolean('is_published')],
+            geoSync: false,
+        );
 
         return back()->with('status', __('larafoundry::legal.saved'));
     }

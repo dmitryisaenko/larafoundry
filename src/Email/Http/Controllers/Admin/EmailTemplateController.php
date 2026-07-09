@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin;
 
+use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
 use Dmitryisaenko\LaraFoundry\Email\Http\Requests\PreviewEmailTemplateRequest;
 use Dmitryisaenko\LaraFoundry\Email\Http\Requests\SendTestEmailRequest;
 use Dmitryisaenko\LaraFoundry\Email\Http\Requests\UpdateEmailTemplateRequest;
@@ -74,6 +75,15 @@ class EmailTemplateController extends Controller
             'body_html' => (array) $request->input('body_html', []),
             'body_text' => (array) $request->input('body_text', []),
         ]);
+
+        Activity::log(
+            description: 'admin.email_template.updated',
+            logName: 'admin',
+            // NOT 'code' — that key is in pii_redact_keys (OTP/2FA codes) and would
+            // be masked to [redacted], losing which template was edited.
+            properties: ['template_code' => $code, 'active' => $request->boolean('is_active')],
+            geoSync: false,
+        );
 
         return back()->with('status', __('larafoundry::email.saved'));
     }

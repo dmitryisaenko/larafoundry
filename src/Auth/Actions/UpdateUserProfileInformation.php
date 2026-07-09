@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth\Actions;
 
+use Dmitryisaenko\LaraFoundry\Auth\Events\ProfileUpdated;
 use Dmitryisaenko\LaraFoundry\Auth\Support\SessionInvalidator;
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Illuminate\Auth\Events\Registered;
@@ -50,6 +51,8 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         $emailChanging
             ? $this->changeEmail($user, $input)
             : $user->fill($this->profileFields($input))->save();
+
+        ProfileUpdated::dispatch($user, $emailChanging);
     }
 
     /**

@@ -241,7 +241,7 @@ class ActivityLogService
         // (the actual subject), so the specific entities must be checked before
         // the surrounding company. Single-subject events (e.g. CompanyCreated,
         // which only has `company`) are unaffected.
-        foreach (['subject', 'employee', 'invitation', 'ticket', 'model', 'company'] as $property) {
+        foreach (['subject', 'employee', 'invitation', 'ticket', 'role', 'model', 'company'] as $property) {
             if (isset($event->{$property}) && $event->{$property} instanceof Model) {
                 $candidate = $event->{$property};
 
