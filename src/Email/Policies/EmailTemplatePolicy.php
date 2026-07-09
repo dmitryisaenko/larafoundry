@@ -41,6 +41,25 @@ class EmailTemplatePolicy
     }
 
     /**
+     * Create (or duplicate into) a marketing template. Same authority as editing;
+     * the fail-closed guarantee that a transactional code can never be minted here
+     * lives in the repository + FormRequest, not this identity check.
+     */
+    public function create(Model $user): bool
+    {
+        return $this->isSuperAdmin($user);
+    }
+
+    /**
+     * Delete a marketing template. Same authority; the guard that a transactional
+     * code can never be deleted lives in the controller + repository.
+     */
+    public function delete(Model $user): bool
+    {
+        return $this->isSuperAdmin($user);
+    }
+
+    /**
      * Send a test email of a template to an address. Same authority as editing.
      */
     public function test(Model $user): bool

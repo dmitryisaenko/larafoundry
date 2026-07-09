@@ -1,28 +1,38 @@
 <script setup>
 /**
- * Email template editor page (phase 5.1), super-admin only.
+ * Email template editor page (phase 5.1, two layers in 2b), super-admin only.
  *
- * Thin wrapper: the AdminLayout plus the EmailTemplateEditor component, which
- * owns the per-locale fields, the variable list, the server-rendered preview and
- * the test-email send.
+ * Branches on the template layer:
+ *  - transactional → the leaner {@link EmailTemplateEditor} (subject/body + active,
+ *    no code/name/delete — fail-closed);
+ *  - marketing → {@link MarketingEmailTemplateForm} in edit mode (also name +
+ *    variable whitelist, plus delete).
  */
-import { AdminLayout, EmailTemplateEditor } from '@dmitryisaenko/larafoundry';
+import { AdminLayout, EmailTemplateEditor, MarketingEmailTemplateForm } from '@dmitryisaenko/larafoundry';
 import { Link } from '@inertiajs/vue3';
 
-defineProps({
+const props = defineProps({
     template: { type: Object, required: true },
     locales: { type: Array, default: () => [] },
 });
+
+const isMarketing = props.template.type === 'marketing';
 </script>
 
 <template>
-    <AdminLayout :title="`${$t('Email templates')} · ${template.code}`">
+    <AdminLayout :title="`${$t('Email templates')} · ${template.name || template.code}`">
         <div class="flex flex-col gap-6">
             <Link href="/admin/email-templates" class="text-sm text-ink-soft hover:text-ink">
                 &larr; {{ $t('Back to templates') }}
             </Link>
 
-            <EmailTemplateEditor :template="template" :locales="locales" />
+            <MarketingEmailTemplateForm
+                v-if="isMarketing"
+                :template="template"
+                :locales="locales"
+                mode="edit"
+            />
+            <EmailTemplateEditor v-else :template="template" :locales="locales" />
         </div>
     </AdminLayout>
 </template>

@@ -109,15 +109,27 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
             Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
 
-            // Email templates (phase 5.1): edit-only over the shipped templates,
-            // with a server-rendered preview and a rate-limited test send. The
-            // `{code}` is a registry key (not a model binding) — a template has a
-            // DB row only once edited, so the controller resolves it from the
-            // registry and 404s an unknown code.
+            // Email templates (phase 5.1, two layers in phase 2b). TRANSACTIONAL
+            // codes (registry) are edit-only + fail-closed; MARKETING templates
+            // (self-contained DB rows) get full CRUD. The `{code}` is a slug (not a
+            // model binding) — a transactional template has a DB row only once
+            // edited, so the controller resolves it from the registry ∪ DB and
+            // 404s an unknown code. `destroy` also 403s a transactional code.
             Route::prefix('email-templates')->name('email-templates.')->group(function () {
                 Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+                // Marketing create + the code-less draft preview must precede the
+                // `{code}` routes so the literal segments win the match.
+                Route::get('create', [EmailTemplateController::class, 'create'])->name('create');
+                Route::post('/', [EmailTemplateController::class, 'store'])
+                    ->middleware('throttle:30,1')
+                    ->name('store');
+                Route::post('preview-draft', [EmailTemplateController::class, 'previewDraft'])->name('preview-draft');
                 Route::get('{code}/edit', [EmailTemplateController::class, 'edit'])->name('edit');
                 Route::put('{code}', [EmailTemplateController::class, 'update'])->name('update');
+                Route::delete('{code}', [EmailTemplateController::class, 'destroy'])->name('destroy');
+                Route::post('{code}/duplicate', [EmailTemplateController::class, 'duplicate'])
+                    ->middleware('throttle:30,1')
+                    ->name('duplicate');
                 Route::post('{code}/preview', [EmailTemplateController::class, 'preview'])->name('preview');
                 Route::post('{code}/test', [EmailTemplateController::class, 'sendTest'])
                     ->middleware('throttle:'.config('larafoundry-email.test_email.throttle', '5,1'))

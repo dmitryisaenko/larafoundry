@@ -90,8 +90,9 @@ export { default as SupportLink } from './components/tickets/SupportLink.vue';
 // Settings (phase 5.1)
 export { default as SettingsForm } from './components/settings/SettingsForm.vue';
 
-// Email templates (phase 5.1)
+// Email templates (phase 5.1, two-layer CRUD in phase 2b)
 export { default as EmailTemplateEditor } from './components/email/EmailTemplateEditor.vue';
+export { default as MarketingEmailTemplateForm } from './components/email/MarketingEmailTemplateForm.vue';
 export { default as EmailPreviewFrame } from './components/email/EmailPreviewFrame.vue';
 
 // Legal / GDPR (phase 5.3)
