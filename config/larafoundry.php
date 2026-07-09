@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Dmitryisaenko\LaraFoundry\Admin\Http\Resources\AdminUserResource;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 
 return [
@@ -383,6 +384,12 @@ return [
         'subscription_expiring_within_days' => 7,
         'active_within_days' => 30,
         'dashboard_activity_limit' => 10,
+
+        // Host seam (phase 7): the resource that serialises users for the admin
+        // list. Point this at an AdminUserResource subclass that overrides
+        // `extra()` to append host columns (e.g. "used demo?") without forking
+        // the Vue table. Must extend AdminUserResource or it is ignored.
+        'user_resource' => AdminUserResource::class,
     ],
 
     /*

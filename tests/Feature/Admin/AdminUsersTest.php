@@ -206,3 +206,85 @@ it('omits social links from the admin user resource', function () {
     expect($first)->not->toHaveKey('provider_token')
         ->and($first)->not->toHaveKey('provider_name');
 });
+
+it('exposes locale and derived auth type in the resource', function () {
+    $admin = auAdmin();
+
+    $oauth = auMember('oauth@x.test');
+    $oauth->forceFill(['locale' => 'uk', 'provider_name' => 'google'])->save();
+
+    $password = auMember('pw@x.test');
+    $password->forceFill(['locale' => 'en', 'provider_name' => null])->save();
+
+    $rows = $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data');
+
+    $byEmail = collect($rows)->keyBy('email');
+
+    expect($byEmail['oauth@x.test'])
+        ->locale->toBe('uk')
+        ->auth_type->toBe('oauth')
+        ->auth_provider->toBe('google');
+
+    expect($byEmail['pw@x.test'])
+        ->locale->toBe('en')
+        ->auth_type->toBe('password')
+        ->auth_provider->toBeNull();
+});
+
+it('filters users by exact locale', function () {
+    $admin = auAdmin();
+    auMember('uk@x.test')->forceFill(['locale' => 'uk'])->save();
+    auMember('en@x.test')->forceFill(['locale' => 'en'])->save();
+
+    $this->actingAs($admin)
+        ->get('/admin/users?locale=uk', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(1, 'props.users.data')
+        ->assertJsonPath('props.users.data.0.email', 'uk@x.test');
+});
+
+it('filters users by auth type', function () {
+    $admin = auAdmin();
+    auMember('social@x.test')->forceFill(['provider_name' => 'github'])->save();
+    auMember('local@x.test')->forceFill(['provider_name' => null])->save();
+
+    $oauth = $this->actingAs($admin)
+        ->get('/admin/users?authType=oauth', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data');
+
+    expect(collect($oauth)->pluck('email'))->toContain('social@x.test')
+        ->not->toContain('local@x.test');
+});
+
+it('ignores an unknown authType value instead of collapsing to password', function () {
+    $admin = auAdmin();
+    auMember('social2@x.test')->forceFill(['provider_name' => 'github'])->save();
+    auMember('local2@x.test')->forceFill(['provider_name' => null])->save();
+
+    // A stale/crafted value must be a no-op (like status/registered), not a
+    // silent whereNull that hides every OAuth user.
+    $rows = $this->actingAs($admin)
+        ->get('/admin/users?authType=garbage', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data');
+
+    expect(collect($rows)->pluck('email'))
+        ->toContain('social2@x.test')
+        ->toContain('local2@x.test');
+});
+
+it('ships an empty extra_columns by default (host seam)', function () {
+    $admin = auAdmin();
+    auMember();
+
+    $first = $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data.0');
+
+    expect($first['extra_columns'])->toBe([]);
+});

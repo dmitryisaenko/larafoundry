@@ -88,4 +88,28 @@ class AdminUsersFilter extends Filter
             $this->builder->where('last_activity_at', '>=', now()->subHours($hours));
         }
     }
+
+    /**
+     * Exact interface locale, e.g. 'en' | 'uk' (phase 7, Krokq).
+     */
+    public function locale(string $value): void
+    {
+        $this->builder->where('locale', $value);
+    }
+
+    /**
+     * Sign-in type: 'oauth' (has a social provider) | 'password' (has none).
+     *
+     * Like the other enum filters (status, registered), an unrecognised value is
+     * a no-op rather than silently collapsing into one branch — so a stale or
+     * crafted `?authType=x` does not quietly hide every OAuth user.
+     */
+    public function authType(string $value): void
+    {
+        match ($value) {
+            'oauth' => $this->builder->whereNotNull('provider_name'),
+            'password' => $this->builder->whereNull('provider_name'),
+            default => null,
+        };
+    }
 }

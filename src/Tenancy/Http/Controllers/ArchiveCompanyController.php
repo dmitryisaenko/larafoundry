@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyArchived;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyUnarchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +34,8 @@ class ArchiveCompanyController extends Controller
 
         if (! $company->isArchived()) {
             $company->forceFill(['company_archived_at' => now()])->save();
+
+            CompanyArchived::dispatch($company);
         }
 
         return back()->with('status', __('larafoundry::tenancy.company_archived_done'));
@@ -43,6 +47,8 @@ class ArchiveCompanyController extends Controller
 
         if ($company->isArchived()) {
             $company->forceFill(['company_archived_at' => null])->save();
+
+            CompanyUnarchived::dispatch($company);
         }
 
         return back()->with('status', __('larafoundry::tenancy.company_unarchived'));

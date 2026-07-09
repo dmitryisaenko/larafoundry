@@ -86,6 +86,13 @@ class AdminMenuProvider implements MenuProviderInterface
                 activePatterns: ['admin.legal-pages.*'],
             ),
             new MenuItem(
+                labelKey: 'Payments',
+                route: 'admin.payments.index',
+                icon: 'billing',
+                order: 34,
+                activePatterns: ['admin.payments.*'],
+            ),
+            new MenuItem(
                 labelKey: 'Settings',
                 route: 'admin.settings.index',
                 icon: 'settings',

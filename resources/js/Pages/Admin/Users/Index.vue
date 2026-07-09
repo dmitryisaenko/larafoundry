@@ -22,6 +22,8 @@ const form = reactive({
     search: props.filters.search ?? '',
     status: props.filters.status ?? '',
     emailVerified: props.filters.emailVerified ?? '',
+    locale: props.filters.locale ?? '',
+    authType: props.filters.authType ?? '',
 });
 
 let debounce = null;
@@ -82,6 +84,16 @@ function impersonate(user) {
                         <option value="">{{ $t('Any email') }}</option>
                         <option value="verified">{{ $t('Verified') }}</option>
                         <option value="unverified">{{ $t('Unverified') }}</option>
+                    </select>
+                    <select v-model="form.locale" class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink">
+                        <option value="">{{ $t('Any language') }}</option>
+                        <option value="en">EN</option>
+                        <option value="uk">UK</option>
+                    </select>
+                    <select v-model="form.authType" class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink">
+                        <option value="">{{ $t('Any auth') }}</option>
+                        <option value="oauth">{{ $t('OAuth') }}</option>
+                        <option value="password">{{ $t('Password') }}</option>
                     </select>
                 </div>
                 <button

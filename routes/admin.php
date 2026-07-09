@@ -6,6 +6,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\AdminOtpChallengeController
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PaymentController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
@@ -98,6 +99,11 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::post('{ticket}/category', [AdminTicketController::class, 'toggleCategory'])->name('category');
                 Route::post('{ticket}/label', [AdminTicketController::class, 'toggleLabel'])->name('label');
             });
+
+            // Payments (phase 7): a stub screen over the billing seam — reserves
+            // the route/menu slot and shows an empty state until a gateway is
+            // wired (the paid billing add-on ships its own richer console).
+            Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
 
             // App-scope settings (phase 5.1).
             Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');

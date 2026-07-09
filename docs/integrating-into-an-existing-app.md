@@ -435,7 +435,41 @@ createInertiaApp({
 3. **Page** — your `resources/js/Pages/Admin/Stats/Index.vue` with `defineOptions({ layout: AdminLayout })`.
 4. **Dashboard widgets** (optional) — implement `Dashboard\Contracts\DashboardWidgetProviderInterface`, register on `DashboardBuilder`, and on the frontend `registerDashboardWidget('StatsWidget', StatsWidget)` (from the barrel) before mount.
 
-The core admin console already provides: Dashboard, Users (CRUD + impersonation), Companies (hidden/empty in personal mode), Activity log, Broadcasts, Support tickets, Email templates, Legal pages, Settings — all under `/admin`, gated by `larafoundry.admin` + `larafoundry.admin.otp`.
+The core admin console already provides: Dashboard, Users (CRUD + impersonation), Companies (hidden/empty in personal mode), Activity log, Broadcasts, Support tickets, Email templates, Legal pages, Payments (empty until a gateway is wired), Settings — all under `/admin`, gated by `larafoundry.admin` + `larafoundry.admin.otp`.
+
+### 13.1 Extra columns in the admin **Users** table (no Vue fork)
+
+The user list is rendered by the core `UsersTable` component, so you cannot edit it directly. Instead the resource carries an `extra_columns` array and the table renders whatever it finds — appended after the core columns, before the actions. To add a column (e.g. "used the demo?") without forking any Vue:
+
+1. **Subclass the resource** and override `extra()`:
+   ```php
+   use Dmitryisaenko\LaraFoundry\Admin\Http\Resources\AdminUserResource;
+   use Illuminate\Http\Request;
+
+   class HostAdminUserResource extends AdminUserResource
+   {
+       protected function extra(Request $request): array
+       {
+           $used = $this->resource->demoBatches()->exists(); // host relation/table
+
+           return [
+               ['key' => 'demo', 'label' => 'Demo', 'value' => $used ? __('Yes') : __('No'),
+                'badge' => $used ? 'emerald' : 'slate'],
+           ];
+       }
+   }
+   ```
+   Each cell is a display descriptor: `key` (column id + i18n key), `label` (header, an i18n key), `value` (resolved text — the table does not interpret it), optional `badge` (`emerald|amber|rose|slate`, renders the value as a pill).
+2. **Point the config at it** (publish `config/larafoundry.php` and set):
+   ```php
+   'admin' => [
+       'user_resource' => \App\Http\Resources\HostAdminUserResource::class,
+   ],
+   ```
+   The controller validates the class extends `AdminUserResource` and ignores it otherwise, so a mis-set value can never swap in an arbitrary class.
+3. **Translate the labels** — add your `key`/`label` strings to the frontend dictionary (`lang/frontend/*.json`) like any other UI string.
+
+Avoid N+1: `extra()` runs per row. If your column reads a relation, eager-load it in a host controller before rendering, or aggregate with `withCount`. Never expose secrets or heavy payloads through `extra()` — it is a display seam.
 
 ---
 

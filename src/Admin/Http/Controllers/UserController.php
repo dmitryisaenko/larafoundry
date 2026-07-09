@@ -47,10 +47,14 @@ class UserController extends Controller
             ->paginate($this->perPage())
             ->withQueryString();
 
+        $resource = $this->resource();
+
         return Inertia::render('Admin/Users/Index', [
-            'users' => AdminUserResource::collection($users),
+            'users' => $resource::collection($users),
             'pagination' => $this->getPaginationData($users),
-            'filters' => $request->only(['search', 'registered', 'emailVerified', 'status', 'recentActivity']),
+            'filters' => $request->only([
+                'search', 'registered', 'emailVerified', 'status', 'recentActivity', 'locale', 'authType',
+            ]),
         ]);
     }
 
@@ -60,9 +64,10 @@ class UserController extends Controller
     public function edit(int|string $user): Response
     {
         $target = $this->find($user);
+        $resource = $this->resource();
 
         return Inertia::render('Admin/Users/Edit', [
-            'user' => new AdminUserResource($target),
+            'user' => new $resource($target),
         ]);
     }
 
@@ -135,8 +140,10 @@ class UserController extends Controller
             ->limit(20)
             ->get();
 
+        $resource = $this->resource();
+
         return response()->json([
-            'users' => AdminUserResource::collection($users),
+            'users' => $resource::collection($users),
         ]);
     }
 
@@ -276,6 +283,26 @@ class UserController extends Controller
         $model = config('auth.providers.users.model');
 
         return $model;
+    }
+
+    /**
+     * The resource class used to serialise users for the console.
+     *
+     * Host seam (phase 7): a host that needs extra user-list columns points
+     * `larafoundry.admin.user_resource` at an {@see AdminUserResource} subclass
+     * overriding `extra()`. Defaults to the core resource. Validated to be an
+     * AdminUserResource so a mis-set config cannot swap in an arbitrary class.
+     *
+     * @return class-string<AdminUserResource>
+     */
+    protected function resource(): string
+    {
+        /** @var mixed $class */
+        $class = config('larafoundry.admin.user_resource', AdminUserResource::class);
+
+        return (is_string($class) && is_a($class, AdminUserResource::class, true))
+            ? $class
+            : AdminUserResource::class;
     }
 
     protected function perPage(): int
