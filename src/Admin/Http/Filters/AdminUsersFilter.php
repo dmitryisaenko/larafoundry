@@ -14,9 +14,10 @@ use Dmitryisaenko\LaraFoundry\Http\Filters\Filter;
  * query parameter can never invoke an unintended method. Empty values are
  * skipped by the base class.
  *
- * Extracted from the donor `AdminUsersFilter` (recon §B), trimmed to fields the
- * core ships: free-text search, registration window, verification state and
- * recent activity. Host-specific facets (age buckets, social) stay in the host.
+ * Extracted from the donor `AdminUsersFilter` (recon §B): free-text search,
+ * registration window, verification state, recent activity, and the phase-3a
+ * facets (country, phone verification, sex, age bucket). Each new enum facet
+ * no-ops on an unrecognised value rather than collapsing the result set.
  */
 class AdminUsersFilter extends Filter
 {
@@ -111,5 +112,76 @@ class AdminUsersFilter extends Filter
             'password' => $this->builder->whereNull('provider_name'),
             default => null,
         };
+    }
+
+    /**
+     * Exact country match (phase 3a). Always available on the backend; the front
+     * shows it as a plain text filter (the core ships no country registry).
+     */
+    public function country(string $value): void
+    {
+        $this->builder->where('country', trim($value));
+    }
+
+    /**
+     * Phone verification state: 'verified' | 'unverified' (phase 3a).
+     *
+     * Mirrors {@see emailVerified}. Backend-safe on an unpopulated column; the
+     * front only surfaces it when the `phone` column token is enabled.
+     */
+    public function phoneVerified(string $value): void
+    {
+        $value === 'verified'
+            ? $this->builder->whereNotNull('phone_verified_at')
+            : $this->builder->whereNull('phone_verified_at');
+    }
+
+    /**
+     * Exact sex match (phase 3a).
+     *
+     * A no-op for an empty value (handled by the base) — any concrete value is an
+     * exact match, so an unknown value simply returns no rows rather than an error
+     * or a collapsed branch. Surfaced on the front only when the `sex` token is on.
+     */
+    public function sex(string $value): void
+    {
+        $this->builder->where('sex', $value);
+    }
+
+    /**
+     * Age bucket over `birth_date` (phase 3a).
+     *
+     * Maps a coarse bucket to a birth-date window rather than computing age in
+     * SQL (portable across drivers). Like the other enum filters, an unrecognised
+     * bucket is a no-op — never a query that hides everyone. Surfaced on the front
+     * only when the `age` token is on.
+     */
+    public function ageRange(string $value): void
+    {
+        // [minAge, maxAge]; a null max is an open-ended top bucket. The buckets
+        // are disjoint — '46-59' stops at 59 so a 60-year-old lands only in the
+        // '60+' bucket, never in both.
+        $buckets = [
+            '18-25' => [18, 25],
+            '26-35' => [26, 35],
+            '36-45' => [36, 45],
+            '46-59' => [46, 59],
+            '60+' => [60, null],
+        ];
+
+        if (! isset($buckets[$value])) {
+            return;
+        }
+
+        [$minAge, $maxAge] = $buckets[$value];
+
+        // Age >= minAge  ->  born on or before (today - minAge years).
+        $this->builder->where('birth_date', '<=', now()->subYears($minAge)->endOfDay());
+
+        // Age <= maxAge  ->  born after (today - (maxAge + 1) years). Open-ended
+        // top bucket ('60+') skips the lower bound on birth_date.
+        if ($maxAge !== null) {
+            $this->builder->where('birth_date', '>', now()->subYears($maxAge + 1)->endOfDay());
+        }
     }
 }

@@ -1,11 +1,15 @@
 <script setup>
 /**
- * Super-admin user list table (phase 2.3).
+ * Super-admin user list table (phase 2.3, extended 3a).
  *
  * Renders the rows shaped by AdminUserResource and emits row actions up to the
- * page (edit/block/unblock/delete/restore/impersonate), which own the requests.
- * No social links are shown — the resource omits them (finding #6, PII). No
- * v-html anywhere.
+ * page (edit/block/unblock/delete/restore/impersonate/verify/logs/ticket), which
+ * own the requests. No v-html anywhere.
+ *
+ * PII columns are opt-in (phase 3a): Phone, Sex and Age render only when the host
+ * switched the matching token on in `larafoundry.admin.user_columns`, surfaced
+ * here as the `userColumns` prop. The default table stays privacy-clean — the
+ * resource does not even serialise those fields unless opted in.
  *
  * HOST SEAM (phase 7): each row may carry `extra_columns` — display cells a host
  * appended by subclassing AdminUserResource (see its `extra()`). The header is
@@ -17,9 +21,28 @@ import UserAvatar from '../media/UserAvatar.vue';
 
 const props = defineProps({
     users: { type: Array, default: () => [] },
+    // Sanitised opt-in column tokens the backend switched on (phase 3a).
+    userColumns: { type: Array, default: () => [] },
 });
 
-defineEmits(['edit', 'block', 'unblock', 'delete', 'restore', 'impersonate']);
+defineEmits([
+    'edit',
+    'block',
+    'unblock',
+    'delete',
+    'restore',
+    'impersonate',
+    'verify-email',
+    'unverify-email',
+    'verify-phone',
+    'unverify-phone',
+    'logs',
+    'ticket',
+]);
+
+function has(token) {
+    return props.userColumns.includes(token);
+}
 
 // Host-added columns: the header is the UNION of cell keys across all rows, in
 // first-seen order — not just row 0. A host `extra()` that emits a cell only for
@@ -56,9 +79,24 @@ function pill(token) {
     return badgeClass[token] ?? badgeClass.slate;
 }
 
-// Total column count for the empty-state row: the fixed core columns + extras.
-const CORE_COLUMNS = 10;
-const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
+function sexLabel(value) {
+    if (value === 'male' || value === 'm') {
+        return 'Male';
+    }
+    if (value === 'female' || value === 'f') {
+        return 'Female';
+    }
+    return value ?? '-';
+}
+
+// Total column count for the empty-state row: the fixed core columns
+// (ID + name/email/country/language/auth/companies/registered/last-activity/
+// status/actions = 11), plus the opt-in columns that are on, plus host extras —
+// so the empty-state colspan tracks whatever is actually rendered.
+const FIXED_COLUMNS = 11;
+const OPTIONAL_TOKENS = ['phone', 'sex', 'age'];
+const optionalCount = computed(() => OPTIONAL_TOKENS.filter((t) => has(t)).length);
+const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumns.value.length);
 </script>
 
 <template>
@@ -66,12 +104,16 @@ const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
         <table class="w-full text-left text-sm">
             <thead class="border-b border-border text-xs uppercase tracking-wide text-ink-soft">
                 <tr>
+                    <th class="px-3 py-2">{{ $t('ID') }}</th>
                     <th class="px-3 py-2">{{ $t('Name') }}</th>
                     <th class="px-3 py-2">{{ $t('Email') }}</th>
+                    <th v-if="has('phone')" class="px-3 py-2">{{ $t('Phone') }}</th>
+                    <th v-if="has('sex')" class="px-3 py-2">{{ $t('Sex') }}</th>
+                    <th v-if="has('age')" class="px-3 py-2">{{ $t('Age') }}</th>
                     <th class="px-3 py-2">{{ $t('Country') }}</th>
                     <th class="px-3 py-2">{{ $t('Language') }}</th>
                     <th class="px-3 py-2">{{ $t('Auth') }}</th>
-                    <th class="px-3 py-2">{{ $t('Companies') }}</th>
+                    <th class="px-3 py-2">{{ $t('Comp. / Empl.') }}</th>
                     <th class="px-3 py-2">{{ $t('Registered') }}</th>
                     <th class="px-3 py-2">{{ $t('Last activity') }}</th>
                     <th class="px-3 py-2">{{ $t('Status') }}</th>
@@ -81,6 +123,7 @@ const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
             </thead>
             <tbody>
                 <tr v-for="user in users" :key="user.id" class="border-b border-border/60 align-middle">
+                    <td class="px-3 py-2 text-ink-soft">{{ user.id }}</td>
                     <td class="px-3 py-2">
                         <div class="flex items-center gap-2">
                             <UserAvatar
@@ -98,8 +141,16 @@ const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
                         <span>{{ user.email }}</span>
                         <span v-if="user.email_verified" class="ml-1 text-xs text-emerald-600" :title="$t('Verified')">✓</span>
                     </td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.country || '—' }}</td>
-                    <td class="px-3 py-2 uppercase text-ink-soft">{{ user.locale || '—' }}</td>
+                    <td v-if="has('phone')" class="px-3 py-2 text-ink-soft">
+                        <span>{{ user.phone || '-' }}</span>
+                        <span v-if="user.phone && user.phone_verified" class="ml-1 text-xs text-emerald-600" :title="$t('Verified')">✓</span>
+                    </td>
+                    <td v-if="has('sex')" class="px-3 py-2 text-ink-soft">
+                        {{ user.sex ? $t(sexLabel(user.sex)) : '-' }}
+                    </td>
+                    <td v-if="has('age')" class="px-3 py-2 text-ink-soft">{{ user.age ?? '-' }}</td>
+                    <td class="px-3 py-2 text-ink-soft">{{ user.country || '-' }}</td>
+                    <td class="px-3 py-2 uppercase text-ink-soft">{{ user.locale || '-' }}</td>
                     <td class="px-3 py-2">
                         <span
                             v-if="user.auth_type === 'oauth'"
@@ -108,9 +159,11 @@ const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
                         >{{ $t('OAuth') }}<template v-if="user.auth_provider"> · {{ user.auth_provider }}</template></span>
                         <span v-else class="text-xs text-ink-soft">{{ $t('Password') }}</span>
                     </td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.companies_count ?? 0 }}</td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.registered_date || '—' }}</td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.last_activity_human || '—' }}</td>
+                    <td class="px-3 py-2 text-ink-soft">
+                        {{ user.owned_companies_count ?? 0 }} / {{ user.employee_companies_count ?? 0 }}
+                    </td>
+                    <td class="px-3 py-2 text-ink-soft">{{ user.registered_date || '-' }}</td>
+                    <td class="px-3 py-2 text-ink-soft">{{ user.last_activity_human || '-' }}</td>
                     <td class="px-3 py-2">
                         <span v-if="user.is_deleted" class="rounded-sm bg-rose-50 px-2 py-0.5 text-xs text-rose-700">{{ $t('Deleted') }}</span>
                         <span v-else-if="user.is_blocked" class="rounded-sm bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{{ $t('Blocked') }}</span>
@@ -122,17 +175,24 @@ const colspan = computed(() => CORE_COLUMNS + extraColumns.value.length);
                             class="rounded-sm px-2 py-0.5 text-xs"
                             :class="pill(cellFor(user, col.key).badge)"
                         >{{ cellFor(user, col.key).value }}</span>
-                        <span v-else>{{ cellFor(user, col.key).value ?? '—' }}</span>
+                        <span v-else>{{ cellFor(user, col.key).value ?? '-' }}</span>
                     </td>
                     <td class="px-3 py-2 text-right">
                         <UsersTableActions
                             :user="user"
+                            :user-columns="userColumns"
                             @edit="$emit('edit', user)"
                             @block="$emit('block', user)"
                             @unblock="$emit('unblock', user)"
                             @delete="$emit('delete', user)"
                             @restore="$emit('restore', user)"
                             @impersonate="$emit('impersonate', user)"
+                            @verify-email="$emit('verify-email', user)"
+                            @unverify-email="$emit('unverify-email', user)"
+                            @verify-phone="$emit('verify-phone', user)"
+                            @unverify-phone="$emit('unverify-phone', user)"
+                            @logs="$emit('logs', user)"
+                            @ticket="$emit('ticket', user)"
                         />
                     </td>
                 </tr>

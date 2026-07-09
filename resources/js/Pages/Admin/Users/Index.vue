@@ -1,22 +1,30 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { AdminLayout, PagePaginator, UsersTable } from '@dmitryisaenko/larafoundry';
+import { AdminLayout, PagePaginator, UsersTable, BlockUserDialog, confirm, useT } from '@dmitryisaenko/larafoundry';
+
+const t = useT();
 
 /**
- * Super-admin user list (phase 2.3) — the first populated console screen.
- * Super-admin only (gated server-side by `larafoundry.admin`).
+ * Super-admin user list (phase 2.3, extended 3a) — the first populated console
+ * screen. Super-admin only (gated server-side by `larafoundry.admin`).
  *
  * Row actions go straight back to the admin endpoints; the server is the
  * authority (membership, impersonation policy, blocking). This page just wires
- * the buttons.
+ * the buttons. Personal columns/filters (phone/sex/age) render only when the
+ * host opted them in — `userColumns` carries the sanitised token list.
  */
 const props = defineProps({
     users: { type: Object, default: () => ({ data: [] }) },
+    userColumns: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
 });
 
 const rows = computed(() => props.users.data ?? []);
+
+function has(token) {
+    return props.userColumns.includes(token);
+}
 
 const form = reactive({
     search: props.filters.search ?? '',
@@ -24,7 +32,13 @@ const form = reactive({
     emailVerified: props.filters.emailVerified ?? '',
     locale: props.filters.locale ?? '',
     authType: props.filters.authType ?? '',
+    country: props.filters.country ?? '',
+    phoneVerified: props.filters.phoneVerified ?? '',
+    sex: props.filters.sex ?? '',
+    ageRange: props.filters.ageRange ?? '',
 });
+
+const ageBuckets = ['18-25', '26-35', '36-45', '46-59', '60+'];
 
 let debounce = null;
 watch(form, () => {
@@ -42,16 +56,35 @@ function edit(user) {
     router.get(`/admin/users/${user.id}/edit`);
 }
 
-function block(user) {
-    router.post(`/admin/users/${user.id}/block`, {}, { preserveScroll: true });
+// Block runs through the reason dialog (core Modal), not a native prompt.
+const blockDialog = reactive({ open: false, user: null });
+
+function askBlock(user) {
+    blockDialog.user = user;
+    blockDialog.open = true;
+}
+
+function submitBlock(payload) {
+    const user = blockDialog.user;
+    blockDialog.open = false;
+    router.post(`/admin/users/${user.id}/block`, payload, { preserveScroll: true });
 }
 
 function unblock(user) {
     router.post(`/admin/users/${user.id}/unblock`, {}, { preserveScroll: true });
 }
 
-function destroy(user) {
-    router.delete(`/admin/users/${user.id}`, { preserveScroll: true });
+async function destroy(user) {
+    const ok = await confirm({
+        variant: 'danger',
+        title: t('Delete user'),
+        message: t('This user will be soft-deleted and their sessions ended.'),
+        highlight: `${user.name} ${user.lastname || ''}`.trim(),
+        confirmLabel: t('Delete'),
+    });
+    if (ok) {
+        router.delete(`/admin/users/${user.id}`, { preserveScroll: true });
+    }
 }
 
 function restore(user) {
@@ -60,6 +93,46 @@ function restore(user) {
 
 function impersonate(user) {
     router.post(`/admin/impersonate/${user.id}`);
+}
+
+function verifyEmail(user) {
+    router.post(`/admin/users/${user.id}/verify-email`, {}, { preserveScroll: true });
+}
+
+async function unverifyEmail(user) {
+    const ok = await confirm({
+        variant: 'warning',
+        title: t('Unverify email'),
+        message: t("This clears the user's email verification."),
+        confirmLabel: t('Unverify email'),
+    });
+    if (ok) {
+        router.post(`/admin/users/${user.id}/unverify-email`, {}, { preserveScroll: true });
+    }
+}
+
+function verifyPhone(user) {
+    router.post(`/admin/users/${user.id}/verify-phone`, {}, { preserveScroll: true });
+}
+
+async function unverifyPhone(user) {
+    const ok = await confirm({
+        variant: 'warning',
+        title: t('Unverify phone'),
+        message: t("This clears the user's phone verification."),
+        confirmLabel: t('Unverify phone'),
+    });
+    if (ok) {
+        router.post(`/admin/users/${user.id}/unverify-phone`, {}, { preserveScroll: true });
+    }
+}
+
+function viewLogs(user) {
+    router.get(`/admin/activity-log/users/${user.id}`);
+}
+
+function createTicket(user) {
+    router.get(`/admin/tickets/create?user=${user.id}`);
 }
 </script>
 
@@ -95,6 +168,38 @@ function impersonate(user) {
                         <option value="oauth">{{ $t('OAuth') }}</option>
                         <option value="password">{{ $t('Password') }}</option>
                     </select>
+                    <input
+                        v-model="form.country"
+                        type="text"
+                        :placeholder="$t('Country')"
+                        class="w-28 rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    >
+                    <select
+                        v-if="has('phone')"
+                        v-model="form.phoneVerified"
+                        class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    >
+                        <option value="">{{ $t('Phone verified') }}</option>
+                        <option value="verified">{{ $t('Verified') }}</option>
+                        <option value="unverified">{{ $t('Unverified') }}</option>
+                    </select>
+                    <select
+                        v-if="has('sex')"
+                        v-model="form.sex"
+                        class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    >
+                        <option value="">{{ $t('Any sex') }}</option>
+                        <option value="male">{{ $t('Male') }}</option>
+                        <option value="female">{{ $t('Female') }}</option>
+                    </select>
+                    <select
+                        v-if="has('age')"
+                        v-model="form.ageRange"
+                        class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
+                    >
+                        <option value="">{{ $t('Age range') }}</option>
+                        <option v-for="bucket in ageBuckets" :key="bucket" :value="bucket">{{ bucket }}</option>
+                    </select>
                 </div>
                 <button
                     type="button"
@@ -108,16 +213,25 @@ function impersonate(user) {
             <div class="rounded-sm border border-border bg-surface p-3">
                 <UsersTable
                     :users="rows"
+                    :user-columns="userColumns"
                     @edit="edit"
-                    @block="block"
+                    @block="askBlock"
                     @unblock="unblock"
                     @delete="destroy"
                     @restore="restore"
                     @impersonate="impersonate"
+                    @verify-email="verifyEmail"
+                    @unverify-email="unverifyEmail"
+                    @verify-phone="verifyPhone"
+                    @unverify-phone="unverifyPhone"
+                    @logs="viewLogs"
+                    @ticket="createTicket"
                 />
             </div>
 
             <PagePaginator />
         </div>
+
+        <BlockUserDialog :open="blockDialog.open" :user="blockDialog.user" @submit="submitBlock" @close="blockDialog.open = false" />
     </AdminLayout>
 </template>

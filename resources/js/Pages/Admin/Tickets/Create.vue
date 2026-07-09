@@ -15,10 +15,13 @@ const props = defineProps({
     categories: { type: Array, default: () => [] },
     labels: { type: Array, default: () => [] },
     priorities: { type: Array, default: () => [] },
+    // Optional pre-picked customer (phase 3a): a "Create ticket" action on the
+    // admin user list arrives with the user already selected.
+    preselectedUser: { type: Object, default: null },
 });
 
 const form = useForm({
-    user_id: null,
+    user_id: props.preselectedUser?.id ?? null,
     title: '',
     message: '',
     priority: props.priorities[0] ?? 'standard',
@@ -28,7 +31,7 @@ const form = useForm({
 
 const search = ref('');
 const results = ref([]);
-const selected = ref(null);
+const selected = ref(props.preselectedUser);
 const searching = ref(false);
 const searched = ref(false);
 

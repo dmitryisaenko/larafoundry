@@ -390,6 +390,14 @@ return [
         // `extra()` to append host columns (e.g. "used demo?") without forking
         // the Vue table. Must extend AdminUserResource or it is ignored.
         'user_resource' => AdminUserResource::class,
+
+        // Which optional user-list columns the operator console shows. Default is
+        // empty = a privacy-clean table (name/email/country/language/auth/companies/
+        // registered/last-activity/status) suitable for a public package and GDPR.
+        // A host opts extra columns in, once, in its published config. Recognised
+        // tokens: 'phone', 'sex', 'age', 'social'. Unknown tokens are ignored.
+        // ('social' lights up in phase 3b once social-link storage ships.)
+        'user_columns' => [],
     ],
 
     /*

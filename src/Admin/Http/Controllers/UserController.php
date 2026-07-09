@@ -27,8 +27,10 @@ use Inertia\Response;
  * VisitorStatus). Extracted and hardened from the donor `Admin\UserController`
  * (recon §B): block now also invalidates the user's tracked sessions (finding
  * #4), and block/unblock/delete/undelete are all written to the activity log
- * (finding #8). The donor's email/phone-verify actions are host territory
- * (kohana-custom) and are not extracted.
+ * (finding #8). Phase 3a adds operator email/phone verify overrides (audited, no
+ * mail/SMS sent) and gates the personal columns (phone/sex/age) behind the
+ * `larafoundry.admin.user_columns` opt-in so the default payload stays
+ * privacy-clean.
  */
 class UserController extends Controller
 {
@@ -42,7 +44,7 @@ class UserController extends Controller
         $query = (new AdminUsersFilter($request))->apply($this->query());
 
         $users = $query
-            ->withCount('companies')
+            ->withCount(['companies', 'ownedCompanies', 'employeeCompanies'])
             ->latest()
             ->paginate($this->perPage())
             ->withQueryString();
@@ -52,8 +54,13 @@ class UserController extends Controller
         return Inertia::render('Admin/Users/Index', [
             'users' => $resource::collection($users),
             'pagination' => $this->getPaginationData($users),
+            // The sanitised opt-in columns the table should render (phase 3a) —
+            // the SAME list the resource used to decide what to serialise, so the
+            // headers/filters never drift from the payload.
+            'userColumns' => AdminUserResource::enabledColumns(),
             'filters' => $request->only([
                 'search', 'registered', 'emailVerified', 'status', 'recentActivity', 'locale', 'authType',
+                'country', 'phoneVerified', 'sex', 'ageRange',
             ]),
         ]);
     }
@@ -67,7 +74,10 @@ class UserController extends Controller
         $resource = $this->resource();
 
         return Inertia::render('Admin/Users/Edit', [
-            'user' => new $resource($target),
+            // The edit form always needs the personal columns (phone/sex/age),
+            // even under the default privacy-clean `user_columns` — otherwise the
+            // form prefills a blank phone and a save wipes the stored number.
+            'user' => $resource::full($target),
         ]);
     }
 
@@ -228,6 +238,70 @@ class UserController extends Controller
         $this->audit('admin.user.restored', $target);
 
         return back()->with('success', __('larafoundry::admin.users.restored'));
+    }
+
+    /**
+     * Force-mark a user's email as verified (phase 3a).
+     *
+     * An operator override for support cases — it stamps `email_verified_at` and
+     * audits it. Deliberately sends NO verification mail (the operator is asserting
+     * the address, not asking the user to confirm it).
+     */
+    public function verifyEmail(int|string $user): RedirectResponse
+    {
+        $target = $this->find($user);
+
+        $target->forceFill(['email_verified_at' => now()])->save();
+
+        $this->audit('admin.user.email_verified', $target);
+
+        return back()->with('success', __('larafoundry::admin.users.email_verified'));
+    }
+
+    /**
+     * Clear a user's email verification (phase 3a). Audited; sends nothing.
+     */
+    public function unverifyEmail(int|string $user): RedirectResponse
+    {
+        $target = $this->find($user);
+
+        $target->forceFill(['email_verified_at' => null])->save();
+
+        $this->audit('admin.user.email_unverified', $target);
+
+        return back()->with('success', __('larafoundry::admin.users.email_unverified'));
+    }
+
+    /**
+     * Force-mark a user's phone as verified (phase 3a).
+     *
+     * SMS is out of scope for the core (decision 2026-07-10): this is a pure
+     * operator override, no message is sent or re-sent. Stamps `phone_verified_at`
+     * and audits it.
+     */
+    public function verifyPhone(int|string $user): RedirectResponse
+    {
+        $target = $this->find($user);
+
+        $target->forceFill(['phone_verified_at' => now()])->save();
+
+        $this->audit('admin.user.phone_verified', $target);
+
+        return back()->with('success', __('larafoundry::admin.users.phone_verified'));
+    }
+
+    /**
+     * Clear a user's phone verification (phase 3a). Audited; sends nothing.
+     */
+    public function unverifyPhone(int|string $user): RedirectResponse
+    {
+        $target = $this->find($user);
+
+        $target->forceFill(['phone_verified_at' => null])->save();
+
+        $this->audit('admin.user.phone_unverified', $target);
+
+        return back()->with('success', __('larafoundry::admin.users.phone_unverified'));
     }
 
     /**

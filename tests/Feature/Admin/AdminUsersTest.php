@@ -4,10 +4,32 @@ declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\ActivityLog\Models\Activity as ActivityModel;
 use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
+use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
+
+/**
+ * Create a company owned by $owner (and optionally add $employee as a member).
+ */
+function auCompany(User $owner, ?User $employee = null): Company
+{
+    $company = Company::create([
+        'name' => 'Co-'.uniqid(),
+        'slug' => Str::slug('co').'-'.uniqid(),
+        'created_by_id' => $owner->id,
+    ]);
+
+    $company->addEmployee($owner, addedById: $owner->id, isOwner: true);
+
+    if ($employee !== null) {
+        $company->addEmployee($employee, addedById: $owner->id);
+    }
+
+    return $company;
+}
 
 beforeEach(function () {
     config(['larafoundry-activitylog.geo.enabled' => false]);
@@ -287,4 +309,331 @@ it('ships an empty extra_columns by default (host seam)', function () {
         ->json('props.users.data.0');
 
     expect($first['extra_columns'])->toBe([]);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Phase 3a — opt-in personal columns, split company counts, verify actions
+|--------------------------------------------------------------------------
+*/
+
+it('keeps phone/sex/age out of the payload when no columns are opted in', function () {
+    config(['larafoundry.admin.user_columns' => []]);
+    $admin = auAdmin();
+    auMember('pii@x.test')->forceFill([
+        'phone' => '+100000000',
+        'sex' => 'male',
+        'birth_date' => now()->subYears(30),
+    ])->save();
+
+    $first = $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data.0');
+
+    expect($first)->not->toHaveKey('phone')
+        ->and($first)->not->toHaveKey('sex')
+        ->and($first)->not->toHaveKey('age');
+
+    // And the table is told to render none of them.
+    $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertJsonPath('props.userColumns', []);
+});
+
+it('emits phone/sex/age only for the opted-in tokens and computes age from birth_date', function () {
+    config(['larafoundry.admin.user_columns' => ['phone', 'sex', 'age']]);
+    $admin = auAdmin();
+    auMember('pii@x.test')->forceFill([
+        'phone' => '+100000000',
+        'sex' => 'female',
+        'birth_date' => now()->subYears(42)->subDays(3),
+    ])->save();
+
+    $row = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users', ['X-Inertia' => 'true'])
+            ->assertOk()
+            ->json('props.users.data')
+    )->firstWhere('email', 'pii@x.test');
+
+    expect($row['phone'])->toBe('+100000000')
+        ->and($row['sex'])->toBe('female')
+        ->and($row['age'])->toBe(42);
+});
+
+it('sanitises an unknown user_columns token out of the prop and payload', function () {
+    config(['larafoundry.admin.user_columns' => ['phone', 'evil', 'age']]);
+    $admin = auAdmin();
+    auMember('pii@x.test')->forceFill(['phone' => '+1', 'birth_date' => now()->subYears(20)])->save();
+
+    $response = $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk();
+
+    expect($response->json('props.userColumns'))->toBe(['phone', 'age']);
+
+    $first = collect($response->json('props.users.data'))->firstWhere('email', 'pii@x.test');
+    expect($first)->toHaveKey('phone')
+        ->and($first)->toHaveKey('age')
+        ->and($first)->not->toHaveKey('sex');
+});
+
+it('emits a null age when the opted-in user has no birth date', function () {
+    config(['larafoundry.admin.user_columns' => ['age']]);
+    $admin = auAdmin();
+    auMember('nodob@x.test'); // birth_date stays null
+
+    $row = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users', ['X-Inertia' => 'true'])
+            ->json('props.users.data')
+    )->firstWhere('email', 'nodob@x.test');
+
+    expect($row)->toHaveKey('age')
+        ->and($row['age'])->toBeNull();
+});
+
+it('counts owned and employee companies separately', function () {
+    $admin = auAdmin();
+    $owner = auMember('owner@x.test');
+    $worker = auMember('worker@x.test');
+
+    // owner owns 2 companies; worker is an employee in both.
+    auCompany($owner, $worker);
+    auCompany($owner, $worker);
+
+    $rows = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users', ['X-Inertia' => 'true'])
+            ->json('props.users.data')
+    )->keyBy('email');
+
+    expect($rows['owner@x.test']['owned_companies_count'])->toBe(2)
+        ->and($rows['owner@x.test']['employee_companies_count'])->toBe(0)
+        ->and($rows['worker@x.test']['owned_companies_count'])->toBe(0)
+        ->and($rows['worker@x.test']['employee_companies_count'])->toBe(2);
+});
+
+it('filters users by exact country', function () {
+    $admin = auAdmin();
+    auMember('pl@x.test')->forceFill(['country' => 'PL'])->save();
+    auMember('ua@x.test')->forceFill(['country' => 'UA'])->save();
+
+    $this->actingAs($admin)
+        ->get('/admin/users?country=PL', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(1, 'props.users.data')
+        ->assertJsonPath('props.users.data.0.email', 'pl@x.test');
+});
+
+it('filters users by phone verification', function () {
+    $admin = auAdmin();
+    auMember('verified@x.test')->forceFill(['phone_verified_at' => now()])->save();
+    auMember('unverified@x.test')->forceFill(['phone_verified_at' => null])->save();
+
+    $this->actingAs($admin)
+        ->get('/admin/users?phoneVerified=verified', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(1, 'props.users.data')
+        ->assertJsonPath('props.users.data.0.email', 'verified@x.test');
+});
+
+it('filters users by exact sex', function () {
+    $admin = auAdmin();
+    auMember('m@x.test')->forceFill(['sex' => 'male'])->save();
+    auMember('f@x.test')->forceFill(['sex' => 'female'])->save();
+
+    $this->actingAs($admin)
+        ->get('/admin/users?sex=female', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(1, 'props.users.data')
+        ->assertJsonPath('props.users.data.0.email', 'f@x.test');
+});
+
+it('filters users by age range bucket', function () {
+    $admin = auAdmin();
+    auMember('young@x.test')->forceFill(['birth_date' => now()->subYears(22)])->save();
+    auMember('mid@x.test')->forceFill(['birth_date' => now()->subYears(40)])->save();
+    auMember('old@x.test')->forceFill(['birth_date' => now()->subYears(70)])->save();
+
+    $emails = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users?ageRange=36-45', ['X-Inertia' => 'true'])
+            ->assertOk()
+            ->json('props.users.data')
+    )->pluck('email');
+
+    expect($emails)->toContain('mid@x.test')
+        ->not->toContain('young@x.test')
+        ->not->toContain('old@x.test');
+});
+
+it('treats the open-ended 60+ age bucket as a lower bound only', function () {
+    $admin = auAdmin();
+    auMember('mid@x.test')->forceFill(['birth_date' => now()->subYears(40)])->save();
+    auMember('old@x.test')->forceFill(['birth_date' => now()->subYears(72)])->save();
+
+    $emails = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users?ageRange=60%2B', ['X-Inertia' => 'true'])
+            ->assertOk()
+            ->json('props.users.data')
+    )->pluck('email');
+
+    expect($emails)->toContain('old@x.test')
+        ->not->toContain('mid@x.test');
+});
+
+it('ignores an unknown age bucket instead of hiding everyone', function () {
+    $admin = auAdmin();
+    auMember('a@x.test')->forceFill(['birth_date' => now()->subYears(30)])->save();
+    auMember('b@x.test')->forceFill(['birth_date' => now()->subYears(50)])->save();
+
+    // admin + 2 members = 3 rows; a garbage bucket is a no-op.
+    $this->actingAs($admin)
+        ->get('/admin/users?ageRange=garbage', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(3, 'props.users.data');
+});
+
+it('force-verifies a user email and logs it', function () {
+    $admin = auAdmin();
+    $target = auMember();
+    $target->forceFill(['email_verified_at' => null])->save();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$target->id}/verify-email")
+        ->assertRedirect();
+
+    expect($target->fresh()->email_verified_at)->not->toBeNull();
+    expect(ActivityModel::where('description', 'admin.user.email_verified')->exists())->toBeTrue();
+});
+
+it('clears a user email verification and logs it', function () {
+    $admin = auAdmin();
+    $target = auMember();
+    $target->forceFill(['email_verified_at' => now()])->save();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$target->id}/unverify-email")
+        ->assertRedirect();
+
+    expect($target->fresh()->email_verified_at)->toBeNull();
+    expect(ActivityModel::where('description', 'admin.user.email_unverified')->exists())->toBeTrue();
+});
+
+it('force-verifies a user phone and logs it', function () {
+    $admin = auAdmin();
+    $target = auMember();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$target->id}/verify-phone")
+        ->assertRedirect();
+
+    expect($target->fresh()->phone_verified_at)->not->toBeNull();
+    expect(ActivityModel::where('description', 'admin.user.phone_verified')->exists())->toBeTrue();
+});
+
+it('clears a user phone verification and logs it', function () {
+    $admin = auAdmin();
+    $target = auMember();
+    $target->forceFill(['phone_verified_at' => now()])->save();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$target->id}/unverify-phone")
+        ->assertRedirect();
+
+    expect($target->fresh()->phone_verified_at)->toBeNull();
+    expect(ActivityModel::where('description', 'admin.user.phone_unverified')->exists())->toBeTrue();
+});
+
+it('persists the block reason passed from the dialog', function () {
+    $admin = auAdmin();
+    $target = auMember();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$target->id}/block", [
+            'reason' => 'Spamming the support inbox',
+            'block_code' => 7,
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('users', [
+        'id' => $target->id,
+        'user_blocked_status' => 'Spamming the support inbox',
+        'block_code' => 7,
+    ]);
+
+    expect($target->fresh()->user_blocked_at)->not->toBeNull();
+});
+
+it('scopes the per-user activity log (Logs row action target) to that user', function () {
+    $admin = auAdmin();
+    $one = auMember('one@x.test');
+    $two = auMember('two@x.test');
+
+    // The "Logs" row action links to admin.activity-log.user, scoped by causer.
+    ActivityModel::query()->create(['log_name' => 'Auth', 'description' => 'one-act', 'causer_id' => $one->id]);
+    ActivityModel::query()->create(['log_name' => 'Auth', 'description' => 'two-act', 'causer_id' => $two->id]);
+
+    $descriptions = collect(
+        $this->actingAs($admin)
+            ->get("/admin/activity-log/users/{$one->id}", ['X-Inertia' => 'true'])
+            ->assertOk()
+            ->json('props.logs.data')
+    )->pluck('description');
+
+    expect($descriptions)->toContain('one-act')
+        ->not->toContain('two-act');
+});
+
+it('always ships phone to the edit form even under the default privacy-clean config', function () {
+    // Regression: gating phone in the shared resource must not strip it from the
+    // single-user edit view, or the form prefills blank and a save wipes it.
+    config(['larafoundry.admin.user_columns' => []]);
+    $admin = auAdmin();
+    $target = auMember('editme@x.test');
+    $target->forceFill(['phone' => '+100000000'])->save();
+
+    $user = $this->actingAs($admin)
+        ->get("/admin/users/{$target->id}/edit", ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.user');
+
+    $data = $user['data'] ?? $user;
+
+    expect($data['phone'])->toBe('+100000000');
+});
+
+it('does not wipe a stored phone when editing under the default config', function () {
+    config(['larafoundry.admin.user_columns' => []]);
+    $admin = auAdmin();
+    $target = auMember('keepphone@x.test');
+    $target->forceFill(['phone' => '+100000000'])->save();
+
+    // The form (now prefilled from the resource) submits the real phone back.
+    $this->actingAs($admin)
+        ->put("/admin/users/{$target->id}", [
+            'name' => $target->name,
+            'email' => $target->email,
+            'phone' => '+100000000',
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('users', [
+        'id' => $target->id,
+        'phone' => '+100000000',
+    ]);
+});
+
+it('preselects the user on the admin ticket create form', function () {
+    $admin = auAdmin();
+    $target = auMember('cust@x.test');
+
+    $this->actingAs($admin)
+        ->get("/admin/tickets/create?user={$target->id}", ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonPath('props.preselectedUser.id', $target->id)
+        ->assertJsonPath('props.preselectedUser.email', 'cust@x.test');
 });

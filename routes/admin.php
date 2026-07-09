@@ -56,6 +56,10 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::put('{user}', [UserController::class, 'update'])->name('update');
                 Route::post('{user}/block', [UserController::class, 'block'])->name('block');
                 Route::post('{user}/unblock', [UserController::class, 'unblock'])->name('unblock');
+                Route::post('{user}/verify-email', [UserController::class, 'verifyEmail'])->name('verify-email');
+                Route::post('{user}/unverify-email', [UserController::class, 'unverifyEmail'])->name('unverify-email');
+                Route::post('{user}/verify-phone', [UserController::class, 'verifyPhone'])->name('verify-phone');
+                Route::post('{user}/unverify-phone', [UserController::class, 'unverifyPhone'])->name('unverify-phone');
                 Route::delete('{user}', [UserController::class, 'destroy'])->name('destroy');
                 Route::post('{user}/restore', [UserController::class, 'undelete'])->name('restore');
             });

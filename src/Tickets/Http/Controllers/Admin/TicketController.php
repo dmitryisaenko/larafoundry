@@ -66,10 +66,48 @@ class TicketController extends Controller
 
     /**
      * The create form (the operator opens a ticket on a user's behalf).
+     *
+     * Accepts an optional `?user={id}` so a "Create ticket" action on the admin
+     * user list arrives with the customer pre-picked (phase 3a). The id is
+     * resolved to a lightweight {id,name,email} descriptor — never trusted from
+     * the query — and `store` re-validates the id against the users table anyway.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('Admin/Tickets/Create', $this->lists());
+        return Inertia::render('Admin/Tickets/Create', [
+            'preselectedUser' => $this->resolvePreselectedUser($request),
+            ...$this->lists(),
+        ]);
+    }
+
+    /**
+     * Resolve the optional `?user=` pre-pick to a minimal display descriptor, or
+     * null when absent/unknown (phase 3a).
+     *
+     * @return array{id: int|string, name: string|null, email: string|null}|null
+     */
+    protected function resolvePreselectedUser(Request $request): ?array
+    {
+        $id = $request->query('user');
+
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        /** @var class-string<Model> $model */
+        $model = config('auth.providers.users.model');
+
+        $user = $model::query()->find($id);
+
+        if ($user === null) {
+            return null;
+        }
+
+        return [
+            'id' => $user->getKey(),
+            'name' => $user->name,
+            'email' => $user->email,
+        ];
     }
 
     /**

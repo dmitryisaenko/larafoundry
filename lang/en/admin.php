@@ -18,6 +18,10 @@ return [
         'unblocked' => 'User unblocked.',
         'deleted' => 'User deleted.',
         'restored' => 'User restored.',
+        'email_verified' => 'Email marked as verified.',
+        'email_unverified' => 'Email verification cleared.',
+        'phone_verified' => 'Phone marked as verified.',
+        'phone_unverified' => 'Phone verification cleared.',
     ],
 
     'companies' => [
