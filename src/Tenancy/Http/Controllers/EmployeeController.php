@@ -9,6 +9,10 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RemoveEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\UpdateEmployeeAction;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalCancelled;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRequested;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationResent;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationWithdrawn;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Concerns\ResolvesActiveCompany;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\CreateEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\InviteEmployeeRequest;
@@ -16,6 +20,7 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Http\Requests\UpdateEmployeeRequest;
 use Dmitryisaenko\LaraFoundry\Tenancy\Jobs\SendCompanyInvitationJob;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\CompanyInvitation;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -132,7 +137,16 @@ class EmployeeController extends Controller
     {
         $company = $this->ownedActiveCompany($request);
 
-        SendCompanyInvitationJob::dispatch($this->companyInvitation($company, $invitation));
+        $companyInvitation = $this->companyInvitation($company, $invitation);
+
+        SendCompanyInvitationJob::dispatch($companyInvitation);
+
+        // Only audit a resend of a still-actionable (pending, unexpired) invite —
+        // a consumed/expired invitation re-sent by a stale request is not a
+        // meaningful "resent" event.
+        if ($companyInvitation->isActionable()) {
+            InvitationResent::dispatch($companyInvitation);
+        }
 
         return back()->with('status', __('larafoundry::tenancy.invitation_sent'));
     }
@@ -141,7 +155,12 @@ class EmployeeController extends Controller
     {
         $company = $this->ownedActiveCompany($request);
 
-        $this->companyInvitation($company, $invitation)->delete();
+        $companyInvitation = $this->companyInvitation($company, $invitation);
+
+        // Dispatch BEFORE delete so the company + invited address are still readable.
+        InvitationWithdrawn::dispatch($companyInvitation);
+
+        $companyInvitation->delete();
 
         return back()->with('status', __('larafoundry::tenancy.invitation_revoked'));
     }
@@ -190,10 +209,16 @@ class EmployeeController extends Controller
             abort(403, __('larafoundry::tenancy.owner_cannot_leave'));
         }
 
-        $company->users()->updateExistingPivot($user->getAuthIdentifier(), [
-            'removal_requested_at' => now(),
-            'removal_requested_by' => $user->getAuthIdentifier(),
-        ]);
+        // Idempotent (mirrors the archive guard): re-requesting an already-pending
+        // removal is a no-op — no re-stamp and no duplicate audit event.
+        if (! $this->hasPendingRemoval($company, $user)) {
+            $company->users()->updateExistingPivot($user->getAuthIdentifier(), [
+                'removal_requested_at' => now(),
+                'removal_requested_by' => $user->getAuthIdentifier(),
+            ]);
+
+            EmployeeRemovalRequested::dispatch($company, $user);
+        }
 
         return back()->with('status', __('larafoundry::tenancy.removal_requested'));
     }
@@ -207,12 +232,30 @@ class EmployeeController extends Controller
             return back()->with('error', __('larafoundry::tenancy.no_active_company'));
         }
 
-        $company->users()->updateExistingPivot($user->getAuthIdentifier(), [
-            'removal_requested_at' => null,
-            'removal_requested_by' => null,
-        ]);
+        // Idempotent: cancelling when there is no pending request is a no-op — no
+        // phantom "removal cancelled" audit event.
+        if ($this->hasPendingRemoval($company, $user)) {
+            $company->users()->updateExistingPivot($user->getAuthIdentifier(), [
+                'removal_requested_at' => null,
+                'removal_requested_by' => null,
+            ]);
+
+            EmployeeRemovalCancelled::dispatch($company, $user);
+        }
 
         return back()->with('status', __('larafoundry::tenancy.removal_cancelled'));
+    }
+
+    /**
+     * Whether the user currently has a pending removal request in this company.
+     * Read from the membership pivot so request/cancel can be idempotent and only
+     * emit an audit event on a real state transition.
+     */
+    protected function hasPendingRemoval(Company $company, Authenticatable $user): bool
+    {
+        $membership = $company->users()->find($user->getAuthIdentifier());
+
+        return $membership !== null && $membership->pivot->removal_requested_at !== null;
     }
 
     /**

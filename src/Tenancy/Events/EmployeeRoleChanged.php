@@ -10,21 +10,25 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Fired when a member is (soft-)removed from a company.
+ * Fired when an owner changes a member's role set in a company (phase 1, activity
+ * completeness — owner-employee matrix row 7).
  *
- * A hook for activity logging / notifications. RBAC (phase 1.3) may also listen
- * to revoke the removed member's roles in that company. `getLogProperties()`
- * enriches the audit entry with the company + employee (matching its sibling
- * removal events so an audit query by company_uuid captures removals too).
+ * Dispatched only when roles were actually managed AND the set changed (see
+ * UpdateEmployeeAction), so a plain identity edit does not log a role change. The
+ * causer is the acting owner (resolved from auth by the listener).
  */
-class EmployeeRemoved
+class EmployeeRoleChanged
 {
     use Dispatchable;
     use SerializesModels;
 
+    /**
+     * @param  array<int, int>  $roleIds  the member's new role ids in this company
+     */
     public function __construct(
         public readonly Company $company,
         public readonly Authenticatable $employee,
+        public readonly array $roleIds,
     ) {}
 
     /**
@@ -36,6 +40,7 @@ class EmployeeRemoved
             'company_id' => $this->company->getKey(),
             'company_uuid' => $this->company->uuid,
             'employee_id' => $this->employee->getAuthIdentifier(),
+            'role_ids' => $this->roleIds,
         ];
     }
 }

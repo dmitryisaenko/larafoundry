@@ -10,14 +10,13 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Fired when a member is (soft-)removed from a company.
+ * Fired when a member asks to be removed from a company (phase 1, activity
+ * completeness — owner-employee matrix row 4).
  *
- * A hook for activity logging / notifications. RBAC (phase 1.3) may also listen
- * to revoke the removed member's roles in that company. `getLogProperties()`
- * enriches the audit entry with the company + employee (matching its sibling
- * removal events so an audit query by company_uuid captures removals too).
+ * The requesting member is both subject and causer (resolved from auth by the
+ * listener). `getLogProperties()` enriches the entry with the company + employee.
  */
-class EmployeeRemoved
+class EmployeeRemovalRequested
 {
     use Dispatchable;
     use SerializesModels;

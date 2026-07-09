@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Tenancy\Actions;
 use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Dmitryisaenko\LaraFoundry\Media\Actions\StoreUploadedFileAction;
 use Dmitryisaenko\LaraFoundry\Media\Contracts\MediaStorage;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRoleChanged;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\Company;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\UploadedFile;
@@ -62,7 +63,22 @@ class UpdateEmployeeAction
             $avatarChange = 'remove';
         }
 
-        DB::transaction(function () use ($company, $user, $data, $actorId, $avatarChange) {
+        // Resolve the role change up front so we can both sync it and detect a
+        // real change for the audit event. Only when the caller opted in via
+        // `manage_roles` and the host User carries the RBAC trait.
+        $manageRoles = ! empty($data['manage_roles']) && method_exists($user, 'syncRoles');
+        $rolesToSync = $manageRoles ? $this->resolveRoles($company, $data['role_ids'] ?? []) : [];
+        $newRoleIds = $this->roleIds($rolesToSync);
+        // Change detection needs the OLD set. If the host User can't report it
+        // (partial RBAC surface: syncRoles present, getRolesInCompany absent) we
+        // cannot tell a real change from a no-op, so we do not emit the event
+        // rather than claim a spurious change.
+        $canDetectRoleChange = $manageRoles && method_exists($user, 'getRolesInCompany');
+        $oldRoleIds = $canDetectRoleChange
+            ? $this->roleIds($user->getRolesInCompany($company)->all())
+            : [];
+
+        DB::transaction(function () use ($user, $company, $data, $actorId, $avatarChange, $manageRoles, $rolesToSync) {
             $attrs = [
                 'name' => trim((string) $data['name']),
                 'lastname' => ($lastname = trim((string) ($data['lastname'] ?? ''))) !== '' ? $lastname : null,
@@ -82,8 +98,8 @@ class UpdateEmployeeAction
             // that doesn't mean to touch roles (no flag) leave them untouched, so a
             // partial edit can never silently wipe them. Guarded on syncRoles so a
             // host User without the RBAC trait still gets its identity updated.
-            if (! empty($data['manage_roles']) && method_exists($user, 'syncRoles')) {
-                $user->syncRoles($this->resolveRoles($company, $data['role_ids'] ?? []), $company, $actorId);
+            if ($manageRoles) {
+                $user->syncRoles($rolesToSync, $company, $actorId);
             }
         });
 
@@ -96,6 +112,30 @@ class UpdateEmployeeAction
         } elseif ($avatarChange === 'remove') {
             $this->deleteStored($previousAvatar);
         }
+
+        // Audit the role change only when we could read the old set AND it
+        // actually changed — a plain identity edit, or a role submit that matches
+        // the current set, logs nothing (matrix row 7).
+        if ($canDetectRoleChange && $oldRoleIds !== $newRoleIds) {
+            EmployeeRoleChanged::dispatch($company, $user, $newRoleIds);
+        }
+    }
+
+    /**
+     * Sorted, de-duplicated integer ids for a set of roles — the comparable shape
+     * used both to detect a change and to record it.
+     *
+     * @param  array<int, Role>  $roles
+     * @return array<int, int>
+     */
+    protected function roleIds(array $roles): array
+    {
+        return collect($roles)
+            ->map(fn ($role) => (int) $role->getKey())
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     /**

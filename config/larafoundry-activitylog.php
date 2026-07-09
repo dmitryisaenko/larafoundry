@@ -8,7 +8,14 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyArchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyInvitationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyUnarchived;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalCancelled;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRequested;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRoleChanged;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationAccepted;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationRejected;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationResent;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationWithdrawn;
 use Dmitryisaenko\LaraFoundry\Tickets\Events\TicketCreated;
 use Dmitryisaenko\LaraFoundry\Tickets\Events\TicketReplied;
 use Illuminate\Auth\Events\Failed;
@@ -76,6 +83,14 @@ return [
         EmployeeRemoved::class => ['group' => 'Tenancy', 'description' => 'Employee removed', 'code' => 200],
         CompanyArchived::class => ['group' => 'Tenancy', 'description' => 'Company archived', 'code' => 200],
         CompanyUnarchived::class => ['group' => 'Tenancy', 'description' => 'Company unarchived', 'code' => 200],
+        // Owner-employee lifecycle (phase 1, activity completeness).
+        InvitationAccepted::class => ['group' => 'Tenancy', 'description' => 'Invitation accepted', 'code' => 201],
+        InvitationRejected::class => ['group' => 'Tenancy', 'description' => 'Invitation rejected', 'code' => 200],
+        InvitationWithdrawn::class => ['group' => 'Tenancy', 'description' => 'Invitation withdrawn', 'code' => 200],
+        InvitationResent::class => ['group' => 'Tenancy', 'description' => 'Invitation resent', 'code' => 200],
+        EmployeeRemovalRequested::class => ['group' => 'Tenancy', 'description' => 'Employee removal requested', 'code' => 200],
+        EmployeeRemovalCancelled::class => ['group' => 'Tenancy', 'description' => 'Employee removal cancelled', 'code' => 200],
+        EmployeeRoleChanged::class => ['group' => 'Tenancy', 'description' => 'Employee role changed', 'code' => 200],
 
         // --- Notifications (phase 4.1) ---
         BroadcastNotificationSent::class => ['group' => 'Notifications', 'description' => 'Broadcast sent', 'code' => 200],

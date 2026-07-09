@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationAccepted;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationRejected;
 use Dmitryisaenko\LaraFoundry\Tenancy\LaraFoundryTenancy;
 use Dmitryisaenko\LaraFoundry\Tenancy\Models\CompanyInvitation;
 use Illuminate\Http\RedirectResponse;
@@ -79,6 +81,8 @@ class InvitationController extends Controller
             $user->setActiveCompany($invitation->company);
         }
 
+        InvitationAccepted::dispatch($invitation, $user);
+
         return redirect()->to(LaraFoundryTenancy::homeUrl())
             ->with('status', __('larafoundry::tenancy.invitation.accepted', [
                 'company' => $invitation->company->name,
@@ -121,6 +125,8 @@ class InvitationController extends Controller
         }
 
         $invitation->update(['status' => CompanyInvitation::STATUS_REJECTED]);
+
+        InvitationRejected::dispatch($invitation, $request->user());
 
         return redirect('/')->with('status', __('larafoundry::tenancy.invitation.rejected'));
     }
