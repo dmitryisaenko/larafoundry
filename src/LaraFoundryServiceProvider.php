@@ -78,10 +78,32 @@ use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataPurgeRegistry;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyArchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyInvitationSent;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalCancelled;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRejected;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRequested;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRoleChanged;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationAccepted;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationRejected;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationResent;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\InvitationWithdrawn;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\EnsureActiveTenant;
 use Dmitryisaenko\LaraFoundry\Tenancy\Http\Middleware\SetActiveTenant;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendCompanyArchivedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendCompanyCreatedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendEmployeeRemovalCancelledNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendEmployeeRemovalRejectedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendEmployeeRemovalRequestedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendEmployeeRemovedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendEmployeeRoleChangedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendInvitationAcceptedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendInvitationRejectedNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendInvitationResentNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendInvitationSentNotifications;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\SendInvitationWithdrawnNotifications;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\PersonalTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Resolvers\SessionTenantResolver;
 use Dmitryisaenko\LaraFoundry\Tickets\Models\Ticket;
@@ -547,6 +569,38 @@ class LaraFoundryServiceProvider extends ServiceProvider
 
         $this->app->make(UserDataPurgeRegistry::class)
             ->addProvider($this->app->make(NotificationsUserDataPurger::class));
+
+        $this->registerLifecycleNotifications();
+    }
+
+    /**
+     * Wire the owner-employee lifecycle notifications (phase 2a): one thin listener
+     * per tenancy event pushes the in-app + email channels the Part-6 matrix marks.
+     *
+     * Gated by the `larafoundry-notifications.lifecycle.enabled` master switch so a
+     * host can silence the whole set (the events still fire and still feed the
+     * activity log). Listeners are resolved from the container, so their
+     * NotificationService dependency is injected. Registration mirrors the RBAC
+     * Event::listen wiring in registerAuthorization().
+     */
+    protected function registerLifecycleNotifications(): void
+    {
+        if (! config('larafoundry-notifications.lifecycle.enabled', true)) {
+            return;
+        }
+
+        Event::listen(CompanyInvitationSent::class, SendInvitationSentNotifications::class);
+        Event::listen(InvitationAccepted::class, SendInvitationAcceptedNotifications::class);
+        Event::listen(InvitationRejected::class, SendInvitationRejectedNotifications::class);
+        Event::listen(EmployeeRemoved::class, SendEmployeeRemovedNotifications::class);
+        Event::listen(EmployeeRemovalRequested::class, SendEmployeeRemovalRequestedNotifications::class);
+        Event::listen(EmployeeRemovalCancelled::class, SendEmployeeRemovalCancelledNotifications::class);
+        Event::listen(EmployeeRemovalRejected::class, SendEmployeeRemovalRejectedNotifications::class);
+        Event::listen(InvitationWithdrawn::class, SendInvitationWithdrawnNotifications::class);
+        Event::listen(InvitationResent::class, SendInvitationResentNotifications::class);
+        Event::listen(EmployeeRoleChanged::class, SendEmployeeRoleChangedNotifications::class);
+        Event::listen(CompanyCreated::class, SendCompanyCreatedNotifications::class);
+        Event::listen(CompanyArchived::class, SendCompanyArchivedNotifications::class);
     }
 
     /**

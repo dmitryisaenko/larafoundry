@@ -16,6 +16,7 @@ use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyInvitationSent;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyUnarchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalCancelled;
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRejected;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRequested;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemoved;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRoleChanged;
@@ -109,6 +110,7 @@ return [
         InvitationResent::class => ['group' => 'Tenancy', 'description' => 'Invitation resent', 'code' => 200],
         EmployeeRemovalRequested::class => ['group' => 'Tenancy', 'description' => 'Employee removal requested', 'code' => 200],
         EmployeeRemovalCancelled::class => ['group' => 'Tenancy', 'description' => 'Employee removal cancelled', 'code' => 200],
+        EmployeeRemovalRejected::class => ['group' => 'Tenancy', 'description' => 'Employee removal rejected', 'code' => 200],
         EmployeeRoleChanged::class => ['group' => 'Tenancy', 'description' => 'Employee role changed', 'code' => 200],
 
         // --- Notifications (phase 4.1) ---

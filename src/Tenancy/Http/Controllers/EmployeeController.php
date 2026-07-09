@@ -7,6 +7,7 @@ namespace Dmitryisaenko\LaraFoundry\Tenancy\Http\Controllers;
 use Dmitryisaenko\LaraFoundry\Authorization\Models\Role;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\CreateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\InviteEmployeesAction;
+use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RejectRemovalRequestAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\RemoveEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Actions\UpdateEmployeeAction;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalCancelled;
@@ -184,6 +185,31 @@ class EmployeeController extends Controller
         $action->execute($company, $employee);
 
         return back()->with('status', __('larafoundry::tenancy.employee_removed'));
+    }
+
+    /**
+     * An owner rejects a member's pending removal request (matrix row 4.2): the
+     * member stays. Owner-only, and the target is resolved THROUGH the owner's
+     * active company (anti-IDOR) so a user outside the company is never touched;
+     * the owner's own row cannot be a removal target (they cannot request removal).
+     */
+    public function rejectRemoval(Request $request, RejectRemovalRequestAction $action): RedirectResponse
+    {
+        $company = $this->ownedActiveCompany($request);
+
+        $userId = $request->integer('user_id');
+        $employee = $company->users()->find($userId);
+
+        abort_if($employee === null, 404);
+        abort_if((bool) $employee->pivot->is_owner, 403);
+
+        // Nothing to reject when there is no pending request — surface a 404 rather
+        // than silently redirecting, so a stale action gets a clear signal.
+        abort_if($employee->pivot->removal_requested_at === null, 404);
+
+        $action->execute($company, $employee);
+
+        return back()->with('status', __('larafoundry::tenancy.removal_rejected'));
     }
 
     /**

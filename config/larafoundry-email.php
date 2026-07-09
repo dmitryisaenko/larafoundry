@@ -117,6 +117,109 @@ return [
             ],
         ],
 
+        // An invited person accepted and joined -> confirm to the joining member
+        // (matrix 1.1 / 2.1, UserEmail).
+        'employee_joined_confirmation' => [
+            'variables' => ['app_name', 'member_name', 'company_name'],
+            'subject' => [
+                'en' => 'You have joined {{company_name}}',
+                'uk' => 'Ви приєдналися до {{company_name}}',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{member_name}},</p><p>You have joined <strong>{{company_name}}</strong>.</p><p>You can now sign in to {{app_name}} and start working with your team.</p>',
+                'uk' => '<p>Привіт, {{member_name}}!</p><p>Ви приєдналися до <strong>{{company_name}}</strong>.</p><p>Тепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{member_name}},\n\nYou have joined {{company_name}}.\n\nYou can now sign in to {{app_name}} and start working with your team.",
+                'uk' => "Привіт, {{member_name}}!\n\nВи приєдналися до {{company_name}}.\n\nТепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.",
+            ],
+        ],
+
+        // An invited person accepted and joined -> tell the owner (matrix 1.1 / 2.1).
+        'invitation_accepted_owner' => [
+            'variables' => ['app_name', 'owner_name', 'member_name', 'company_name'],
+            'subject' => [
+                'en' => '{{member_name}} joined {{company_name}}',
+                'uk' => '{{member_name}} приєднався(-лася) до {{company_name}}',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{owner_name}},</p><p>{{member_name}} has accepted your invitation and joined <strong>{{company_name}}</strong>.</p><p>They now have access on {{app_name}}.</p>',
+                'uk' => '<p>Привіт, {{owner_name}}!</p><p>{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до <strong>{{company_name}}</strong>.</p><p>Тепер у нього(неї) є доступ на {{app_name}}.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{owner_name}},\n\n{{member_name}} has accepted your invitation and joined {{company_name}}.\n\nThey now have access on {{app_name}}.",
+                'uk' => "Привіт, {{owner_name}}!\n\n{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до {{company_name}}.\n\nТепер у нього(неї) є доступ на {{app_name}}.",
+            ],
+        ],
+
+        // An invited person declined -> tell the owner (matrix 2.2).
+        'invitation_rejected_owner' => [
+            'variables' => ['app_name', 'owner_name', 'invited_email', 'company_name'],
+            'subject' => [
+                'en' => 'Invitation to {{company_name}} was declined',
+                'uk' => 'Запрошення до {{company_name}} відхилено',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{owner_name}},</p><p>The invitation you sent to {{invited_email}} to join <strong>{{company_name}}</strong> was declined.</p><p>You can invite someone else at any time on {{app_name}}.</p>',
+                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Запрошення, яке ви надіслали на {{invited_email}} для приєднання до <strong>{{company_name}}</strong>, було відхилено.</p><p>Ви можете запросити когось іншого будь-коли на {{app_name}}.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{owner_name}},\n\nThe invitation you sent to {{invited_email}} to join {{company_name}} was declined.\n\nYou can invite someone else at any time on {{app_name}}.",
+                'uk' => "Привіт, {{owner_name}}!\n\nЗапрошення, яке ви надіслали на {{invited_email}} для приєднання до {{company_name}}, було відхилено.\n\nВи можете запросити когось іншого будь-коли на {{app_name}}.",
+            ],
+        ],
+
+        // A member was removed after their own removal request was approved (matrix 4.1).
+        'employee_removed_notification' => [
+            'variables' => ['app_name', 'member_name', 'company_name'],
+            'subject' => [
+                'en' => 'You have been removed from {{company_name}}',
+                'uk' => 'Вас видалено з {{company_name}}',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{member_name}},</p><p>Your request to leave <strong>{{company_name}}</strong> has been approved and you have been removed.</p><p>You no longer have access to this company on {{app_name}}.</p>',
+                'uk' => '<p>Привіт, {{member_name}}!</p><p>Ваш запит на вихід із <strong>{{company_name}}</strong> схвалено, і вас видалено.</p><p>Ви більше не маєте доступу до цієї компанії на {{app_name}}.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{member_name}},\n\nYour request to leave {{company_name}} has been approved and you have been removed.\n\nYou no longer have access to this company on {{app_name}}.",
+                'uk' => "Привіт, {{member_name}}!\n\nВаш запит на вихід із {{company_name}} схвалено, і вас видалено.\n\nВи більше не маєте доступу до цієї компанії на {{app_name}}.",
+            ],
+        ],
+
+        // A user created a company -> confirm to the owner (matrix 8).
+        'company_created' => [
+            'variables' => ['app_name', 'owner_name', 'company_name'],
+            'subject' => [
+                'en' => '{{company_name}} is ready',
+                'uk' => '{{company_name}} готова',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{owner_name}},</p><p>Your company <strong>{{company_name}}</strong> has been created on {{app_name}}.</p><p>You can now invite your team and start working.</p>',
+                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> створено на {{app_name}}.</p><p>Тепер ви можете запросити свою команду та почати роботу.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{owner_name}},\n\nYour company {{company_name}} has been created on {{app_name}}.\n\nYou can now invite your team and start working.",
+                'uk' => "Привіт, {{owner_name}}!\n\nВашу компанію {{company_name}} створено на {{app_name}}.\n\nТепер ви можете запросити свою команду та почати роботу.",
+            ],
+        ],
+
+        // An owner archived (soft-deleted, recoverable) their company (matrix 9).
+        'company_deleted_confirmation' => [
+            'variables' => ['app_name', 'owner_name', 'company_name'],
+            'subject' => [
+                'en' => '{{company_name}} has been archived',
+                'uk' => '{{company_name}} архівовано',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi {{owner_name}},</p><p>Your company <strong>{{company_name}}</strong> has been archived on {{app_name}}.</p><p>Its data is kept and you can restore it at any time.</p>',
+                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> архівовано на {{app_name}}.</p><p>Її дані збережено, і ви можете відновити її будь-коли.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi {{owner_name}},\n\nYour company {{company_name}} has been archived on {{app_name}}.\n\nIts data is kept and you can restore it at any time.",
+                'uk' => "Привіт, {{owner_name}}!\n\nВашу компанію {{company_name}} архівовано на {{app_name}}.\n\nЇї дані збережено, і ви можете відновити її будь-коли.",
+            ],
+        ],
+
     ],
 
 ];

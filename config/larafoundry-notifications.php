@@ -79,4 +79,19 @@ return [
     */
     'channels' => ['database', 'mail'],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Owner-employee lifecycle wiring (phase 2a)
+    |--------------------------------------------------------------------------
+    | Master switch for the in-app + email notifications emitted across the
+    | owner-employee lifecycle (invites, joins, removals, role changes, company
+    | created/archived). When false, the lifecycle listeners do not subscribe, so
+    | a host can silence the whole set without touching the underlying events
+    | (which still fire and still feed the activity log). Mirrors the tickets
+    | `notifications.enabled` gate.
+    */
+    'lifecycle' => [
+        'enabled' => env('LARAFOUNDRY_LIFECYCLE_NOTIFICATIONS_ENABLED', true),
+    ],
+
 ];

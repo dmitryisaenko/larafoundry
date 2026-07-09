@@ -28,8 +28,36 @@ return [
     'employee_removed' => 'Співробітника видалено.',
     'removal_requested' => 'Ваш запит на видалення надіслано.',
     'removal_cancelled' => 'Ваш запит на видалення скасовано.',
+    'removal_rejected' => 'Запит на видалення відхилено. Учасник залишається в компанії.',
     'owner_cannot_leave' => 'Власник компанії не може залишити власну компанію.',
     'super_admin_cannot_own' => 'Адміністратори платформи не можуть створювати компанію або володіти нею.',
+
+    'notify_mail' => [
+        'invitation_accepted_owner' => [
+            'subject' => 'Хтось приєднався до :company',
+            'line' => ':member прийняв(-ла) ваше запрошення та приєднався(-лася) до :company.',
+        ],
+        'invitation_rejected_owner' => [
+            'subject' => 'Запрошення до :company відхилено',
+            'line' => 'Запрошення, яке ви надіслали на :email для приєднання до :company, відхилено.',
+        ],
+        'employee_joined' => [
+            'subject' => 'Ви приєдналися до :company',
+            'line' => 'Ви приєдналися до :company. Тепер ви можете увійти та почати роботу зі своєю командою.',
+        ],
+        'employee_removed' => [
+            'subject' => 'Вас видалено з :company',
+            'line' => 'Ваш запит на вихід із :company схвалено, і вас видалено.',
+        ],
+        'company_created' => [
+            'subject' => ':company готова',
+            'line' => 'Вашу компанію :company створено.',
+        ],
+        'company_deleted' => [
+            'subject' => ':company архівовано',
+            'line' => 'Вашу компанію :company архівовано. Ви можете відновити її будь-коли.',
+        ],
+    ],
 
     'invitation' => [
         'subject' => 'Вас запросили приєднатися до :company',

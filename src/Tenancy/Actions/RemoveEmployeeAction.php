@@ -26,6 +26,14 @@ class RemoveEmployeeAction
         $wasActive = method_exists($employee, 'getCurrentCompanyId')
             && (string) $employee->getCurrentCompanyId() === (string) $company->getKey();
 
+        // Read the pending-removal flag BEFORE the row is soft-removed: a removal
+        // that satisfies the member's own pending request is an owner-APPROVAL
+        // (matrix row 4.1, sends the member an email), whereas an owner-initiated
+        // removal (row 3) does not. Carry the distinction on the event so the
+        // listener branches without re-reading the pivot.
+        $membership = $company->users()->find($employee->getAuthIdentifier());
+        $wasRequested = $membership !== null && $membership->pivot->removal_requested_at !== null;
+
         $company->removeEmployee($employee);
 
         // If this was their active company, move them to the next available one
@@ -34,6 +42,6 @@ class RemoveEmployeeAction
             $employee->setNextAvailableCompany();
         }
 
-        EmployeeRemoved::dispatch($company, $employee);
+        EmployeeRemoved::dispatch($company, $employee, $wasRequested);
     }
 }

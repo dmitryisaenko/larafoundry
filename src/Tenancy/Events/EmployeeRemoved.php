@@ -22,9 +22,17 @@ class EmployeeRemoved
     use Dispatchable;
     use SerializesModels;
 
+    /**
+     * @param  bool  $wasRequested  whether the member had a pending removal request
+     *                              at removal time (an owner-approved leave, matrix
+     *                              row 4.1) versus an owner-initiated removal (row 3).
+     *                              Defaults false so existing dispatch sites and any
+     *                              host listener stay backward-compatible.
+     */
     public function __construct(
         public readonly Company $company,
         public readonly Authenticatable $employee,
+        public readonly bool $wasRequested = false,
     ) {}
 
     /**

@@ -81,7 +81,16 @@ class InvitationController extends Controller
             $user->setActiveCompany($invitation->company);
         }
 
-        InvitationAccepted::dispatch($invitation, $user);
+        // Row 1.1 vs 2.1: the joined-confirmation email fires only for an
+        // invitee who registered as part of this accept flow, not for an
+        // already-registered user. Registration is a separate Fortify step in the
+        // same request (an unregistered invitee registers, then lands here), so the
+        // reliable in-request signal is Eloquent's wasRecentlyCreated — true when
+        // the user row was inserted during THIS request, false for a pre-existing
+        // account. This is the most reliable signal the accept path can see.
+        $wasNewAccount = $user->wasRecentlyCreated ?? false;
+
+        InvitationAccepted::dispatch($invitation, $user, $wasNewAccount);
 
         return redirect()->to(LaraFoundryTenancy::homeUrl())
             ->with('status', __('larafoundry::tenancy.invitation.accepted', [

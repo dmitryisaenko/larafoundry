@@ -78,6 +78,7 @@ Route::middleware(['web', 'auth'])->group(function () {
                 Route::post('invitations/{invitation}/resend', [EmployeeController::class, 'resendInvitation'])->name('invitations.resend');
                 Route::delete('invitations/{invitation}', [EmployeeController::class, 'deleteInvitation'])->name('invitations.delete');
                 Route::delete('/', [EmployeeController::class, 'removeEmployee'])->name('remove');
+                Route::post('reject-removal', [EmployeeController::class, 'rejectRemoval'])->name('reject-removal');
                 Route::post('request-removal', [EmployeeController::class, 'requestRemoval'])->name('request-removal');
                 Route::post('cancel-removal', [EmployeeController::class, 'cancelRemoval'])->name('cancel-removal');
             });

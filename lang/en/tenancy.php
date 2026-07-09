@@ -28,8 +28,41 @@ return [
     'employee_removed' => 'Employee removed.',
     'removal_requested' => 'Your removal request has been sent.',
     'removal_cancelled' => 'Your removal request has been cancelled.',
+    'removal_rejected' => 'The removal request has been rejected. The member stays in the company.',
     'owner_cannot_leave' => 'A company owner cannot leave their own company.',
     'super_admin_cannot_own' => 'Platform administrators cannot create or own a company.',
+
+    /*
+     * Static fallback subject/line for the lifecycle emails, used ONLY when the
+     * matching HTML registry template is switched off (decision D-5.1-8). The
+     * normal render comes from config/larafoundry-email.php.
+     */
+    'notify_mail' => [
+        'invitation_accepted_owner' => [
+            'subject' => 'Someone joined :company',
+            'line' => ':member accepted your invitation and joined :company.',
+        ],
+        'invitation_rejected_owner' => [
+            'subject' => 'Invitation to :company was declined',
+            'line' => 'The invitation you sent to :email to join :company was declined.',
+        ],
+        'employee_joined' => [
+            'subject' => 'You have joined :company',
+            'line' => 'You have joined :company. You can now sign in and start working with your team.',
+        ],
+        'employee_removed' => [
+            'subject' => 'You have been removed from :company',
+            'line' => 'Your request to leave :company has been approved and you have been removed.',
+        ],
+        'company_created' => [
+            'subject' => ':company is ready',
+            'line' => 'Your company :company has been created.',
+        ],
+        'company_deleted' => [
+            'subject' => ':company has been archived',
+            'line' => 'Your company :company has been archived. You can restore it at any time.',
+        ],
+    ],
 
     'invitation' => [
         'subject' => 'You have been invited to join :company',

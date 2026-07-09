@@ -22,9 +22,19 @@ class InvitationAccepted
     use Dispatchable;
     use SerializesModels;
 
+    /**
+     * @param  bool  $wasNewAccount  whether the accepting user's account was created
+     *                               as part of this accept flow (the unregistered
+     *                               invitee path, matrix row 1.1) versus an already
+     *                               registered user accepting (row 2.1). Drives the
+     *                               joined-confirmation email, which the matrix marks
+     *                               ONLY on row 1.1. Defaults false so existing
+     *                               dispatch sites and tests stay backward-compatible.
+     */
     public function __construct(
         public readonly CompanyInvitation $invitation,
         public readonly Authenticatable $user,
+        public readonly bool $wasNewAccount = false,
     ) {}
 
     /**

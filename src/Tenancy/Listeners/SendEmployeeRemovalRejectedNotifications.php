@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Dmitryisaenko\LaraFoundry\Tenancy\Listeners;
+
+use Dmitryisaenko\LaraFoundry\Tenancy\Events\EmployeeRemovalRejected;
+use Dmitryisaenko\LaraFoundry\Tenancy\Listeners\Concerns\NotifiesLifecycle;
+
+/**
+ * Matrix row 4.2 (owner rejected the member's removal request): in-app to the
+ * owner and the member. The member stays; no email either side.
+ */
+class SendEmployeeRemovalRejectedNotifications
+{
+    use NotifiesLifecycle;
+
+    public function handle(EmployeeRemovalRejected $event): void
+    {
+        if (! $this->enabled()) {
+            return;
+        }
+
+        $company = $event->company;
+        $member = $event->employee;
+        $owner = $this->ownerOf($company);
+        $companyName = (string) $company->name;
+        $memberName = $this->displayName($member);
+
+        if ($owner !== null) {
+            $ownerLocale = $this->localeFor($owner);
+            $this->notifications->system(
+                users: [$owner],
+                code: 'info',
+                titleKey: 'larafoundry::notifications.tenancy.removal_rejected.owner.title',
+                bodyKey: 'larafoundry::notifications.tenancy.removal_rejected.owner.body',
+                params: ['member' => $memberName, 'company' => $companyName],
+                data: $this->action('larafoundry::notifications.tenancy.action_view_team', '/employees', $ownerLocale),
+            );
+        }
+
+        $this->notifications->system(
+            users: $this->recipients([$member]),
+            code: 'info',
+            titleKey: 'larafoundry::notifications.tenancy.removal_rejected.user.title',
+            bodyKey: 'larafoundry::notifications.tenancy.removal_rejected.user.body',
+            params: ['company' => $companyName],
+            data: [],
+        );
+    }
+}
