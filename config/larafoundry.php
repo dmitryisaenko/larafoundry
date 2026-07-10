@@ -440,6 +440,22 @@ return [
     |             (dmy, 24h…); an unlisted value falls back to the token itself.
     */
     'profile' => [
+        // Recognised social-link platforms (phase 3b). The single source of truth
+        // for the write-side whitelist AND the front-end select/icons: the admin
+        // user form receives this list and the request validates the submitted
+        // `platform` against it, so a host that publishes this config extends both
+        // at once. Unknown platforms are rejected on write.
+        'social_platforms' => [
+            'website',
+            'twitter',
+            'linkedin',
+            'github',
+            'facebook',
+            'instagram',
+            'telegram',
+            'youtube',
+        ],
+
         'ui_settings' => [
             'theme' => [
                 'type' => 'string',

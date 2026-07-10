@@ -79,6 +79,9 @@ class AdminUserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'lastname' => $this->lastname,
+            // Part of the display name, not gated PII — always present so the edit
+            // form can prefill it (a blank prefill + save would wipe it).
+            'middlename' => $this->middlename,
             // Phase 2.4: always a resolvable URL (stored file, external OAuth
             // avatar, or a generated initials placeholder) — never the raw
             // column, so the table can render an <img> without a null check.
@@ -92,6 +95,25 @@ class AdminUserResource extends JsonResource
             // Age is derived from birth_date, never the raw DOB — null-safe when
             // the user has no birth date on file.
             'age' => $this->when(in_array('age', $columns, true), fn () => $this->birth_date?->age),
+            // The RAW date of birth is exposed ONLY in the single-user edit context
+            // (full()), never in the list — the list derives `age` so the default
+            // payload never carries a plain DOB. The edit form needs the real value
+            // to prefill the date input (a blank prefill + save would wipe it).
+            'birth_date' => $this->when(
+                $this->withPersonalColumns,
+                fn () => optional($this->birth_date)->format('Y-m-d'),
+            ),
+            // Social links (phase 3b): opt-in like the other personal columns. A
+            // list of {platform, url} in stored order — the list eager-loads the
+            // relation only when the token is on; the edit view carries them via
+            // full(). Only platform/url are exposed (never ids), and the url is
+            // scheme-locked on write so a rendered href is safe.
+            'social_links' => $this->when(
+                in_array('social', $columns, true),
+                fn () => $this->socialLinks
+                    ->map(fn ($link) => ['platform' => $link->platform, 'url' => $link->url])
+                    ->values(),
+            ),
             'country' => $this->country,
             'locale' => $this->locale,
             // Auth type is derived from the social provider column (phase 1.1):

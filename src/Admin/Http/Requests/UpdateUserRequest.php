@@ -26,7 +26,9 @@ class UpdateUserRequest extends StoreUserRequest
         $userId = $this->route('user');
 
         $rules['email'] = ['required', 'string', 'email', 'max:255', Rule::unique($this->usersTable(), 'email')->ignore($userId)];
-        $rules['password'] = ['nullable', 'string', 'min:8'];
+        // Optional on edit (omit to keep the current password); `confirmed` still
+        // fires when a new password IS supplied, so a typo is caught.
+        $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
 
         return $rules;
     }

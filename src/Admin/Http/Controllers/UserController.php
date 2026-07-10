@@ -9,6 +9,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Filters\AdminUsersFilter;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Requests\StoreUserRequest;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Requests\UpdateUserRequest;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Resources\AdminUserResource;
+use Dmitryisaenko\LaraFoundry\Profile\Models\UserSocialLink;
 use Dmitryisaenko\LaraFoundry\Support\Pagination\HasPagination;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,8 +45,18 @@ class UserController extends Controller
     {
         $query = (new AdminUsersFilter($request))->apply($this->query());
 
+        $columns = AdminUserResource::enabledColumns();
+
+        $query->withCount(['companies', 'ownedCompanies', 'employeeCompanies']);
+
+        // Eager-load the social links ONLY when the `social` column is opted in,
+        // so the default privacy-clean list never pays for a relation it does not
+        // render (and never leaks the links at the wire level).
+        if (in_array('social', $columns, true)) {
+            $query->with('socialLinks');
+        }
+
         $users = $query
-            ->withCount(['companies', 'ownedCompanies', 'employeeCompanies'])
             ->latest()
             ->paginate($this->perPage())
             ->withQueryString();
@@ -57,7 +69,7 @@ class UserController extends Controller
             // The sanitised opt-in columns the table should render (phase 3a) —
             // the SAME list the resource used to decide what to serialise, so the
             // headers/filters never drift from the payload.
-            'userColumns' => AdminUserResource::enabledColumns(),
+            'userColumns' => $columns,
             'filters' => $request->only([
                 'search', 'registered', 'emailVerified', 'status', 'recentActivity', 'locale', 'authType',
                 'country', 'phoneVerified', 'sex', 'ageRange',
@@ -71,6 +83,7 @@ class UserController extends Controller
     public function edit(int|string $user): Response
     {
         $target = $this->find($user);
+        $target->load('socialLinks');
         $resource = $this->resource();
 
         return Inertia::render('Admin/Users/Edit', [
@@ -78,6 +91,10 @@ class UserController extends Controller
             // even under the default privacy-clean `user_columns` — otherwise the
             // form prefills a blank phone and a save wipes the stored number.
             'user' => $resource::full($target),
+            // Which gated fields (sex/age/social) the form shows — the same opt-in
+            // token list the list uses, so the form and table stay in step.
+            'userColumns' => AdminUserResource::enabledColumns(),
+            'socialPlatforms' => UserSocialLink::platforms(),
         ]);
     }
 
@@ -86,7 +103,10 @@ class UserController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Admin/Users/Create');
+        return Inertia::render('Admin/Users/Create', [
+            'userColumns' => AdminUserResource::enabledColumns(),
+            'socialPlatforms' => UserSocialLink::platforms(),
+        ]);
     }
 
     /**
@@ -98,7 +118,9 @@ class UserController extends Controller
 
         /** @var Model $user */
         $user = new $model;
-        $user->fill($request->only(['name', 'lastname', 'email', 'phone', 'password', 'country']));
+        $user->fill($request->only([
+            'name', 'lastname', 'middlename', 'email', 'phone', 'password', 'country', 'sex', 'birth_date',
+        ]));
 
         // is_admin is a privilege column excluded from mass-assign by the trait,
         // so set it explicitly from the validated boolean (never blind-filled).
@@ -107,6 +129,9 @@ class UserController extends Controller
         }
 
         $user->save();
+
+        // Sync AFTER save so the new row has an id to attach the links to.
+        $this->syncSocialLinks($request, $user);
 
         $this->audit('admin.user.created', $user);
 
@@ -122,7 +147,9 @@ class UserController extends Controller
     {
         $target = $this->find($user);
 
-        $target->fill($request->only(['name', 'lastname', 'email', 'phone', 'country']));
+        $target->fill($request->only([
+            'name', 'lastname', 'middlename', 'email', 'phone', 'country', 'sex', 'birth_date',
+        ]));
 
         if ($request->filled('password')) {
             $target->fill(['password' => $request->input('password')]);
@@ -133,6 +160,8 @@ class UserController extends Controller
         }
 
         $target->save();
+
+        $this->syncSocialLinks($request, $target);
 
         $this->audit('admin.user.updated', $target);
 
@@ -146,9 +175,15 @@ class UserController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        $users = (new AdminUsersFilter($request))->apply($this->query())
-            ->limit(20)
-            ->get();
+        $query = (new AdminUsersFilter($request))->apply($this->query());
+
+        // Eager-load socialLinks only when the token is on (mirrors index()), so
+        // the resource's social_links serialisation does not N+1 over the results.
+        if (in_array('social', AdminUserResource::enabledColumns(), true)) {
+            $query->with('socialLinks');
+        }
+
+        $users = $query->limit(20)->get();
 
         $resource = $this->resource();
 
@@ -323,6 +358,73 @@ class UserController extends Controller
             subject: $target,
             geoSync: false,
         );
+    }
+
+    /**
+     * Replace a user's social links from the request (phase 3b).
+     *
+     * Two layers protect a user's stored links from being wiped by a hidden
+     * widget (the phase-3a class of bug where a gated field cleared stored data):
+     *
+     *  1. this key-presence guard skips the sync entirely for callers that omit
+     *     `social_links` (e.g. an API/host request that never touches them);
+     *  2. the Vue forms always submit the key (Inertia's `useForm` serialises
+     *     every field regardless of a `v-if` on the widget), so THEY rely on the
+     *     edit form being prefilled from `full()` — which always carries
+     *     `social_links` — so a save with the widget hidden re-submits the
+     *     existing links unchanged rather than an empty set.
+     *
+     * The replace is atomic (a transaction) and scoped strictly to this user's
+     * relation, so a crafted payload can never attach a link to another user_id.
+     * An empty `social_links: []` is a deliberate "clear all" and is honoured.
+     * When the submitted set is identical to what is stored the method is a no-op,
+     * so a routine profile edit does not churn link ids/timestamps.
+     */
+    protected function syncSocialLinks(Request $request, Model $user): void
+    {
+        if (! $request->has('social_links')) {
+            return;
+        }
+
+        if (! method_exists($user, 'socialLinks')) {
+            return;
+        }
+
+        // Normalise the submitted links to {platform, url} in order.
+        $submitted = [];
+        foreach ((array) $request->input('social_links', []) as $link) {
+            if (is_array($link)) {
+                $submitted[] = [
+                    'platform' => (string) ($link['platform'] ?? ''),
+                    'url' => (string) ($link['url'] ?? ''),
+                ];
+            }
+        }
+
+        // Nothing changed → leave the rows (and their ids/timestamps) untouched.
+        $current = $user->socialLinks()
+            ->get(['platform', 'url'])
+            ->map(fn ($link) => ['platform' => $link->platform, 'url' => $link->url])
+            ->all();
+
+        if ($current === $submitted) {
+            return;
+        }
+
+        DB::transaction(function () use ($user, $submitted): void {
+            // Replace: drop this user's rows, then recreate in submitted order.
+            // Scoped through the relation so the writes only ever touch rows that
+            // belong to this user.
+            $user->socialLinks()->delete();
+
+            foreach ($submitted as $sort => $link) {
+                $user->socialLinks()->create([
+                    'platform' => $link['platform'],
+                    'url' => $link['url'],
+                    'sort' => $sort,
+                ]);
+            }
+        });
     }
 
     /**

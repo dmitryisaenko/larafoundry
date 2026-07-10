@@ -56,6 +56,9 @@ export { default as UsersTable } from './components/admin/UsersTable.vue';
 export { default as UsersTableActions } from './components/admin/UsersTableActions.vue';
 export { default as BlockUserDialog } from './components/admin/BlockUserDialog.vue';
 export { default as ImpersonationBanner } from './components/admin/ImpersonationBanner.vue';
+// Admin user forms — social links (phase 3b)
+export { default as SocialLinksField } from './components/admin/SocialLinksField.vue';
+export { default as SocialIcon } from './components/admin/SocialIcon.vue';
 
 // Admin companies (phase 3.3)
 export { default as CompaniesTable } from './components/admin/CompaniesTable.vue';

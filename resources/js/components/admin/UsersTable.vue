@@ -17,6 +17,7 @@
  */
 import { computed } from 'vue';
 import UsersTableActions from './UsersTableActions.vue';
+import SocialIcon from './SocialIcon.vue';
 import UserAvatar from '../media/UserAvatar.vue';
 
 const props = defineProps({
@@ -79,11 +80,14 @@ function pill(token) {
     return badgeClass[token] ?? badgeClass.slate;
 }
 
+// Sex is stored canonically as a single character ('m'/'f'), the same value the
+// self-profile writes — so the label maps the canon, with a raw fallback for any
+// other stored value.
 function sexLabel(value) {
-    if (value === 'male' || value === 'm') {
+    if (value === 'm') {
         return 'Male';
     }
-    if (value === 'female' || value === 'f') {
+    if (value === 'f') {
         return 'Female';
     }
     return value ?? '-';
@@ -94,7 +98,7 @@ function sexLabel(value) {
 // status/actions = 11), plus the opt-in columns that are on, plus host extras —
 // so the empty-state colspan tracks whatever is actually rendered.
 const FIXED_COLUMNS = 11;
-const OPTIONAL_TOKENS = ['phone', 'sex', 'age'];
+const OPTIONAL_TOKENS = ['phone', 'sex', 'age', 'social'];
 const optionalCount = computed(() => OPTIONAL_TOKENS.filter((t) => has(t)).length);
 const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumns.value.length);
 </script>
@@ -110,6 +114,7 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                     <th v-if="has('phone')" class="px-3 py-2">{{ $t('Phone') }}</th>
                     <th v-if="has('sex')" class="px-3 py-2">{{ $t('Sex') }}</th>
                     <th v-if="has('age')" class="px-3 py-2">{{ $t('Age') }}</th>
+                    <th v-if="has('social')" class="px-3 py-2">{{ $t('Social links') }}</th>
                     <th class="px-3 py-2">{{ $t('Country') }}</th>
                     <th class="px-3 py-2">{{ $t('Language') }}</th>
                     <th class="px-3 py-2">{{ $t('Auth') }}</th>
@@ -149,6 +154,22 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                         {{ user.sex ? $t(sexLabel(user.sex)) : '-' }}
                     </td>
                     <td v-if="has('age')" class="px-3 py-2 text-ink-soft">{{ user.age ?? '-' }}</td>
+                    <td v-if="has('social')" class="px-3 py-2 text-ink-soft">
+                        <div class="flex items-center gap-2">
+                            <a
+                                v-for="(link, i) in (user.social_links || [])"
+                                :key="i"
+                                :href="link.url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-ink-soft transition hover:text-brand-700"
+                                :title="link.platform"
+                            >
+                                <SocialIcon :platform="link.platform" />
+                            </a>
+                            <span v-if="!(user.social_links || []).length">-</span>
+                        </div>
+                    </td>
                     <td class="px-3 py-2 text-ink-soft">{{ user.country || '-' }}</td>
                     <td class="px-3 py-2 uppercase text-ink-soft">{{ user.locale || '-' }}</td>
                     <td class="px-3 py-2">

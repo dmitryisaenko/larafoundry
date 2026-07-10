@@ -189,8 +189,8 @@ function createTicket(user) {
                         class="rounded-sm border border-border bg-surface px-3 py-2 text-sm text-ink"
                     >
                         <option value="">{{ $t('Any sex') }}</option>
-                        <option value="male">{{ $t('Male') }}</option>
-                        <option value="female">{{ $t('Female') }}</option>
+                        <option value="m">{{ $t('Male') }}</option>
+                        <option value="f">{{ $t('Female') }}</option>
                     </select>
                     <select
                         v-if="has('age')"

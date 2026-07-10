@@ -110,6 +110,7 @@ it('creates a user', function () {
             'name' => 'New',
             'email' => 'new@x.test',
             'password' => 'secret-pass',
+            'password_confirmation' => 'secret-pass',
         ])
         ->assertRedirect();
 
@@ -122,6 +123,7 @@ it('does not let the admin flag be granted unless explicitly set', function () {
             'name' => 'Plain',
             'email' => 'plain@x.test',
             'password' => 'secret-pass',
+            'password_confirmation' => 'secret-pass',
         ]);
 
     expect(User::where('email', 'plain@x.test')->first()->is_admin)->toBeFalse();
@@ -322,7 +324,7 @@ it('keeps phone/sex/age out of the payload when no columns are opted in', functi
     $admin = auAdmin();
     auMember('pii@x.test')->forceFill([
         'phone' => '+100000000',
-        'sex' => 'male',
+        'sex' => 'm',
         'birth_date' => now()->subYears(30),
     ])->save();
 
@@ -346,7 +348,7 @@ it('emits phone/sex/age only for the opted-in tokens and computes age from birth
     $admin = auAdmin();
     auMember('pii@x.test')->forceFill([
         'phone' => '+100000000',
-        'sex' => 'female',
+        'sex' => 'f',
         'birth_date' => now()->subYears(42)->subDays(3),
     ])->save();
 
@@ -358,7 +360,7 @@ it('emits phone/sex/age only for the opted-in tokens and computes age from birth
     )->firstWhere('email', 'pii@x.test');
 
     expect($row['phone'])->toBe('+100000000')
-        ->and($row['sex'])->toBe('female')
+        ->and($row['sex'])->toBe('f')
         ->and($row['age'])->toBe(42);
 });
 
@@ -441,11 +443,11 @@ it('filters users by phone verification', function () {
 
 it('filters users by exact sex', function () {
     $admin = auAdmin();
-    auMember('m@x.test')->forceFill(['sex' => 'male'])->save();
-    auMember('f@x.test')->forceFill(['sex' => 'female'])->save();
+    auMember('m@x.test')->forceFill(['sex' => 'm'])->save();
+    auMember('f@x.test')->forceFill(['sex' => 'f'])->save();
 
     $this->actingAs($admin)
-        ->get('/admin/users?sex=female', ['X-Inertia' => 'true'])
+        ->get('/admin/users?sex=f', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonCount(1, 'props.users.data')
         ->assertJsonPath('props.users.data.0.email', 'f@x.test');

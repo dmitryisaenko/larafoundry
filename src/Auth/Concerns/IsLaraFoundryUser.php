@@ -9,6 +9,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Support\DeviceFingerprint;
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
+use Dmitryisaenko\LaraFoundry\Profile\Models\UserSocialLink;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
@@ -120,6 +121,20 @@ trait IsLaraFoundryUser
     public function sessions(): HasMany
     {
         return $this->hasMany(UserSession::class);
+    }
+
+    /**
+     * The user's social/profile links (phase 3b), in their stored display order.
+     *
+     * A plain new relation — it adds behaviour without touching the identity
+     * columns, so composing it onto an existing host model is safe. The links
+     * live in their own `larafoundry_user_social_links` table (see
+     * {@see UserSocialLink}); the admin form and the profile read them ordered by
+     * `sort` so the sequence the operator arranged is preserved.
+     */
+    public function socialLinks(): HasMany
+    {
+        return $this->hasMany(UserSocialLink::class)->orderBy('sort');
     }
 
     /**
