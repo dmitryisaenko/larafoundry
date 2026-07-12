@@ -42,6 +42,7 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
+use Dmitryisaenko\LaraFoundry\Email\Console\Commands\PreviewEmailTemplatesCommand;
 use Dmitryisaenko\LaraFoundry\Email\Models\EmailTemplate;
 use Dmitryisaenko\LaraFoundry\Email\Policies\EmailTemplatePolicy;
 use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
@@ -449,6 +450,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 PruneSignInRequestsCommand::class,
                 PruneNotificationsCommand::class,
                 PurgeDeletedAccountsCommand::class,
+                PreviewEmailTemplatesCommand::class,
             ]);
         }
     }
