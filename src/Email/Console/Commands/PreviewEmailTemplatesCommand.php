@@ -50,6 +50,12 @@ class PreviewEmailTemplatesCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($locales === []) {
+            $this->warn('No matching locales.');
+
+            return self::SUCCESS;
+        }
+
         $toHtml = (bool) $this->option('html');
         $toLog = (bool) $this->option('log');
         $dir = storage_path('app/larafoundry-mail-preview');
@@ -199,6 +205,10 @@ class PreviewEmailTemplatesCommand extends Command
     {
         $subject = e($rendered['subject']);
         $meta = e("{$code} · {$locale}");
+        // The html part is already purified by render(); the text part is rendered
+        // without the sanitizer, so escape it here — it is shown as plaintext in a
+        // monospace box anyway, so escaping is also semantically correct.
+        $text = e($rendered['text']);
 
         return <<<HTML
         <!doctype html>
@@ -209,7 +219,7 @@ class PreviewEmailTemplatesCommand extends Command
           <div style="max-width:680px;margin:24px auto;background:#fff;padding:24px;border-radius:8px">
             {$rendered['html']}
           </div>
-          <div style="max-width:680px;margin:0 auto 24px;padding:16px 24px;background:#fafafa;border-radius:8px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;color:#52525b">{$rendered['text']}</div>
+          <div style="max-width:680px;margin:0 auto 24px;padding:16px 24px;background:#fafafa;border-radius:8px;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;color:#52525b">{$text}</div>
         </body>
         </html>
         HTML;

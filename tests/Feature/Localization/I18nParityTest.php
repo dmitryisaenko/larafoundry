@@ -14,7 +14,7 @@ use Illuminate\Support\Arr;
  * `larafoundry::` namespace loads — so it needs no app boot.
  */
 
-function langDir(): string
+function i18nLangDir(): string
 {
     return dirname(__DIR__, 3).'/lang';
 }
@@ -24,9 +24,9 @@ function langDir(): string
  *
  * @return array<string, mixed>
  */
-function flattenLocaleKeys(string $locale): array
+function i18nFlattenLocaleKeys(string $locale): array
 {
-    $dir = langDir().'/'.$locale;
+    $dir = i18nLangDir().'/'.$locale;
     $keys = [];
 
     foreach (glob($dir.'/*.php') ?: [] as $file) {
@@ -46,43 +46,42 @@ function flattenLocaleKeys(string $locale): array
 }
 
 /**
- * Available non-default locales discovered from the lang directory.
+ * The CONFIGURED non-default locales (config allowlist minus the default), read
+ * from the package config file directly — the dataset is built before the app
+ * boots, so config() is not available here. Keying off the config (not the lang
+ * dirs) means a locale that is declared available but has no lang/<locale> files
+ * fails loudly with a full set of missing keys, instead of being silently
+ * skipped.
  *
  * @return list<string>
  */
-function nonDefaultLocales(string $default = 'en'): array
+function i18nNonDefaultLocales(): array
 {
-    $locales = [];
-    foreach (glob(langDir().'/*', GLOB_ONLYDIR) ?: [] as $path) {
-        $name = basename($path);
-        // Skip the frontend JSON bundle dir and the default locale.
-        if ($name === 'frontend' || $name === $default) {
-            continue;
-        }
-        $locales[] = $name;
-    }
+    $core = require dirname(__DIR__, 3).'/config/larafoundry.php';
+    $available = $core['locale']['available'] ?? ['en'];
+    $default = $core['locale']['default'] ?? 'en';
 
-    return $locales;
+    return array_values(array_filter($available, fn ($locale) => $locale !== $default));
 }
 
 it('has the same set of translation keys in every locale as the default (en)', function (string $locale) {
-    $en = array_keys(flattenLocaleKeys('en'));
-    $other = array_keys(flattenLocaleKeys($locale));
+    $en = array_keys(i18nFlattenLocaleKeys('en'));
+    $other = array_keys(i18nFlattenLocaleKeys($locale));
 
     $missingInOther = array_values(array_diff($en, $other));
     $orphanInOther = array_values(array_diff($other, $en));
 
     expect($missingInOther)->toBe([], "keys present in en but MISSING in [{$locale}]:\n  ".implode("\n  ", $missingInOther));
     expect($orphanInOther)->toBe([], "keys present in [{$locale}] but not in en (orphans):\n  ".implode("\n  ", $orphanInOther));
-})->with(nonDefaultLocales());
+})->with(i18nNonDefaultLocales());
 
 it('has no blank translation values in any locale', function (string $locale) {
     $blank = [];
-    foreach (flattenLocaleKeys($locale) as $key => $value) {
+    foreach (i18nFlattenLocaleKeys($locale) as $key => $value) {
         if (is_string($value) && trim($value) === '') {
             $blank[] = $key;
         }
     }
 
     expect($blank)->toBe([], "blank values in [{$locale}]:\n  ".implode("\n  ", $blank));
-})->with([...nonDefaultLocales(), 'en']);
+})->with([...i18nNonDefaultLocales(), 'en']);

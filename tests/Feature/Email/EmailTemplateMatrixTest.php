@@ -85,12 +85,16 @@ it('has a real translation for every non-default locale (not just the default fa
 
     $definition = $repository->find($code);
 
-    // The subject map must carry this locale explicitly — otherwise the render
-    // silently falls back to the default locale and the email ships untranslated.
-    expect(array_key_exists($locale, $definition['subject']))
-        ->toBeTrue("no [{$locale}] subject for template [{$code}] — it would ship in the default locale");
-    expect(trim((string) $definition['subject'][$locale]))
-        ->not->toBe('', "blank [{$locale}] subject for template [{$code}]");
+    // Every part (subject + both bodies) must carry this locale explicitly —
+    // otherwise render() silently falls back to the default locale and that part
+    // ships untranslated (e.g. a uk subject over an en body). localized() would
+    // still return a non-empty string, so only an explicit key check catches it.
+    foreach (['subject', 'body_html', 'body_text'] as $part) {
+        expect(array_key_exists($locale, $definition[$part]))
+            ->toBeTrue("no [{$locale}] {$part} for template [{$code}] — it would ship in the default locale");
+        expect(trim((string) $definition[$part][$locale]))
+            ->not->toBe('', "blank [{$locale}] {$part} for template [{$code}]");
+    }
 })->with('template_locale_pairs');
 
 dataset('template_locale_pairs', templateLocalePairs());
