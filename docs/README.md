@@ -66,6 +66,9 @@ point at them) and each banner now points forward to its accurate page.
 | Admin: companies | 3.3 | [admin-companies.md](admin-companies.md) |
 | Files and media | 2.4 | [media.md](media.md) |
 | Billing seam (free) | 3.1 | [billing-seam.md](billing-seam.md) |
+| Monetization upsell stubs | 5.x | [monetization-stubs.md](monetization-stubs.md) |
+| SEO kit | 5.x | [seo.md](seo.md) |
+| Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |
 | Vue frontend | packaging | early draft: [modules/vue_frontend.md](modules/vue_frontend.md) |
 
 The paid `larafoundry-billing` add-on documents its own usage (Stripe and Paddle
