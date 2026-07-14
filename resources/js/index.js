@@ -107,6 +107,11 @@ export { default as CookieConsentBanner } from './components/legal/CookieConsent
 // layout can import and mount it itself.
 export { default as Seo } from './components/Seo.vue';
 
+// Onboarding (Ф5.4) — the host places <OnboardingChecklist> on its own home
+// page; the core does NOT mount it (unlike <Seo>). It renders nothing when the
+// checklist is dismissed, complete or absent, so it is always safe to include.
+export { default as OnboardingChecklist } from './components/OnboardingChecklist.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';

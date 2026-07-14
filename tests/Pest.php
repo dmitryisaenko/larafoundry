@@ -9,7 +9,7 @@ use Dmitryisaenko\LaraFoundry\Tests\TestCase;
 // so it binds to the heavier AuthTestCase. Declared first and narrowly so the
 // broad binding below does not also claim these folders (Pest forbids two test
 // cases on the same path).
-uses(AuthTestCase::class)->in('Feature/Auth', 'Unit/Auth', 'Feature/Tenancy', 'Unit/Tenancy', 'Feature/Authorization', 'Unit/Authorization', 'Feature/ActivityLog', 'Unit/ActivityLog', 'Feature/Localization', 'Feature/Admin', 'Feature/Navigation', 'Feature/Media', 'Feature/Billing', 'Feature/Notifications', 'Unit/Notifications', 'Feature/Tickets', 'Unit/Tickets', 'Feature/Profile', 'Feature/Settings', 'Feature/Email', 'Feature/Legal', 'Feature/Seo');
+uses(AuthTestCase::class)->in('Feature/Auth', 'Unit/Auth', 'Feature/Tenancy', 'Unit/Tenancy', 'Feature/Authorization', 'Unit/Authorization', 'Feature/ActivityLog', 'Unit/ActivityLog', 'Feature/Localization', 'Feature/Admin', 'Feature/Navigation', 'Feature/Media', 'Feature/Billing', 'Feature/Notifications', 'Unit/Notifications', 'Feature/Tickets', 'Unit/Tickets', 'Feature/Profile', 'Feature/Settings', 'Feature/Email', 'Feature/Legal', 'Feature/Seo', 'Feature/Onboarding');
 
 // Everything else keeps the lean, DB-less base case.
 uses(TestCase::class)->in(
@@ -26,4 +26,5 @@ uses(TestCase::class)->in(
     'Unit/Settings',
     'Unit/Email',
     'Unit/Seo',
+    'Unit/Onboarding',
 );

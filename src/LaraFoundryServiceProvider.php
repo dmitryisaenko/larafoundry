@@ -68,6 +68,8 @@ use Dmitryisaenko\LaraFoundry\Notifications\Console\Commands\PruneNotificationsC
 use Dmitryisaenko\LaraFoundry\Notifications\Providers\NotificationsUserDataExporter;
 use Dmitryisaenko\LaraFoundry\Notifications\Providers\NotificationsUserDataPurger;
 use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
+use Dmitryisaenko\LaraFoundry\Onboarding\Providers\CoreOnboardingStepProvider;
+use Dmitryisaenko\LaraFoundry\Onboarding\Support\OnboardingBuilder;
 use Dmitryisaenko\LaraFoundry\Profile\Console\Commands\PurgeDeletedAccountsCommand;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\ConsentExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\CoreUserProfileExporter;
@@ -176,6 +178,24 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerEmail();
         $this->registerLegal();
         $this->registerSeo();
+        $this->registerOnboarding();
+    }
+
+    /**
+     * Wire the onboarding checklist (phase 5.4): one shared OnboardingBuilder
+     * seeded with the core's own step provider.
+     *
+     * The flat mirror of {@see registerDashboard()} / {@see registerNavigation()}
+     * — a singleton so its per-request memo and the registered providers persist;
+     * a host (or add-on) adds its own steps by resolving the builder and calling
+     * addProvider, exactly the way a menu provider or a dashboard widget is added.
+     */
+    protected function registerOnboarding(): void
+    {
+        $this->app->singleton(OnboardingBuilder::class, function ($app) {
+            return (new OnboardingBuilder)
+                ->addProvider($app->make(CoreOnboardingStepProvider::class));
+        });
     }
 
     /**
@@ -457,6 +477,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/legal.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/consent.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/seo.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/onboarding.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
 

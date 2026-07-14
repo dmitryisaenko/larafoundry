@@ -615,6 +615,18 @@ return [
             'validation' => ['boolean'],
             'form' => false,
         ],
+
+        // User scope — the getting-started checklist's "hidden" flag (phase 5.4).
+        // Registered so the store can hold it, but NOT in the self-service form
+        // (form=false): it is written by the dismiss endpoint, not the settings
+        // page. The checklist is gentle — a user hides it for good with one click.
+        'onboarding.dismissed' => [
+            'scope' => 'user',
+            'type' => 'boolean',
+            'default' => false,
+            'validation' => ['boolean'],
+            'form' => false,
+        ],
         'terms_accepted_version' => [
             'scope' => 'user',
             'type' => 'string',
