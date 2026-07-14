@@ -1,5 +1,6 @@
 <script setup>
 import AppFlashMessage from '../components/AppFlashMessage.vue';
+import Seo from '../components/Seo.vue';
 
 /**
  * Minimal de-branded application layout.
@@ -17,6 +18,7 @@ import AppFlashMessage from '../components/AppFlashMessage.vue';
 
 <template>
     <div class="flex min-h-screen flex-col bg-surface-muted text-ink">
+        <Seo />
         <AppFlashMessage />
 
         <header v-if="$slots.header" class="border-b border-border bg-surface">

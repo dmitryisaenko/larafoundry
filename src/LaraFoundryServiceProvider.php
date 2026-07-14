@@ -76,6 +76,11 @@ use Dmitryisaenko\LaraFoundry\Profile\Providers\UiSettingsExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Providers\UserSessionsExporter;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataExportRegistry;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UserDataPurgeRegistry;
+use Dmitryisaenko\LaraFoundry\Seo\Contracts\OgImageResolver;
+use Dmitryisaenko\LaraFoundry\Seo\Providers\LegalSitemapProvider;
+use Dmitryisaenko\LaraFoundry\Seo\Support\ConfigOgImageResolver;
+use Dmitryisaenko\LaraFoundry\Seo\Support\SeoManager;
+use Dmitryisaenko\LaraFoundry\Seo\Support\SitemapBuilder;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
@@ -121,6 +126,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
@@ -146,6 +152,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-tickets.php', 'larafoundry-tickets');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-email.php', 'larafoundry-email');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-legal.php', 'larafoundry-legal');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-seo.php', 'larafoundry-seo');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -168,6 +175,31 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerSettings();
         $this->registerEmail();
         $this->registerLegal();
+        $this->registerSeo();
+    }
+
+    /**
+     * Wire the SEO kit (phase 5.2): the request-scoped meta holder, the sitemap
+     * builder and the OG-image seam.
+     *
+     * The SeoManager is a singleton so the whole request shares one meta holder
+     * (a page's setters and the `seo` shared prop / `@larafoundrySeo` directive
+     * read the same instance). The SitemapBuilder mirrors {@see registerNavigation()}
+     * — a singleton seeded with the core's own providers, to which a host adds
+     * more by resolving it and calling addProvider. The OG-image resolver is a
+     * bound (rebindable) seam: the FREE core ships the config-only default; a host
+     * or add-on can swap in a dynamic generator without touching call sites.
+     */
+    protected function registerSeo(): void
+    {
+        $this->app->singleton(SeoManager::class);
+
+        $this->app->bind(OgImageResolver::class, ConfigOgImageResolver::class);
+
+        $this->app->singleton(SitemapBuilder::class, function ($app) {
+            return (new SitemapBuilder)
+                ->addProvider($app->make(LegalSitemapProvider::class));
+        });
     }
 
     /**
@@ -424,8 +456,14 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/legal.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/consent.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/seo.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
+
+        // The server-side SEO head (phase 5.2): the host echoes @larafoundrySeo
+        // inside its app.blade.php <head>. This is the crawler/social-visible
+        // path — the SeoManager escapes every tag it renders.
+        Blade::directive('larafoundrySeo', fn () => '<?php echo app(\\Dmitryisaenko\\LaraFoundry\\Seo\\Support\\SeoManager::class)->renderHead(); ?>');
 
         $this->registerAuthMiddleware();
         $this->registerAuthEventListeners();
@@ -856,6 +894,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-legal.php' => config_path('larafoundry-legal.php'),
         ], 'larafoundry-legal-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-seo.php' => config_path('larafoundry-seo.php'),
+        ], 'larafoundry-seo-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),

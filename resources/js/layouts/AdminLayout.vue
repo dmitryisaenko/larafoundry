@@ -15,6 +15,7 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppFlashMessage from '../components/AppFlashMessage.vue';
+import Seo from '../components/Seo.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
 import MobileNav from '../components/navigation/MobileNav.vue';
 import NotificationBell from '../components/notifications/NotificationBell.vue';
@@ -32,6 +33,7 @@ const navigation = computed(() => page.props.navigation ?? []);
 
 <template>
     <div class="flex min-h-screen flex-col bg-surface-muted text-ink">
+        <Seo />
         <ImpersonationBanner />
         <AppFlashMessage />
 

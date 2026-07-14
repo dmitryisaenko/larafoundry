@@ -14,6 +14,7 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppFlashMessage from '../components/AppFlashMessage.vue';
+import Seo from '../components/Seo.vue';
 import CompanySwitcher from '../components/CompanySwitcher.vue';
 import LocaleSwitcher from '../components/LocaleSwitcher.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
@@ -32,6 +33,7 @@ const activeCompany = computed(() => page.props.activeCompany ?? null);
 
 <template>
     <div class="flex min-h-screen flex-col bg-surface-muted text-ink">
+        <Seo />
         <ImpersonationBanner />
         <AppFlashMessage />
 

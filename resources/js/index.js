@@ -103,6 +103,10 @@ export { default as EmailPreviewFrame } from './components/email/EmailPreviewFra
 export { default as LegalPageEditor } from './components/legal/LegalPageEditor.vue';
 export { default as CookieConsentBanner } from './components/legal/CookieConsentBanner.vue';
 
+// SEO kit (phase 5.2) — the core layouts mount <Seo> once; a host using a bare
+// layout can import and mount it itself.
+export { default as Seo } from './components/Seo.vue';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Auth;
 
+use Dmitryisaenko\LaraFoundry\Seo\Support\SeoManager;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Laravel\Fortify\Fortify;
@@ -39,17 +40,39 @@ class LaraFoundryAuth
             'status' => session('status'),
         ]));
 
-        Fortify::resetPasswordView(fn (Request $request) => Inertia::render('Auth/ResetPassword', [
-            'email' => $request->input('email'),
-            'token' => $request->route('token'),
-        ]));
+        // The sensitive screens (reset password, confirm password, verify email,
+        // 2FA challenge) are marked noindex,nofollow (phase 5.2): they carry
+        // one-time tokens / step-up state and must never surface in a search
+        // index. Login/register/forgot stay default-indexable. The noindex is set
+        // on the shared SeoManager before the page renders, so both the
+        // `@larafoundrySeo` head and the `seo` shared prop reflect it.
+        Fortify::resetPasswordView(function (Request $request) {
+            app(SeoManager::class)->noindex();
 
-        Fortify::verifyEmailView(fn () => Inertia::render('Auth/VerifyEmail', [
-            'status' => session('status'),
-        ]));
+            return Inertia::render('Auth/ResetPassword', [
+                'email' => $request->input('email'),
+                'token' => $request->route('token'),
+            ]);
+        });
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('Auth/ConfirmPassword'));
+        Fortify::verifyEmailView(function () {
+            app(SeoManager::class)->noindex();
 
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('Auth/TwoFactorChallenge'));
+            return Inertia::render('Auth/VerifyEmail', [
+                'status' => session('status'),
+            ]);
+        });
+
+        Fortify::confirmPasswordView(function () {
+            app(SeoManager::class)->noindex();
+
+            return Inertia::render('Auth/ConfirmPassword');
+        });
+
+        Fortify::twoFactorChallengeView(function () {
+            app(SeoManager::class)->noindex();
+
+            return Inertia::render('Auth/TwoFactorChallenge');
+        });
     }
 }
