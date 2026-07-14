@@ -88,6 +88,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Upsell (free-core monetization stubs, phase 4)
+    |--------------------------------------------------------------------------
+    | The free core reserves the Payments / Affiliates / Promo console slots with
+    | inert stub screens (the real features ship in the paid billing add-on, which
+    | overrides these screens entirely). Each stub shows an empty state and, while
+    | billing is not enabled, a call to action pointing at where to obtain the paid
+    | add-on.
+    |
+    | billing_url — where the upsell call to action sends the operator. The paid
+    |               add-on replaces the stub screens, so this only matters for the
+    |               free core.
+    */
+    'upsell' => [
+        // Where the free-core upsell stubs point users to obtain the paid billing add-on.
+        // Overridden by the paid add-on (which replaces these stub screens entirely).
+        'billing_url' => env('LARAFOUNDRY_UPSELL_BILLING_URL', 'https://larafoundry.com'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Locale
     |--------------------------------------------------------------------------
     | ONE source of truth: locale = an ISO 639-1 code ('en', 'uk', 'de'). This code

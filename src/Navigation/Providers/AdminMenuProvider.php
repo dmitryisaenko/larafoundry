@@ -13,8 +13,10 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
  * Populates the 'admin' level with the platform surfaces the core ships:
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
  * Activity Log (phase 2.1), Broadcasts (phase 4.1), Support tickets
- * (phase 4.2), the Email templates editor and Settings (phase 5.1) and the Legal
- * pages editor (phase 5.3). The whole zone already sits behind the
+ * (phase 4.2), the Email templates editor and Settings (phase 5.1), the Legal
+ * pages editor (phase 5.3) and the monetization stubs Payments, Affiliates and
+ * Promo codes (phase 4 — inert upsell slots reserved for the paid billing
+ * add-on). The whole zone already sits behind the
  * `larafoundry.admin` gate (super-admin via VisitorStatus), so these items carry
  * NO permission slug — the zone gate is the authority.
  *
@@ -93,10 +95,24 @@ class AdminMenuProvider implements MenuProviderInterface
                 activePatterns: ['admin.payments.*'],
             ),
             new MenuItem(
+                labelKey: 'Affiliates',
+                route: 'admin.affiliates.index',
+                icon: 'affiliate',
+                order: 36,
+                activePatterns: ['admin.affiliates.*'],
+            ),
+            new MenuItem(
+                labelKey: 'Promo codes',
+                route: 'admin.promo.index',
+                icon: 'promo',
+                order: 37,
+                activePatterns: ['admin.promo.*'],
+            ),
+            new MenuItem(
                 labelKey: 'Settings',
                 route: 'admin.settings.index',
                 icon: 'settings',
-                order: 35,
+                order: 40,
                 activePatterns: ['admin.settings.*'],
             ),
         ];

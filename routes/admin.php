@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\AdminOtpChallengeController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\AffiliateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PaymentController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PromoController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
@@ -104,10 +106,13 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::post('{ticket}/label', [AdminTicketController::class, 'toggleLabel'])->name('label');
             });
 
-            // Payments (phase 7): a stub screen over the billing seam — reserves
-            // the route/menu slot and shows an empty state until a gateway is
-            // wired (the paid billing add-on ships its own richer console).
+            // Monetization stubs (phase 4): Payments over the billing seam, plus
+            // Affiliates and Promo codes. Each reserves its route/menu slot and
+            // shows an empty state with an upsell CTA until the paid billing
+            // add-on is installed (it ships its own richer console for each).
             Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+            Route::get('affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
+            Route::get('promo', [PromoController::class, 'index'])->name('promo.index');
 
             // App-scope settings (phase 5.1).
             Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');

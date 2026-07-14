@@ -28,6 +28,7 @@ class PaymentController extends Controller
     {
         return Inertia::render('Admin/Payments/Index', [
             'billing_enabled' => (bool) config('larafoundry.billing.enabled', false),
+            'upsell_url' => config('larafoundry.upsell.billing_url'),
         ]);
     }
 }

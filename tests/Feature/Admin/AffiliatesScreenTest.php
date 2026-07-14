@@ -8,9 +8,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 /*
- * The Payments console screen (phase 7) is a stub over the billing seam: gated
- * like the rest of the console, it renders an empty state and flips its copy on
- * `billing_enabled`. There are no records to list until a gateway is wired.
+ * The Affiliates console screen (phase 4) is a monetization stub: gated like the
+ * rest of the console, it renders an empty state that reserves the slot for the
+ * paid billing add-on and, while billing is off, exposes an upsell URL.
  */
 
 beforeEach(function () {
@@ -19,38 +19,38 @@ beforeEach(function () {
     config(['larafoundry.security.super_admin.require_otp' => false]);
 });
 
-function payAdmin(): User
+function affAdmin(): User
 {
     return User::create([
-        'name' => 'Boss', 'email' => 'pay-boss@x.test', 'password' => 'secret-pass',
+        'name' => 'Boss', 'email' => 'aff-boss@x.test', 'password' => 'secret-pass',
         'email_verified_at' => now(), 'is_admin' => true,
     ]);
 }
 
-function payMember(): User
+function affMember(): User
 {
     return User::create([
-        'name' => 'Joe', 'email' => 'pay-joe@x.test', 'password' => 'secret-pass',
+        'name' => 'Joe', 'email' => 'aff-joe@x.test', 'password' => 'secret-pass',
         'email_verified_at' => now(),
     ]);
 }
 
-it('forbids a non-admin from the payments screen', function () {
-    $this->actingAs(payMember())->get('/admin/payments')->assertForbidden();
+it('forbids a non-admin from the affiliates screen', function () {
+    $this->actingAs(affMember())->get('/admin/affiliates')->assertForbidden();
 });
 
-it('redirects a guest from the payments screen', function () {
-    $this->get('/admin/payments')->assertRedirect();
+it('redirects a guest from the affiliates screen', function () {
+    $this->get('/admin/affiliates')->assertRedirect();
 });
 
-it('renders the payments stub with billing disabled by default', function () {
+it('renders the affiliates stub with billing disabled by default', function () {
     config(['larafoundry.billing.enabled' => false]);
     config(['larafoundry.upsell.billing_url' => 'https://larafoundry.com']);
 
-    $this->actingAs(payAdmin())
-        ->get('/admin/payments', ['X-Inertia' => 'true'])
+    $this->actingAs(affAdmin())
+        ->get('/admin/affiliates', ['X-Inertia' => 'true'])
         ->assertOk()
-        ->assertJsonPath('component', 'Admin/Payments/Index')
+        ->assertJsonPath('component', 'Admin/Affiliates/Index')
         ->assertJsonPath('props.billing_enabled', false)
         ->assertJsonPath('props.upsell_url', 'https://larafoundry.com');
 });
@@ -58,8 +58,8 @@ it('renders the payments stub with billing disabled by default', function () {
 it('reflects billing being enabled in the prop', function () {
     config(['larafoundry.billing.enabled' => true]);
 
-    $this->actingAs(payAdmin())
-        ->get('/admin/payments', ['X-Inertia' => 'true'])
+    $this->actingAs(affAdmin())
+        ->get('/admin/affiliates', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonPath('props.billing_enabled', true);
 });
