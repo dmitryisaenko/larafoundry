@@ -45,9 +45,9 @@ combination of these. Learn them once and a new module is never a surprise:
 
 ## Modules
 
-Accurate references are written one module at a time, in the shape above. Where a
-module's accurate page does not exist yet, an early planning draft lives under
-`modules/` (carrying a banner that says so) and is being backfilled.
+Every module below has an accurate reference page, in the shape above. The early
+planning drafts under `modules/` are kept at their original URLs (external links
+point at them) and each banner now points forward to its accurate page.
 
 | Module | Phase | Reference |
 |--------|-------|-----------|
@@ -57,15 +57,15 @@ module's accurate page does not exist yet, an early planning draft lives under
 | Tickets and helpdesk | 4.2 | [tickets.md](tickets.md) |
 | Settings, profile and email templates | 5.1 | [settings-profile-email.md](settings-profile-email.md) |
 | Legal pages and GDPR | 5.3 | [legal-gdpr.md](legal-gdpr.md) |
-| Authentication and sessions | 1.1 | early draft: [modules/authentication.md](modules/authentication.md) |
-| Roles and permissions | 1.3 | early draft: [modules/traits_middlewares.md](modules/traits_middlewares.md) |
-| Activity log | 2.1 | early draft: [modules/logging.md](modules/logging.md) |
-| Multilanguage | 2.2 | early draft: [modules/multilanguage.md](modules/multilanguage.md) |
-| Navigation and operator console | 2.3 | early draft: [modules/navigation.md](modules/navigation.md) |
-| Admin: users | 2.3 | early draft: [modules/admin_users.md](modules/admin_users.md) |
-| Admin: companies | 3.3 | early draft: [modules/admin_companies.md](modules/admin_companies.md) |
-| Files and media | 2.4 | early draft (none) |
-| Billing seam (free) | 3.1 | early draft: [modules/payments.md](modules/payments.md) |
+| Authentication and sessions | 1.1 | [authentication.md](authentication.md) |
+| Roles and permissions | 1.3 | [roles-permissions.md](roles-permissions.md) |
+| Activity log | 2.1 | [activity-log.md](activity-log.md) |
+| Multilanguage | 2.2 | [multilanguage.md](multilanguage.md) |
+| Navigation and operator console | 2.3 | [navigation.md](navigation.md) |
+| Admin: users | 2.3 | [admin-users.md](admin-users.md) |
+| Admin: companies | 3.3 | [admin-companies.md](admin-companies.md) |
+| Files and media | 2.4 | [media.md](media.md) |
+| Billing seam (free) | 3.1 | [billing-seam.md](billing-seam.md) |
 | Vue frontend | packaging | early draft: [modules/vue_frontend.md](modules/vue_frontend.md) |
 
 The paid `larafoundry-billing` add-on documents its own usage (Stripe and Paddle

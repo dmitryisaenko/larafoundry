@@ -1,6 +1,6 @@
 # Multilanguage Module
 
-> **⚠️ Early design note (June 2025).** This page is an early planning draft from before the package was built. The shipped package differs in places: APIs, config keys, and module scope have changed since. For example, the machine-translation API (DeepL / Google Translate) described below was not shipped, and locale config lives in `config/larafoundry.php`, not `config/app.php`. Treat this page as design intent, not current reference. For what the package actually ships, see the [README](../../readme.md) and the up-to-date module docs as they land. This file stays at its original URL so older links keep working.
+> **⚠️ Early design note (June 2025).** This page is an early planning draft from before the package was built. The shipped package differs in places: APIs, config keys, and module scope have changed since. For example, the machine-translation API (DeepL / Google Translate) described below was not shipped, and locale config lives in `config/larafoundry.php`, not `config/app.php`. Treat this page as design intent, not current reference. For what the package actually ships, see the accurate reference at [../multilanguage.md](../multilanguage.md). This file stays at its original URL so older links keep working.
 
 ## Overview
 

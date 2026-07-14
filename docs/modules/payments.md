@@ -1,6 +1,6 @@
 # Payments Module - Detailed Documentation
 
-> **⚠️ Early design note (June 2025).** This page is an early planning draft from before the package was built. Billing shipped quite differently from this draft: the free core carries only a gateway-agnostic billing *seam* (a payment-gateway contract, subscription columns, and a real access gate), while the actual payment gateways (Stripe via Cashier, and more) live in a separate paid `larafoundry-billing` add-on. Treat this page as design intent, not current reference. For what actually ships, see the [README](../../readme.md) and the up-to-date module docs as they land. This file stays at its original URL so older links keep working.
+> **⚠️ Early design note (June 2025).** This page is an early planning draft from before the package was built. Billing shipped quite differently from this draft: the free core carries only a gateway-agnostic billing *seam* (a payment-gateway contract, subscription columns, and a real access gate), while the actual payment gateways (Stripe via Cashier, and more) live in a separate paid `larafoundry-billing` add-on. Treat this page as design intent, not current reference. For what actually ships, see the accurate reference at [../billing-seam.md](../billing-seam.md). This file stays at its original URL so older links keep working.
 
 ## Overview
 

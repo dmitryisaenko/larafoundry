@@ -12,12 +12,92 @@ This is built **in public** and **by extraction, not rewrite**. Each piece is pu
 composer require dmitryisaenko/larafoundry
 ```
 
-> ⚠️ **Status: early but growing. Current release is `v0.22.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules (incl. a consolidated profile hub with a per-user date format and a searchable company-time-zone dropdown), the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels), config-driven OAuth with community-driver auto-registration, AI dev-context shipped inside the package (`AGENTS.md` / `CLAUDE.md`) so a coding agent understands the engine on require, a collapsible "My company" navigation group, and a hardened themed confirm dialog.**
+> ⚠️ **Status: early but growing. Current release is `v0.30.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules (incl. a consolidated profile hub with a per-user date format and a searchable company-time-zone dropdown), the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels), config-driven OAuth with community-driver auto-registration, AI dev-context shipped inside the package (`AGENTS.md` / `CLAUDE.md`) so a coding agent understands the engine on require, a collapsible "My company" navigation group, a hardened themed confirm dialog, direct employee provisioning (an owner creates and edits a company member, avatar and roles, without an email invite), owner-driven company archiving, a per-user time format, admin base surfaces for hosts (user locale / auth columns, a payments upsell stub, an extensible admin user-column seam), a completed activity-log surface (role CRUD, profile / password, admin-access and file-upload events), a full transactional / marketing email-template CRUD editor, an operator Users-management parity pass (opt-in PII columns, country / sex / age / phone-verified filters, forced verify / unverify, block-with-reason, per-user activity logs, social-link storage), and an email-template preview command (`larafoundry:mail-preview`) with a template x locale i18n-parity test matrix.**
 > The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.30.x` Operator Users-management parity
+
+The operator console's Users screen grew up to match the production donor: the table, its filters and the per-user actions an operator actually needs. Privacy stays the default, every PII column is opt-in, so a fresh public install shows nothing sensitive. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Opt-in PII columns | Phone, sex, age and social links are extra columns switched on per host through a config allowlist (`larafoundry.admin.user_columns`). The default is empty, GDPR-clean for a fresh install; the resource gates each field with `when()` so a disabled column never leaves the server. The token list is sanitized against a fixed set, so an unknown token is a no-op, not an error. |
+| Table filters | Country, phone-verified, sex and an age-range filter, each a no-op on unknown input, plus the existing search. The age buckets are disjoint by construction. |
+| Forced verify / unverify | An operator can force-verify or unverify a user's email or phone directly (audited, no mail and no SMS sent), and block a user with a required reason through the themed dialog. |
+| Per-user context actions | Each row links to that user's own activity log (filtered by causer) and to a pre-filled "create ticket" screen, so the operator moves from a user to their history or a support thread in one click. |
+| Social-link storage | Social profiles live in their own `larafoundry_user_social_links` table (not a JSON blob), whitelisted by platform, each URL validated http/https only (anti-XSS). A widget edits them on the user form; the column renders fixed-dictionary icons. |
+
+> The host runs `php artisan migrate` (the `larafoundry_user_social_links` table) and `vendor:publish --tag=larafoundry-pages`. PII columns stay off until the host lists them in `larafoundry.admin.user_columns`. The core's frontend translation keys reach the host automatically through the layered translation loader, so the host duplicates nothing.
+
+### `v0.29.x` Email-template CRUD editor
+
+The email-template module (`v0.16.x`) went from "edit the wording of the core's transactional mail" to a full editor with two clearly separated layers, so a host can also author its own standalone templates without ever forking a core transactional code.
+
+| Component | What it does |
+|-----------|--------------|
+| Two template types | **Transactional** templates are registry-driven (code-defined, not deletable or renamable, subject / body / active only), keeping the fail-closed fallback to static lang wording. **Marketing** templates are self-contained database entities with their own code, name, variables, subject and body, and a full create / duplicate / delete lifecycle. |
+| Safe duplicate | Duplicating any template always produces a marketing copy, so a transactional code can never be forked into a second sender. The whole editor keeps the single-pass `{{token}}` renderer (no Blade, no eval), the allowed-variable check on save and HTMLPurifier on the body. |
+
+> Additive migration only (a `type`, `name` and `variables` column on `larafoundry_email_templates`, no `migrate:fresh`). The host runs `php artisan migrate` and `vendor:publish --tag=larafoundry-pages`. The `larafoundry:mail-preview` command (renders every template x locale, with `--html` / `--log` output and a health check) ships alongside for eyeballing the result. Full reference: [docs/settings-profile-email.md](docs/settings-profile-email.md).
+
+### `v0.28.x` Activity-log completeness
+
+The platform activity log (`v0.5.x`) recorded model diffs but missed the operator-relevant events every audit trail is asked for. This band closed the gaps so the log answers "who changed what" across the console.
+
+| Component | What it does |
+|-----------|--------------|
+| Fuller event coverage | Role create / update / delete, profile and password updates (wired from Fortify's own actions), the admin-access failure event and a file-upload event now record, and the admin Settings / Legal / Email screens write an audit entry on save. Events are grouped by concern (Authorization, Auth, Media), and the anonymise-the-who-keep-the-what rule from the GDPR layer still holds. |
+
+> No new trait and no new migration. The completeness is automatic once the package is required.
+
+### `v0.27.x` Admin base surfaces for hosts
+
+A set of small operator-console surfaces a host needs before it starts adding domain screens: extra user columns, a payments landing, company-archive events and, most importantly, a seam that lets a host add its own user columns without forking a core Vue component.
+
+| Component | What it does |
+|-----------|--------------|
+| Language + auth columns | The admin Users table can show each user's locale and auth type (OAuth vs password, with the provider name), filtered server-side, each filter a no-op on junk input. |
+| Payments stub | A gated `admin.payments.index` route and empty-state screen (with a `billing_enabled` flag) plus a nav entry, so the paid `larafoundry-billing` add-on has a place to slot real payments into. |
+| Company-archive events | The company archive / unarchive actions (see `v0.26.x`) raise events a host or add-on can listen to. |
+| User-column seam | A host adds its own admin user columns (e.g. "used the demo?") by subclassing `AdminUserResource` and pointing a config key at it, no fork of the core `UsersTable.vue`. The header is the union of keys across rows; the body renders one cell per header column. Documented in `docs/integrating-into-an-existing-app.md`. |
+
+> The host runs `php artisan migrate` and `vendor:publish --tag=larafoundry-pages`. Extra columns and the payments entry stay quiet until the host opts in through config.
+
+### `v0.26.x` Owner-driven company archiving
+
+An owner can archive their own company, the mirror image of the super-admin block cascade but owner-scoped: archiving closes the company to everyone except the owner, who keeps full access so they can unarchive it. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Archive / unarchive | Owner-only actions (guarded through `ownedCompanies()`) set a `company_archived_at` stamp (written via `forceFill`, kept out of `$fillable`). Archived companies are **not** hidden on the backend, so the owner can still reach and restore them; `setNextAvailableCompany()` skips archived companies when picking the active one for non-owners. |
+
+> The host runs `php artisan migrate` (the `company_archived_at` column). No new trait.
+
+### `v0.25.x` Per-user time format
+
+A companion to the per-user date format (`v0.21.x`): each user picks how times display, independent of the interface language, and a stray-key leak in the appearance preferences was closed.
+
+| Component | What it does |
+|-----------|--------------|
+| Per-user time format | Each user chooses `auto`, `24h` or `12h`; the `auto` default follows the active locale. Stored through the `ui_settings` allowlist, so no migration. |
+| Appearance-key hardening | The appearance preferences no longer leaked raw internal keys (`label` / `labels`) to the frontend. |
+
+> No new trait and no new migration (the preference lives in the existing `ui_settings` column). Re-publish the Vue pages (`vendor:publish --tag=larafoundry-pages`) to pick up the control.
+
+### `v0.23.x`-`v0.24.x` Direct employee management
+
+An owner can now provision a company member directly, without the email-invite round-trip: create the account (`v0.23.x`) and edit it afterward (`v0.24.x`). Both are owner-only and fail closed on the roles they touch. FREE core, so the code is open.
+
+| Component | What it does |
+|-----------|--------------|
+| Create a member (`v0.23.x`) | An owner creates a member account with a name, an email (unique, and the super-admin address is reserved), a password they set (confirmed), and any number of company-scoped roles. The account is auto-verified (the owner vouches for it). Role ids are validated fail-closed and re-scoped in the action; the whole create is wrapped in a transaction so a partial member is never left behind. |
+| Edit a member (`v0.24.x`) | An owner edits a member's name, avatar and roles (not email or password). The avatar upload / delete runs outside the DB transaction (with cleanup after commit); roles sync only when the form explicitly manages them, so omitting the field never silently wipes a member's roles. Anti-IDOR: the target is resolved through the active company's own users, and an owner cannot be edited this way. |
+
+> The host runs `vendor:publish --tag=larafoundry-pages` for the create / edit screens. No new trait. Concrete roles stay in the host's permission config; the core ships only the mechanism.
 
 ### `v0.22.x` Navigation grouping and dialog polish
 
