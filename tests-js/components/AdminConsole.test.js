@@ -36,14 +36,14 @@ describe('UsersTable', () => {
 
     it('emits edit for a row', async () => {
         const wrapper = mount(UsersTable, { props: { users }, ...globalMounts });
-        const editBtn = wrapper.findAll('button').find((b) => b.text() === 'Edit');
+        const editBtn = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Edit');
         await editBtn.trigger('click');
         expect(wrapper.emitted('edit')).toBeTruthy();
     });
 
     it('offers block for an active user and unblock for a blocked one', () => {
         const wrapper = mount(UsersTable, { props: { users }, ...globalMounts });
-        const labels = wrapper.findAll('button').map((b) => b.text());
+        const labels = wrapper.findAll('button').map((b) => b.attributes('aria-label'));
         expect(labels).toContain('Block');
         expect(labels).toContain('Unblock');
     });
@@ -51,7 +51,7 @@ describe('UsersTable', () => {
     it('does not offer Follow for an admin user', () => {
         const adminRow = [{ ...users[0], is_admin: true }];
         const wrapper = mount(UsersTable, { props: { users: adminRow }, ...globalMounts });
-        const labels = wrapper.findAll('button').map((b) => b.text());
+        const labels = wrapper.findAll('button').map((b) => b.attributes('aria-label'));
         expect(labels).not.toContain('Follow');
     });
 
@@ -79,7 +79,9 @@ describe('UsersTable', () => {
             ...globalMounts,
         });
         const headers = wrapper.findAll('thead th').map((h) => h.text());
-        expect(headers).toContain('Phone');
+        // Phone folds into the combined Email / Phone cell (legacy parity); Sex and
+        // Age remain their own columns.
+        expect(headers).toContain('Email / Phone');
         expect(headers).toContain('Sex');
         expect(headers).toContain('Age');
         expect(wrapper.text()).toContain('+100');
@@ -89,10 +91,10 @@ describe('UsersTable', () => {
     it('offers phone verify actions only when the phone token is on', () => {
         const rows = [{ ...users[0], phone_verified: false }];
         const off = mount(UsersTable, { props: { users: rows }, ...globalMounts });
-        expect(off.findAll('button').map((b) => b.text())).not.toContain('Verify phone');
+        expect(off.findAll('button').map((b) => b.attributes('aria-label'))).not.toContain('Verify phone');
 
         const on = mount(UsersTable, { props: { users: rows, userColumns: ['phone'] }, ...globalMounts });
-        expect(on.findAll('button').map((b) => b.text())).toContain('Verify phone');
+        expect(on.findAll('button').map((b) => b.attributes('aria-label'))).toContain('Verify phone');
     });
 });
 
