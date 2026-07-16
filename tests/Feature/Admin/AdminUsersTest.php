@@ -639,3 +639,31 @@ it('preselects the user on the admin ticket create form', function () {
         ->assertJsonPath('props.preselectedUser.id', $target->id)
         ->assertJsonPath('props.preselectedUser.email', 'cust@x.test');
 });
+
+it('exposes legacy-parity resource fields: blocked/deleted "ago" text and stale activity', function () {
+    config(['larafoundry.admin.active_within_days' => 30]);
+    $admin = auAdmin();
+
+    $blocked = auMember('parity-blocked@x.test');
+    $blocked->forceFill([
+        'user_blocked_at' => now()->subDays(3),
+        'last_activity_at' => now()->subDays(90),
+    ])->save();
+
+    $fresh = auMember('parity-fresh@x.test');
+    $fresh->forceFill(['last_activity_at' => now()])->save();
+
+    $rows = collect(
+        $this->actingAs($admin)
+            ->get('/admin/users', ['X-Inertia' => 'true'])
+            ->assertOk()
+            ->json('props.users.data')
+    )->keyBy('email');
+
+    expect($rows['parity-blocked@x.test']['is_blocked'])->toBeTrue()
+        ->and($rows['parity-blocked@x.test']['blocked_at_human'])->toBeString()
+        ->and($rows['parity-blocked@x.test']['last_activity_stale'])->toBeTrue()
+        ->and($rows['parity-fresh@x.test']['last_activity_stale'])->toBeFalse()
+        ->and($rows['parity-fresh@x.test']['blocked_at_human'])->toBeNull()
+        ->and($rows['parity-fresh@x.test']['deleted_at_human'])->toBeNull();
+});

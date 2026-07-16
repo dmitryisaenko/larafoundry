@@ -9,6 +9,10 @@ import { computed } from 'vue';
  * (`current_page` / `last_page` / `per_page` / `total` / `from` / `to`).
  * Preserves the current query string across page links. Renders a compact
  * range with ellipses for long result sets. Tailwind-styled.
+ *
+ * Legacy-parity layout (kohana): the row reads `from … to` on the left, the
+ * numbered page links in the centre, and the grand `total` on the right. It is
+ * hidden entirely for a single page of results — a lone "1" is noise.
  */
 const page = usePage();
 
@@ -49,10 +53,9 @@ const pages = computed(() => {
 </script>
 
 <template>
-    <nav v-if="p.total > 0" class="flex flex-wrap items-center justify-between gap-3" aria-label="Pagination">
-        <p class="text-sm text-ink-soft">
-            {{ p.from }}–{{ p.to }} / {{ p.total }}
-        </p>
+    <!-- Hidden for a single page: a lone "1" is noise (legacy parity). -->
+    <nav v-if="p.last_page > 1" class="flex flex-wrap items-center justify-between gap-3" aria-label="Pagination">
+        <p class="min-w-16 text-sm text-ink-soft">{{ p.from }} … {{ p.to }}</p>
 
         <div class="flex items-center gap-1">
             <template v-for="(item, index) in pages" :key="index">
@@ -74,5 +77,7 @@ const pages = computed(() => {
                 </Link>
             </template>
         </div>
+
+        <p class="min-w-16 text-right text-sm text-ink-soft">{{ p.total }}</p>
     </nav>
 </template>

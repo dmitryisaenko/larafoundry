@@ -1,19 +1,29 @@
 <script setup>
 /**
- * Super-admin user list table (phase 2.3, extended 3a).
+ * Super-admin user list table (phase 2.3, extended 3a; legacy-parity restyle
+ * phase 7).
  *
  * Renders the rows shaped by AdminUserResource and emits row actions up to the
  * page (edit/block/unblock/delete/restore/impersonate/verify/logs/ticket), which
  * own the requests. No v-html anywhere.
  *
- * PII columns are opt-in (phase 3a): Phone, Sex and Age render only when the host
- * switched the matching token on in `larafoundry.admin.user_columns`, surfaced
- * here as the `userColumns` prop. The default table stays privacy-clean — the
- * resource does not even serialise those fields unless opted in.
+ * Layout mirrors the boot kohana console: dense rows, contact grouped into one
+ * Email / Phone cell (with per-channel verify ticks and social links beneath),
+ * registration + last-activity grouped into one cell (stale activity flagged in
+ * a warning colour), the block/delete reason shown under the name, and the whole
+ * row tinted amber (blocked) or rose (deleted). Status is the tint, not a column,
+ * so the standalone Language / Auth / Status columns are gone.
+ *
+ * PII columns are opt-in (phase 3a): Phone, Sex, Age and Social render only when
+ * the host switched the matching token on in `larafoundry.admin.user_columns`,
+ * surfaced here as the `userColumns` prop — the resource does not even serialise
+ * those fields unless opted in. Sex and Age are their own columns; Phone and
+ * Social fold into the Email / Phone cell.
  *
  * HOST SEAM (phase 7): each row may carry `extra_columns` — display cells a host
  * appended by subclassing AdminUserResource (see its `extra()`). The header is
- * derived from the first row's cells, so a host gets its column with zero fork.
+ * derived from the union of cell keys across rows, so a host gets its column with
+ * zero fork.
  */
 import { computed } from 'vue';
 import UsersTableActions from './UsersTableActions.vue';
@@ -68,7 +78,7 @@ function cellFor(user, key) {
     return (user.extra_columns ?? []).find((c) => c.key === key) ?? {};
 }
 
-// Colour token -> pill classes, shared by the auth badge and host extra badges.
+// Colour token -> pill classes, shared by host extra badges.
 const badgeClass = {
     emerald: 'bg-emerald-50 text-emerald-700',
     amber: 'bg-amber-50 text-amber-700',
@@ -93,12 +103,23 @@ function sexLabel(value) {
     return value ?? '-';
 }
 
-// Total column count for the empty-state row: the fixed core columns
-// (ID + name/email/country/language/auth/companies/registered/last-activity/
-// status/actions = 11), plus the opt-in columns that are on, plus host extras —
-// so the empty-state colspan tracks whatever is actually rendered.
-const FIXED_COLUMNS = 11;
-const OPTIONAL_TOKENS = ['phone', 'sex', 'age', 'social'];
+// Row tint by account state (legacy parity): blocked = amber wash, deleted = rose
+// wash. Opacity-based so it reads correctly in both light and dark themes.
+function rowTint(user) {
+    if (user.is_deleted) {
+        return 'bg-rose-500/10';
+    }
+    if (user.is_blocked) {
+        return 'bg-amber-500/10';
+    }
+    return '';
+}
+
+// Fixed columns for the empty-state colspan: ID, Name, Email/Phone,
+// Registered/Activity, Comp./Empl., Country, Actions = 7. Phone/Social fold into
+// the Email/Phone cell (no own column); only Sex and Age add columns.
+const FIXED_COLUMNS = 7;
+const OPTIONAL_TOKENS = ['sex', 'age'];
 const optionalCount = computed(() => OPTIONAL_TOKENS.filter((t) => has(t)).length);
 const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumns.value.length);
 </script>
@@ -110,27 +131,28 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                 <tr>
                     <th class="px-3 py-2">{{ $t('ID') }}</th>
                     <th class="px-3 py-2">{{ $t('Name') }}</th>
-                    <th class="px-3 py-2">{{ $t('Email') }}</th>
-                    <th v-if="has('phone')" class="px-3 py-2">{{ $t('Phone') }}</th>
+                    <th class="px-3 py-2">{{ $t('Email') }} / {{ $t('Phone') }}</th>
+                    <th class="px-3 py-2">{{ $t('Registered') }} / {{ $t('Last activity') }}</th>
+                    <th class="px-3 py-2">{{ $t('Comp. / Empl.') }}</th>
+                    <th class="px-3 py-2">{{ $t('Country') }}</th>
                     <th v-if="has('sex')" class="px-3 py-2">{{ $t('Sex') }}</th>
                     <th v-if="has('age')" class="px-3 py-2">{{ $t('Age') }}</th>
-                    <th v-if="has('social')" class="px-3 py-2">{{ $t('Social links') }}</th>
-                    <th class="px-3 py-2">{{ $t('Country') }}</th>
-                    <th class="px-3 py-2">{{ $t('Language') }}</th>
-                    <th class="px-3 py-2">{{ $t('Auth') }}</th>
-                    <th class="px-3 py-2">{{ $t('Comp. / Empl.') }}</th>
-                    <th class="px-3 py-2">{{ $t('Registered') }}</th>
-                    <th class="px-3 py-2">{{ $t('Last activity') }}</th>
-                    <th class="px-3 py-2">{{ $t('Status') }}</th>
                     <th v-for="col in extraColumns" :key="col.key" class="px-3 py-2">{{ $t(col.label) }}</th>
                     <th class="px-3 py-2 text-right">{{ $t('Actions') }}</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="user in users" :key="user.id" class="border-b border-border/60 align-middle">
+                <tr
+                    v-for="user in users"
+                    :key="user.id"
+                    class="border-b border-border/60 align-top"
+                    :class="rowTint(user)"
+                >
                     <td class="px-3 py-2 text-ink-soft">{{ user.id }}</td>
+
+                    <!-- Name: avatar + name, with the block/delete reason beneath. -->
                     <td class="px-3 py-2">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-start gap-2">
                             <UserAvatar
                                 :src="user.avatar_url"
                                 :name="`${user.name} ${user.lastname || ''}`"
@@ -139,25 +161,34 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                             <div>
                                 <div class="font-medium text-ink">{{ user.name }} {{ user.lastname }}</div>
                                 <div v-if="user.is_admin" class="text-xs font-semibold text-brand-700">{{ $t('Super-admin') }}</div>
+                                <div v-if="user.is_deleted" class="text-xs text-rose-700 dark:text-rose-300">
+                                    {{ $t('Deleted') }}<template v-if="user.deleted_at_human"> · {{ user.deleted_at_human }}</template>
+                                </div>
+                                <div v-else-if="user.is_blocked" class="text-xs text-amber-700 dark:text-amber-300">
+                                    {{ user.block_reason || $t('Blocked') }}<template v-if="user.blocked_at_human"> · {{ user.blocked_at_human }}</template>
+                                </div>
                             </div>
                         </div>
                     </td>
+
+                    <!-- Email / Phone (+ social), each contact channel with a verify tick. -->
                     <td class="px-3 py-2">
-                        <span>{{ user.email }}</span>
-                        <span v-if="user.email_verified" class="ml-1 text-xs text-emerald-600" :title="$t('Verified')">✓</span>
-                    </td>
-                    <td v-if="has('phone')" class="px-3 py-2 text-ink-soft">
-                        <span>{{ user.phone || '-' }}</span>
-                        <span v-if="user.phone && user.phone_verified" class="ml-1 text-xs text-emerald-600" :title="$t('Verified')">✓</span>
-                    </td>
-                    <td v-if="has('sex')" class="px-3 py-2 text-ink-soft">
-                        {{ user.sex ? $t(sexLabel(user.sex)) : '-' }}
-                    </td>
-                    <td v-if="has('age')" class="px-3 py-2 text-ink-soft">{{ user.age ?? '-' }}</td>
-                    <td v-if="has('social')" class="px-3 py-2 text-ink-soft">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1">
+                            <span class="text-ink">{{ user.email }}</span>
+                            <span v-if="user.email_verified" class="text-xs text-emerald-600" :title="$t('Verified')">✓</span>
+                            <span v-else class="text-xs text-rose-500" :title="$t('Unverified')">✗</span>
+                        </div>
+                        <div v-if="has('phone')" class="flex items-center gap-1 text-ink-soft">
+                            <template v-if="user.phone">
+                                <span>{{ user.phone }}</span>
+                                <span v-if="user.phone_verified" class="text-xs text-emerald-600" :title="$t('Verified')">✓</span>
+                                <span v-else class="text-xs text-rose-500" :title="$t('Unverified')">✗</span>
+                            </template>
+                            <span v-else>-</span>
+                        </div>
+                        <div v-if="has('social') && (user.social_links || []).length" class="mt-1 flex items-center gap-2">
                             <a
-                                v-for="(link, i) in (user.social_links || [])"
+                                v-for="(link, i) in user.social_links"
                                 :key="i"
                                 :href="link.url"
                                 target="_blank"
@@ -167,29 +198,26 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                             >
                                 <SocialIcon :platform="link.platform" />
                             </a>
-                            <span v-if="!(user.social_links || []).length">-</span>
                         </div>
                     </td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.country || '-' }}</td>
-                    <td class="px-3 py-2 uppercase text-ink-soft">{{ user.locale || '-' }}</td>
-                    <td class="px-3 py-2">
-                        <span
-                            v-if="user.auth_type === 'oauth'"
-                            class="rounded-sm px-2 py-0.5 text-xs capitalize"
-                            :class="pill('slate')"
-                        >{{ $t('OAuth') }}<template v-if="user.auth_provider"> · {{ user.auth_provider }}</template></span>
-                        <span v-else class="text-xs text-ink-soft">{{ $t('Password') }}</span>
+
+                    <!-- Registered / last activity (stale activity flagged). -->
+                    <td class="px-3 py-2 text-ink-soft">
+                        <div>{{ user.registered_date || '-' }}</div>
+                        <div :class="user.last_activity_stale ? 'text-amber-600 dark:text-amber-400' : 'text-ink-faint'">
+                            {{ user.last_activity_human || '-' }}
+                        </div>
                     </td>
+
                     <td class="px-3 py-2 text-ink-soft">
                         {{ user.owned_companies_count ?? 0 }} / {{ user.employee_companies_count ?? 0 }}
                     </td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.registered_date || '-' }}</td>
-                    <td class="px-3 py-2 text-ink-soft">{{ user.last_activity_human || '-' }}</td>
-                    <td class="px-3 py-2">
-                        <span v-if="user.is_deleted" class="rounded-sm bg-rose-50 px-2 py-0.5 text-xs text-rose-700">{{ $t('Deleted') }}</span>
-                        <span v-else-if="user.is_blocked" class="rounded-sm bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{{ $t('Blocked') }}</span>
-                        <span v-else class="rounded-sm bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">{{ $t('Active') }}</span>
+                    <td class="px-3 py-2 text-ink-soft">{{ user.country || '-' }}</td>
+                    <td v-if="has('sex')" class="px-3 py-2 text-ink-soft">
+                        {{ user.sex ? $t(sexLabel(user.sex)) : '-' }}
                     </td>
+                    <td v-if="has('age')" class="px-3 py-2 text-ink-soft">{{ user.age ?? '-' }}</td>
+
                     <td v-for="col in extraColumns" :key="col.key" class="px-3 py-2 text-ink-soft">
                         <span
                             v-if="cellFor(user, col.key).badge"
@@ -198,6 +226,7 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                         >{{ cellFor(user, col.key).value }}</span>
                         <span v-else>{{ cellFor(user, col.key).value ?? '-' }}</span>
                     </td>
+
                     <td class="px-3 py-2 text-right">
                         <UsersTableActions
                             :user="user"

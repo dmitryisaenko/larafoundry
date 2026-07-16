@@ -1,13 +1,3 @@
-<script>
-// Module-shared reference count of how many Modal instances currently hold the
-// body scroll-lock. This lives in a plain <script> (true module scope) — a
-// variable declared in <script setup> would be compiled into setup() and thus
-// be per-instance, defeating the cross-modal coordination.
-let scrollLockCount = 0;
-
-export default { name: 'Modal' };
-</script>
-
 <script setup>
 /**
  * Reusable overlay modal.
@@ -34,6 +24,7 @@ export default { name: 'Modal' };
  * Slots: default (body), footer.
  */
 import { onBeforeUnmount, ref, watch } from 'vue';
+import { useScrollLock } from '../../composables/useScrollLock.js';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -41,6 +32,10 @@ const props = defineProps({
     closeOnEsc: { type: Boolean, default: true },
     closeOnBackdrop: { type: Boolean, default: true },
 });
+
+// Shared, reference-counted body scroll-lock (coordinated with every other
+// overlay: Modal, ConfirmDialog, AdminFilterDrawer).
+const { lock: lockScroll, unlock: unlockScroll } = useScrollLock();
 
 const emit = defineEmits(['close']);
 
@@ -104,27 +99,14 @@ function trapTab(event) {
 
 // Scroll-lock + listener lifecycle tied strictly to `open`, so toggling the
 // prop is the single source of truth and unmount can never leave the body
-// locked or a dangling key handler (a donor footgun).
-//
-// The body scroll-lock is reference-counted on a module-shared counter: when two
-// scroll-locking surfaces overlap (a host modal under this auth modal), the
-// first to close must not unlock the body while the second is still open. Each
-// instance also remembers whether IT applied the lock, so it only decrements
-// once regardless of how many times unlock() runs (open→unmount).
-let lockedByThisInstance = false;
+// locked or a dangling key handler (a donor footgun). The scroll-lock itself is
+// reference-counted across every overlay by {@see useScrollLock}, so overlapping
+// surfaces don't unlock the body out from under one another.
 let previouslyFocused = null;
 
 function lock() {
     document.addEventListener('keydown', onKeydown);
-
-    if (!lockedByThisInstance) {
-        lockedByThisInstance = true;
-        scrollLockCount += 1;
-    }
-    // Idempotent: always reflect "at least one modal open" on the body, so the
-    // class state can't drift from the counter even if something outside toggled
-    // it. unlock() is the only place that clears it, and only at count zero.
-    document.body.classList.add('overflow-hidden');
+    lockScroll();
 
     // Remember the trigger so focus can return to it on close (a11y).
     previouslyFocused = document.activeElement;
@@ -132,14 +114,7 @@ function lock() {
 
 function unlock() {
     document.removeEventListener('keydown', onKeydown);
-
-    if (lockedByThisInstance) {
-        lockedByThisInstance = false;
-        scrollLockCount = Math.max(0, scrollLockCount - 1);
-        if (scrollLockCount === 0) {
-            document.body.classList.remove('overflow-hidden');
-        }
-    }
+    unlockScroll();
 
     // Restore focus to whatever held it before the modal opened.
     if (previouslyFocused) {

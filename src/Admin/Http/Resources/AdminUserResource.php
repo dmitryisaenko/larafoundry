@@ -128,6 +128,14 @@ class AdminUserResource extends JsonResource
             'is_deleted' => $this->user_deleted_at !== null,
             'block_code' => $this->block_code,
             'block_reason' => $this->user_blocked_status,
+            // Humanized "x ago" for the reason line under the name (legacy parity):
+            // null when the state does not apply, so the table renders nothing.
+            'blocked_at_human' => $this->user_blocked_at
+                ?->locale(app()->getLocale())
+                ->diffForHumans(),
+            'deleted_at_human' => $this->user_deleted_at
+                ?->locale(app()->getLocale())
+                ->diffForHumans(),
             // Kept for backward compatibility; the table now reads the split
             // owned/employee counts below for the "Comp. / Empl." column.
             'companies_count' => $this->whenCounted('companies'),
@@ -139,6 +147,14 @@ class AdminUserResource extends JsonResource
             'last_activity_human' => $this->last_activity_at
                 ?->locale(app()->getLocale())
                 ->diffForHumans(),
+            // Stale = last active before the "recent activity" window (legacy
+            // parity: the table flags an old last-activity in a warning colour).
+            // Reuses the console's existing `active_within_days` threshold. False
+            // when the user has never been active (rendered as "-").
+            'last_activity_stale' => $this->last_activity_at !== null
+                && $this->last_activity_at->lt(
+                    now()->subDays((int) config('larafoundry.admin.active_within_days', 30)),
+                ),
             // Host seam: extra display cells appended after the core columns.
             'extra_columns' => array_values($this->extra($request)),
         ];
