@@ -9,6 +9,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PaymentController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PromoController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\SecurityController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
@@ -44,10 +45,46 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             ->middleware('throttle:6,1')
             ->name('otp.verify');
 
+        // Operator self-service security — ENROLMENT surface, deliberately OUTSIDE
+        // the `larafoundry.admin.otp` gate below. The gate (and the OTP challenge)
+        // redirect an un-enrolled operator here via `two_factor_setup_route`, so
+        // gating this would loop (same reason as otp.show). Only the actions the
+        // chicken-and-egg needs live here: view the page, enable + confirm 2FA, and
+        // change the password (already defended by `current_password`, so a stolen
+        // session cannot silently swap the credential). The QR + recovery codes are
+        // NOT re-fetchable endpoints — the page reads them from `show()` props only
+        // while enrolment is in progress (unconfirmed) or for a stepped-up session,
+        // so a non-stepped-up session cannot read the live TOTP secret or recovery
+        // codes (which would otherwise satisfy the step-up challenge). Everything is
+        // behind `larafoundry.admin` (super-admin only) and proxies the core's /
+        // Fortify's own actions (no dependence on Fortify's unnamed /user/* routes).
+        Route::get('security', [SecurityController::class, 'show'])->name('security.show');
+        Route::post('security/two-factor/enable', [SecurityController::class, 'enableTwoFactor'])
+            ->middleware('throttle:6,1')
+            ->name('security.two-factor.enable');
+        Route::post('security/two-factor/confirm', [SecurityController::class, 'confirmTwoFactor'])
+            ->middleware('throttle:6,1')
+            ->name('security.two-factor.confirm');
+        Route::put('security/password', [SecurityController::class, 'updatePassword'])
+            ->middleware('throttle:6,1')
+            ->name('security.password.update');
+
         // The console proper: everything past the OTP step-up gate.
         Route::middleware('larafoundry.admin.otp')->group(function () {
             // The console landing screen (phase 3.4): URL /admin.
             Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+
+            // Destructive 2FA management lives INSIDE the step-up gate (unlike the
+            // enrolment actions above): disabling 2FA or rotating recovery codes
+            // only matters once the operator is enrolled, and by then they can
+            // pass the step-up — so requiring a stepped-up session here closes the
+            // stolen-cookie path (a cookie without a fresh OTP cannot strip the
+            // second factor or read/rotate its recovery codes).
+            Route::delete('security/two-factor', [SecurityController::class, 'disableTwoFactor'])
+                ->name('security.two-factor.disable');
+            Route::post('security/two-factor/recovery-codes', [SecurityController::class, 'regenerateRecoveryCodes'])
+                ->middleware('throttle:6,1')
+                ->name('security.two-factor.recovery-codes.regenerate');
 
             Route::prefix('users')->name('users.')->group(function () {
                 Route::get('/', [UserController::class, 'index'])->name('index');

@@ -63,6 +63,13 @@ return [
         'invalid_code' => 'The provided authentication code was invalid.',
     ],
 
+    'operator_security' => [
+        'two_factor_enabled' => 'Two-factor authentication is enabled.',
+        'two_factor_disabled' => 'Two-factor authentication is disabled.',
+        'recovery_codes_regenerated' => 'Recovery codes regenerated.',
+        'password_updated' => 'Your password has been updated.',
+    ],
+
     'pin' => [
         'enabled' => 'PIN lock enabled.',
         'disabled' => 'PIN lock disabled.',

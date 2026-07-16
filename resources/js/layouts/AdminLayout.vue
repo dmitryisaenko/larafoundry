@@ -19,6 +19,7 @@ import Seo from '../components/Seo.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
 import MobileNav from '../components/navigation/MobileNav.vue';
 import NotificationBell from '../components/notifications/NotificationBell.vue';
+import OperatorPullout from '../components/admin/OperatorPullout.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 
@@ -49,6 +50,7 @@ const navigation = computed(() => page.props.navigation ?? []);
                 <nav class="flex items-center gap-4 text-sm text-ink-soft">
                     <NotificationBell />
                     <slot name="nav" />
+                    <OperatorPullout />
                 </nav>
             </div>
         </header>

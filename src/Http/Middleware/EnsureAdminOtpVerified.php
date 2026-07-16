@@ -8,6 +8,7 @@ use Closure;
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Http\Concerns\DetectsHardFailureClients;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -60,7 +61,11 @@ class EnsureAdminOtpVerified
         if (! $user->hasEnabledTwoFactorAuthentication()) {
             $setupRoute = config('larafoundry.security.super_admin.two_factor_setup_route');
 
-            if (is_string($setupRoute) && $setupRoute !== '') {
+            // Redirect to enrolment only when the configured route actually exists
+            // — a host that suppresses the admin console (dropping admin.security.*)
+            // while keeping this gate must fail closed (403), not 500 on a missing
+            // route.
+            if (is_string($setupRoute) && $setupRoute !== '' && Route::has($setupRoute)) {
                 return redirect()->route($setupRoute)
                     ->with('error', __('larafoundry::auth.admin_otp.setup_required'));
             }

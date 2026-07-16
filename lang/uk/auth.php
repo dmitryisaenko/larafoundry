@@ -63,6 +63,13 @@ return [
         'invalid_code' => 'Наданий код автентифікації недійсний.',
     ],
 
+    'operator_security' => [
+        'two_factor_enabled' => 'Двофакторну автентифікацію увімкнено.',
+        'two_factor_disabled' => 'Двофакторну автентифікацію вимкнено.',
+        'recovery_codes_regenerated' => 'Коди відновлення перегенеровано.',
+        'password_updated' => 'Ваш пароль оновлено.',
+    ],
+
     'pin' => [
         'enabled' => 'PIN-блокування увімкнено.',
         'disabled' => 'PIN-блокування вимкнено.',

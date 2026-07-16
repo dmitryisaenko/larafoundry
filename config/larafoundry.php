@@ -168,7 +168,9 @@ return [
     |                     (RedirectSuperAdminToConsole redirects them here from
     |                     tenant zones).
     |   allowed_routes  — route names (fnmatch) available to the super-admin OUTSIDE
-    |                     the console redirect (the console itself, OTP gate, PIN, logout).
+    |                     the console redirect (the console itself, OTP gate, PIN, logout,
+    |                     and the operator pull-out's own preference actions: language
+    |                     switch + the allowlisted ui-settings PUT for theme).
     | email_verification — settings for the EnsureEmailIsVerified middleware:
     |   redirect_route  — where to send an unverified user.
     |   except_routes   — route names (fnmatch patterns) available without verification.
@@ -184,6 +186,14 @@ return [
                 'pin.*',
                 'logout',
                 'password.confirm*',
+                // The operator pull-out (in AdminLayout) lets the operator switch
+                // language and toggle the theme without leaving the console. Both
+                // are per-user, self-scoped preference endpoints — not tenant
+                // surface — so the confine allows them explicitly (they are named
+                // routes outside the admin.* namespace, so the pattern above would
+                // otherwise bounce the operator to the console on click).
+                'larafoundry.language.switch',
+                'profile.ui-settings.update',
             ],
 
             // OTP step-up gate (phase 1.4): the operator console requires a
@@ -192,12 +202,15 @@ return [
             // Fortify's login challenge) still prove OTP before reaching /admin.
             //
             // require_otp        — master switch. true = enforce the gate.
-            // two_factor_setup_route — route NAME of the host's 2FA-enrolment
-            //   screen. A super-admin without confirmed 2FA is sent here. Null
-            //   (no host route) means the gate denies with 403 instead (fail
-            //   closed: no operator access without 2FA configured).
+            // two_factor_setup_route — route NAME of the 2FA-enrolment screen a
+            //   super-admin without confirmed 2FA is sent to. Defaults to the
+            //   core's in-console operator security page (`admin.security.show`),
+            //   which lives OUTSIDE the OTP step-up gate so an un-enrolled operator
+            //   can reach it to enrol — closing the chicken-and-egg. A host may
+            //   override this to point at its own enrolment screen; setting it
+            //   empty makes the gate deny with 403 instead (fail closed).
             'require_otp' => env('LARAFOUNDRY_ADMIN_REQUIRE_OTP', true),
-            'two_factor_setup_route' => env('LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE'),
+            'two_factor_setup_route' => env('LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE', 'admin.security.show'),
         ],
         'email_verification' => [
             'redirect_route' => 'verification.notice',

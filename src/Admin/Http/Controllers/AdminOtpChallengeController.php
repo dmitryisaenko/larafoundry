@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -95,7 +96,9 @@ class AdminOtpChallengeController extends Controller
         if (! $user->hasEnabledTwoFactorAuthentication()) {
             $setupRoute = config('larafoundry.security.super_admin.two_factor_setup_route');
 
-            if (is_string($setupRoute) && $setupRoute !== '') {
+            // Fail closed (403) rather than 500 if the configured enrolment route
+            // does not exist (e.g. a host suppressed the admin console).
+            if (is_string($setupRoute) && $setupRoute !== '' && Route::has($setupRoute)) {
                 return redirect()->route($setupRoute)
                     ->with('error', __('larafoundry::auth.admin_otp.setup_required'));
             }
