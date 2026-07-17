@@ -12,10 +12,10 @@
  * scroll-lock, focus-trap, Esc), so AdminLayout only drops <OperatorPullout /> into
  * its header nav.
  *
- * Theme is SAVE-ONLY: toggling PUTs the `theme` ui-setting (the same allowlisted
- * endpoint the profile Appearance form uses) and the host applies it on the next
- * load. There is no core dark-mode application layer yet (that lands with the host
- * DarkMode work), so this deliberately does not flip a class live.
+ * Theme toggle PUTs the `theme` ui-setting (the same allowlisted endpoint the
+ * profile Appearance form uses); the core theme applier (setupTheme, wired via
+ * createLaraFoundry) then flips the `dark` class live off the refreshed
+ * ui_settings prop — no reload needed.
  */
 import { computed, ref } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
@@ -64,14 +64,14 @@ function switchLocale(locale) {
         <button
             type="button"
             class="flex items-center gap-2 rounded-full outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand-500"
-            :aria-label="$t('Operator menu')"
-            :title="$t('Operator menu')"
+            :aria-label="$t('Super-admin')"
+            :title="$t('Super-admin')"
             @click="open = true"
         >
             <UserAvatar :src="user?.avatar_url" :name="user?.name" :size="32" />
         </button>
 
-        <AdminFilterDrawer v-model:open="open" :title="$t('Operator')">
+        <AdminFilterDrawer v-model:open="open" :title="$t('Super-admin')">
             <!-- Identity card -->
             <div class="flex items-center gap-3 rounded-md border border-border bg-surface-subtle p-4">
                 <UserAvatar :src="user?.avatar_url" :name="user?.name" :size="40" />

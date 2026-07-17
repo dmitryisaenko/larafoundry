@@ -14,7 +14,7 @@
  * The active tab is synced to the `?tab=` query (history.replaceState) so the
  * Security tab's server redirects (enable/confirm/password) land back on it.
  */
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { AdminLayout } from '@dmitryisaenko/larafoundry';
 import ProfileForm from '../../Profile/sections/ProfileForm.vue';
 import AvatarManager from '../../Profile/sections/AvatarManager.vue';
@@ -42,6 +42,11 @@ const tabs = [
     { key: 'sessions', label: 'Sessions' },
     { key: 'appearance', label: 'Preferences' },
 ];
+
+// Core controllers hand Inertia a JsonResource (ProfileResource); inertia-laravel
+// resolves it wrapped in `data` (same as the tenant hub). Normalise once so each
+// section gets a flat profile object, whatever the shape.
+const profileData = computed(() => props.profile?.data ?? props.profile ?? {});
 
 const activeTab = ref(props.initialTab);
 
@@ -81,14 +86,14 @@ function selectTab(key) {
             <div class="rounded-sm border border-border bg-surface p-6">
                 <ProfileForm
                     v-if="activeTab === 'profile'"
-                    :profile="profile"
+                    :profile="profileData"
                     endpoint="/admin/profile/information"
                     :email-editable="false"
                 />
 
                 <AvatarManager
                     v-else-if="activeTab === 'avatar'"
-                    :profile="profile"
+                    :profile="profileData"
                     endpoint="/admin/profile/avatar"
                 />
 
@@ -100,7 +105,7 @@ function selectTab(key) {
                     :can_manage_two_factor="can_manage_two_factor"
                     :has_pin="pin.has_pin"
                     :pin_length="pin.length"
-                    :has_password="profile.has_password"
+                    :has_password="profileData.has_password"
                 />
 
                 <SessionsManager

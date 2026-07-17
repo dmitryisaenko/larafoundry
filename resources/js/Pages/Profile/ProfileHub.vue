@@ -35,6 +35,12 @@ const props = defineProps({
     accountSettings: { type: Object, default: () => ({ schema: [], values: {} }) },
 });
 
+// Core controllers hand Inertia a JsonResource (ProfileResource); inertia-laravel
+// resolves it wrapped in `data`, so normalise once here to a flat profile object
+// (matches the admin operator hub) — each section then gets a plain object
+// whatever the shape.
+const profileData = computed(() => props.profile?.data ?? props.profile ?? {});
+
 const tabs = computed(() => [
     { key: 'profile', label: 'Profile' },
     { key: 'avatar', label: 'Photo' },
@@ -70,12 +76,12 @@ const activeTab = ref('profile');
             </nav>
 
             <div class="rounded-sm border border-border bg-surface p-6">
-                <ProfileForm v-if="activeTab === 'profile'" :profile="profile" />
+                <ProfileForm v-if="activeTab === 'profile'" :profile="profileData" />
 
-                <AvatarManager v-else-if="activeTab === 'avatar'" :profile="profile" />
+                <AvatarManager v-else-if="activeTab === 'avatar'" :profile="profileData" />
 
                 <div v-else-if="activeTab === 'security'" class="flex flex-col gap-8">
-                    <PasswordForm v-if="profile.has_password" />
+                    <PasswordForm v-if="profileData.has_password" />
                     <PinManager v-if="pin.enabled" :has-pin="pin.has_pin" :length="pin.length" />
                     <section>
                         <h2 class="text-base font-semibold text-ink">{{ $t('Two-factor authentication') }}</h2>
@@ -109,7 +115,7 @@ const activeTab = ref('profile');
                 <DangerZone
                     v-else-if="activeTab === 'danger'"
                     :can-delete="canDeleteAccount"
-                    :oauth-only="profile.is_oauth_only"
+                    :oauth-only="profileData.is_oauth_only"
                 >
                     <DataExport />
                 </DangerZone>

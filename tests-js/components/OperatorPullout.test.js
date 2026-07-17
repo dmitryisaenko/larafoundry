@@ -34,7 +34,7 @@ import OperatorPullout from '../../resources/js/components/admin/OperatorPullout
 const mounts = { global: { stubs: { teleport: true } } };
 
 async function openPullout(wrapper) {
-    await wrapper.get('button[aria-label="Operator menu"]').trigger('click');
+    await wrapper.get('button[aria-label="Super-admin"]').trigger('click');
 }
 
 describe('OperatorPullout', () => {
@@ -45,7 +45,7 @@ describe('OperatorPullout', () => {
 
     it('renders the trigger avatar button', () => {
         const wrapper = mount(OperatorPullout, mounts);
-        expect(wrapper.find('button[aria-label="Operator menu"]').exists()).toBe(true);
+        expect(wrapper.find('button[aria-label="Super-admin"]').exists()).toBe(true);
     });
 
     it('shows the operator identity and the profile + logout links when open', async () => {

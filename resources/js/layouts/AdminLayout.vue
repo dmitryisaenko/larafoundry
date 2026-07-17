@@ -62,7 +62,7 @@ watch(
         <AppFlashMessage />
 
         <header class="sticky top-0 z-30 border-b border-border bg-surface">
-            <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] items-center justify-between px-4 py-3">
+            <div class="flex w-full items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
                     <MobileNav :items="navigation" />
                     <span class="rounded-sm bg-brand-700 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white">
@@ -78,9 +78,13 @@ watch(
             </div>
         </header>
 
-        <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] flex-1 gap-6 px-4 py-6">
+        <!-- Sidebar is flush to the left viewport edge (outside the max-width
+             wrapper); only the page CONTENT inside <main> is centred at
+             --lf-max-width. Mirrors the host tenant shell so the rail hugs the
+             screen border instead of floating in a centred column. -->
+        <div class="flex flex-1">
             <aside
-                class="hidden shrink-0 transition-[width] duration-200 md:block"
+                class="hidden shrink-0 border-r border-border bg-surface px-2 py-6 transition-[width] duration-200 md:block"
                 :class="collapsed ? 'md:w-16' : 'md:w-60'"
             >
                 <button
@@ -108,8 +112,10 @@ watch(
                 <SidebarNav :items="navigation" :collapsed="collapsed" />
             </aside>
 
-            <main class="min-w-0 flex-1">
-                <slot />
+            <main class="min-w-0 flex-1 px-4 py-6 lg:px-6">
+                <div class="mx-auto w-full max-w-[var(--lf-max-width)]">
+                    <slot />
+                </div>
             </main>
         </div>
 
