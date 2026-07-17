@@ -11,9 +11,11 @@
  *         app.mount(el);
  *     }
  *
- * This installs i18n (with global `$t` / `globalThis.t`) and registers the
- * core's globally-available components. Ziggy and the Inertia plugin stay the
- * host's responsibility — the core does not assume how routing is provided.
+ * This installs i18n (with global `$t` / `globalThis.t`), the theme applier (the
+ * SPA half of dark mode — keeps `<html>`'s `dark` class in sync with the live
+ * `theme` preference) and registers the core's globally-available components.
+ * Ziggy and the Inertia plugin stay the host's responsibility — the core does not
+ * assume how routing is provided.
  */
 
 import { installI18n } from './i18n/index.js';
@@ -21,7 +23,10 @@ import { installI18n } from './i18n/index.js';
 export { useT } from './composables/useT.js';
 export { useDateFormat } from './composables/useDateFormat.js';
 export { formatDate, formatDateTime } from './composables/dateFormat.js';
+export { useTheme, setupTheme } from './composables/useTheme.js';
 export { installI18n, createAppI18n } from './i18n/index.js';
+
+import { setupTheme } from './composables/useTheme.js';
 
 // Shared components
 export { default as AppFlashMessage } from './components/AppFlashMessage.vue';
@@ -173,6 +178,10 @@ export function registerDashboardWidget(name, component) {
  */
 export function createLaraFoundry(app, pageProps = {}) {
     const i18n = installI18n(app, pageProps);
+
+    // Keep the dark-mode class in sync with the live theme preference across SPA
+    // navigation (the root template only resolves it on the first paint).
+    setupTheme(pageProps);
 
     return { i18n };
 }

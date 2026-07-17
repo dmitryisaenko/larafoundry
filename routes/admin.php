@@ -15,7 +15,6 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
-use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -77,7 +76,6 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             ->middleware('throttle:20,1')
             ->name('profile.avatar.update');
         Route::delete('profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
-        Route::put('profile/account', [ProfileController::class, 'updateAccount'])->name('profile.account.update');
         // 'others' before '{session}' so the literal segment wins the match.
         Route::delete('profile/sessions/others', [ProfileController::class, 'destroyOtherSessions'])
             ->name('profile.sessions.destroy-others');
@@ -186,9 +184,11 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             Route::get('affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
             Route::get('promo', [PromoController::class, 'index'])->name('promo.index');
 
-            // App-scope settings (phase 5.1).
-            Route::get('settings', [AdminSettingsController::class, 'index'])->name('settings.index');
-            Route::put('settings', [AdminSettingsController::class, 'update'])->name('settings.update');
+            // NOTE: the app-scope Settings screen (admin.settings.*) was removed —
+            // its keys (support_email / signups_enabled) are reserved config with
+            // no consumer yet, so there is nothing to edit. Re-add the route +
+            // Settings/Http/Controllers/Admin/SettingsController when a consumer
+            // lands (see config/larafoundry.php `settings`).
 
             // Email templates (phase 5.1, two layers in phase 2b). TRANSACTIONAL
             // codes (registry) are edit-only + fail-closed; MARKETING templates

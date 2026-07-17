@@ -12,8 +12,8 @@
  * `title` prop labels the current section; the `nav` slot is kept for ad-hoc
  * header links (back-compat with the 2.1 shape).
  */
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { usePage, router } from '@inertiajs/vue3';
 import AppFlashMessage from '../components/AppFlashMessage.vue';
 import Seo from '../components/Seo.vue';
 import SidebarNav from '../components/navigation/SidebarNav.vue';
@@ -30,6 +30,29 @@ defineProps({
 const page = usePage();
 
 const navigation = computed(() => page.props.navigation ?? []);
+
+// Collapsible sidebar (icon-rail). Seeded from the operator's `sidebar_collapsed`
+// UI preference (shared globally), so the choice survives reloads. Toggling
+// persists it through the same allowlisted endpoint the Appearance tab uses
+// (`profile.ui-settings.update` is in the super-admin allow-list), then flips the
+// local state optimistically so the rail animates without waiting on the round-trip.
+const collapsed = ref(page.props.ui_settings?.sidebar_collapsed === true);
+
+function toggleSidebar() {
+    collapsed.value = !collapsed.value;
+    router.put(
+        '/profile/ui-settings',
+        { key: 'sidebar_collapsed', value: collapsed.value },
+        { preserveScroll: true, preserveState: true },
+    );
+}
+
+// Keep the rail in sync if the same preference is changed elsewhere (the
+// Preferences tab's "Collapse sidebar" toggle writes the same shared prop).
+watch(
+    () => page.props.ui_settings?.sidebar_collapsed,
+    (next) => { collapsed.value = next === true; },
+);
 </script>
 
 <template>
@@ -56,8 +79,33 @@ const navigation = computed(() => page.props.navigation ?? []);
         </header>
 
         <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] flex-1 gap-6 px-4 py-6">
-            <aside class="hidden w-60 shrink-0 md:block">
-                <SidebarNav :items="navigation" />
+            <aside
+                class="hidden shrink-0 transition-[width] duration-200 md:block"
+                :class="collapsed ? 'md:w-16' : 'md:w-60'"
+            >
+                <button
+                    type="button"
+                    class="mb-2 flex w-full items-center rounded-sm px-2 py-2 text-sm text-ink-soft transition hover:bg-surface-subtle hover:text-ink"
+                    :class="collapsed ? 'justify-center' : 'justify-end'"
+                    :title="collapsed ? $t('Expand sidebar') : $t('Collapse sidebar')"
+                    :aria-label="collapsed ? $t('Expand sidebar') : $t('Collapse sidebar')"
+                    :aria-pressed="collapsed"
+                    @click="toggleSidebar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="h-5 w-5 shrink-0 transition-transform duration-200"
+                        :class="collapsed ? 'rotate-180' : ''"
+                        aria-hidden="true"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 4.5 11.25 12l7.5 7.5m-9-15L2.25 12l7.5 7.5" />
+                    </svg>
+                </button>
+                <SidebarNav :items="navigation" :collapsed="collapsed" />
             </aside>
 
             <main class="min-w-0 flex-1">

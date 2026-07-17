@@ -37,6 +37,18 @@ describe('NavItem', () => {
 
         expect(wrapper.find('a').classes()).toContain('text-brand-700');
     });
+
+    it('hides the label and exposes a tooltip in collapsed (icon-rail) mode', () => {
+        const wrapper = mount(NavItem, {
+            props: { item: { labelKey: 'Users', url: '/admin/users', icon: 'users', active: false }, collapsed: true },
+            ...globalMounts,
+        });
+
+        // The text label is gone (icon only) but the accessible tooltip remains.
+        expect(wrapper.text()).not.toContain('Users');
+        expect(wrapper.find('a').attributes('title')).toBe('Users');
+        expect(wrapper.find('svg').exists()).toBe(true);
+    });
 });
 
 describe('NavIcon', () => {
@@ -87,5 +99,48 @@ describe('SidebarNav', () => {
         expect(wrapper.text()).toContain('Group');
         expect(wrapper.text()).toContain('Child');
         expect(wrapper.find('a').attributes('href')).toBe('/child');
+    });
+
+    it('passes collapsed down to leaves (icon-rail: no labels, tooltips instead)', () => {
+        const wrapper = mount(SidebarNav, {
+            props: {
+                collapsed: true,
+                items: [
+                    { labelKey: 'Users', url: '/admin/users', icon: 'users', active: true },
+                    { labelKey: 'Activity log', url: '/admin/activity-log', icon: 'activity', active: false },
+                ],
+            },
+            ...globalMounts,
+        });
+
+        expect(wrapper.text()).not.toContain('Users');
+        const links = wrapper.findAll('a');
+        expect(links).toHaveLength(2);
+        expect(links[0].attributes('title')).toBe('Users');
+    });
+
+    it('flattens a group to its leaves in collapsed mode (no expandable header)', () => {
+        const wrapper = mount(SidebarNav, {
+            props: {
+                collapsed: true,
+                items: [
+                    {
+                        labelKey: 'Group',
+                        icon: 'settings',
+                        submenu: [
+                            { labelKey: 'Child', url: '/child', icon: 'users', active: false },
+                        ],
+                    },
+                ],
+            },
+            ...globalMounts,
+        });
+
+        // No toggle button (the header cannot expand in a rail); the child renders
+        // directly as an icon link with its label as the tooltip.
+        expect(wrapper.find('button').exists()).toBe(false);
+        const link = wrapper.find('a');
+        expect(link.attributes('href')).toBe('/child');
+        expect(link.attributes('title')).toBe('Child');
     });
 });

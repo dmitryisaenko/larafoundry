@@ -4,11 +4,12 @@
  * the console shell.
  *
  * The operator equivalent of the tenant Profile hub: it reuses the SAME section
- * components (profile form, avatar, sessions, appearance/account settings) but
- * points each at the admin-namespaced endpoints (the operator is confined to
- * `admin.*`), and swaps the Security tab for {@see OperatorSecurity} (2FA + PIN +
- * password over the `admin.security.*` endpoints). No Danger zone — the operator
- * account is not self-deletable.
+ * components (profile form, avatar, sessions, appearance) but points each at the
+ * admin-namespaced endpoints (the operator is confined to `admin.*`), and swaps
+ * the Security tab for {@see OperatorSecurity} (2FA + PIN + password over the
+ * `admin.security.*` endpoints). No Danger zone — the operator account is not
+ * self-deletable. The Preferences tab shows only the core appearance keys (the
+ * server trims ui_settings to theme/sidebar/date/time).
  *
  * The active tab is synced to the `?tab=` query (history.replaceState) so the
  * Security tab's server redirects (enable/confirm/password) land back on it.
@@ -20,16 +21,12 @@ import AvatarManager from '../../Profile/sections/AvatarManager.vue';
 import SessionsManager from '../../Profile/sections/SessionsManager.vue';
 import Appearance from '../../Profile/sections/Appearance.vue';
 import OperatorSecurity from './sections/OperatorSecurity.vue';
-// Relative (not the barrel): this page is published into host apps where the
-// barrel is the package and does not re-export every leaf.
-import SettingsForm from '../../../components/settings/SettingsForm.vue';
 
 const props = defineProps({
     profile: { type: Object, required: true },
     sessions: { type: Array, default: () => [] },
     uiSettings: { type: Object, default: () => ({}) },
     uiSettingsSchema: { type: Array, default: () => [] },
-    accountSettings: { type: Object, default: () => ({ schema: [], values: {} }) },
     pin: { type: Object, default: () => ({ enabled: false, has_pin: false, length: 4 }) },
     two_factor_enabled: { type: Boolean, default: false },
     two_factor_setup: { type: Object, default: null },
@@ -114,21 +111,6 @@ function selectTab(key) {
 
                 <div v-else-if="activeTab === 'appearance'" class="flex flex-col gap-8">
                     <Appearance :settings="uiSettings" :schema="uiSettingsSchema" />
-
-                    <!-- Folded-in account settings (user-scope generic preferences).
-                         Hidden when nothing is registered so the tab never shows an
-                         empty block. Posts to the admin-namespaced clone. -->
-                    <section v-if="accountSettings.schema.length" class="flex max-w-xl flex-col gap-3">
-                        <header>
-                            <h2 class="text-base font-semibold text-ink">{{ $t('Account') }}</h2>
-                            <p class="text-sm text-ink-soft">{{ $t('Manage your account preferences.') }}</p>
-                        </header>
-                        <SettingsForm
-                            :schema="accountSettings.schema"
-                            :values="accountSettings.values"
-                            endpoint="/admin/profile/account"
-                        />
-                    </section>
                 </div>
             </div>
         </div>

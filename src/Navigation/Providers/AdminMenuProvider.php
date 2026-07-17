@@ -13,10 +13,12 @@ use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
  * Populates the 'admin' level with the platform surfaces the core ships:
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
  * Activity Log (phase 2.1), Broadcasts (phase 4.1), Support tickets
- * (phase 4.2), the Email templates editor and Settings (phase 5.1), the Legal
- * pages editor (phase 5.3) and the monetization stubs Payments, Affiliates and
- * Promo codes (phase 4 — inert upsell slots reserved for the paid billing
- * add-on). The whole zone already sits behind the
+ * (phase 4.2), the Email templates editor (phase 5.1), the Legal pages editor
+ * (phase 5.3) and the monetization stubs Payments, Affiliates and Promo codes
+ * (phase 4 — inert upsell slots reserved for the paid billing add-on). The
+ * app-scope Settings screen is intentionally NOT surfaced — its two keys
+ * (support_email / signups_enabled) are reserved config with no consumer yet.
+ * The whole zone already sits behind the
  * `larafoundry.admin` gate (super-admin via VisitorStatus), so these items carry
  * NO permission slug — the zone gate is the authority.
  *
@@ -107,13 +109,6 @@ class AdminMenuProvider implements MenuProviderInterface
                 icon: 'promo',
                 order: 37,
                 activePatterns: ['admin.promo.*'],
-            ),
-            new MenuItem(
-                labelKey: 'Settings',
-                route: 'admin.settings.index',
-                icon: 'settings',
-                order: 40,
-                activePatterns: ['admin.settings.*'],
             ),
         ];
     }

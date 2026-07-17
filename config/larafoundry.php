@@ -587,7 +587,13 @@ return [
     */
     'settings' => [
 
-        // App scope — platform-level, editable only by the super-admin.
+        // App scope — platform-level. RESERVED / not yet wired: there is no
+        // consumer reading these two keys (support_email is not surfaced anywhere;
+        // signups_enabled does not gate registration), and the admin Settings
+        // screen that used to edit them has been removed. They are kept as the
+        // registered seam + `public` share contract for a future feature — when a
+        // consumer lands, re-add the admin.settings route + controller and the
+        // editor page. Until then nothing writes them (defaults apply).
         'support_email' => [
             'scope' => 'app',
             'label' => 'Support email',

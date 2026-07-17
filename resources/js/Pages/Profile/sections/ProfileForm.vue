@@ -60,31 +60,35 @@ function submit() {
 
         <InputField v-model="form.middlename" name="middlename" :title="$t('Middle name')" :errors="form.errors" />
 
-        <InputField
-            v-model="form.email"
-            name="email"
-            type="email"
-            :title="$t('Email')"
-            :errors="form.errors"
-            :is-disabled="!emailEditable"
-            autocomplete="email"
-            required
-        />
+        <!-- The email block is hidden when the address is immutable (the operator
+             hub): the email is the reserved operator identity, shown read-only in
+             the pull-out, so there is nothing to edit or re-verify here. -->
+        <template v-if="emailEditable">
+            <InputField
+                v-model="form.email"
+                name="email"
+                type="email"
+                :title="$t('Email')"
+                :errors="form.errors"
+                autocomplete="email"
+                required
+            />
 
-        <p v-if="!profile.email_verified" class="-mt-2 text-xs text-warning">
-            {{ $t('Your email address is not verified.') }}
-        </p>
+            <p v-if="!profile.email_verified" class="-mt-2 text-xs text-warning">
+                {{ $t('Your email address is not verified.') }}
+            </p>
 
-        <InputField
-            v-if="emailChanged"
-            v-model="form.current_password"
-            name="current_password"
-            type="password"
-            :title="$t('Current password')"
-            :placeholder="$t('Required to change your email')"
-            :errors="form.errors"
-            autocomplete="current-password"
-        />
+            <InputField
+                v-if="emailChanged"
+                v-model="form.current_password"
+                name="current_password"
+                type="password"
+                :title="$t('Current password')"
+                :placeholder="$t('Required to change your email')"
+                :errors="form.errors"
+                autocomplete="current-password"
+            />
+        </template>
 
         <div class="grid gap-4 sm:grid-cols-2">
             <InputField v-model="form.phone" name="phone" :title="$t('Phone')" :errors="form.errors" />

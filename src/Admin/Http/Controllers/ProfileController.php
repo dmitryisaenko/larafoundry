@@ -12,9 +12,6 @@ use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\AvatarController;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Requests\UpdateAvatarRequest;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Resources\ProfileResource;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UiSettings;
-use Dmitryisaenko\LaraFoundry\Settings\Http\Controllers\SettingsController;
-use Dmitryisaenko\LaraFoundry\Settings\Http\Requests\UpdateSettingRequest;
-use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -30,10 +27,11 @@ use Inertia\Response;
  * `/settings/*`, `/auth/sessions/*`). This controller re-exposes the SAME
  * self-service surface under `admin.profile.*`: the WRITE paths delegate to the
  * very controllers the tenant profile uses — avatar → {@see AvatarController},
- * account settings → {@see SettingsController}, sessions → {@see SessionController}
- * — so no write logic is duplicated. The two small read-shaping helpers below
- * (the session-list map and {@see accountSettings}) mirror the tenant
+ * sessions → {@see SessionController} — so no write logic is duplicated. The one
+ * small read-shaping helper below (the session-list map) mirrors the tenant
  * {@see \Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\ProfileController}.
+ * The Preferences tab is trimmed to the core appearance keys only (see
+ * UI_SETTINGS_ALLOWLIST) — the operator has no account/company settings surface.
  * The security tab (2FA / PIN / password) keeps using the existing
  * `admin.security.*` endpoints (which carry the OTP step-up gating).
  *
@@ -49,7 +47,14 @@ use Inertia\Response;
  */
 class ProfileController extends Controller
 {
-    public function __construct(private readonly SettingsRepository $settings) {}
+    /**
+     * The operator's Preferences tab is deliberately trimmed to the core
+     * appearance keys only — the operator has no company/app account settings to
+     * fold in, and host-registered app toggles (which the host adds to the shared
+     * ui_settings registry at runtime) belong to tenant users, not the operator.
+     * Theme + sidebar + date/time format are the operator's whole surface here.
+     */
+    private const UI_SETTINGS_ALLOWLIST = ['theme', 'sidebar_collapsed', 'date_format', 'time_format'];
 
     /**
      * Render the operator profile hub with the union of profile + security state.
@@ -81,12 +86,19 @@ class ProfileController extends Controller
             ])->values()->all()
             : [];
 
+        // Only the core appearance keys — see UI_SETTINGS_ALLOWLIST.
+        $allow = array_flip(self::UI_SETTINGS_ALLOWLIST);
+        $uiSettings = array_intersect_key(UiSettings::resolved($user), $allow);
+        $uiSettingsSchema = array_values(array_filter(
+            UiSettings::schema(),
+            fn (array $field) => isset($allow[$field['key']]),
+        ));
+
         return Inertia::render('Admin/Profile/Hub', [
             'profile' => new ProfileResource($user),
             'sessions' => $sessions,
-            'uiSettings' => UiSettings::resolved($user),
-            'uiSettingsSchema' => UiSettings::schema(),
-            'accountSettings' => $this->accountSettings(),
+            'uiSettings' => $uiSettings,
+            'uiSettingsSchema' => $uiSettingsSchema,
             'pin' => [
                 'enabled' => (bool) config('larafoundry.pin.enabled', true),
                 'has_pin' => method_exists($user, 'hasPin') && $user->hasPin(),
@@ -149,15 +161,6 @@ class ProfileController extends Controller
     }
 
     /**
-     * Save one user-scope account setting. Delegates to the tenant
-     * SettingsController (user scope resolves to the caller — the operator).
-     */
-    public function updateAccount(UpdateSettingRequest $request): RedirectResponse
-    {
-        return app(SettingsController::class)->updateAccount($request);
-    }
-
-    /**
      * Revoke one of the operator's own tracked sessions. Delegates to the tenant
      * SessionController (which enforces the ownership IDOR check).
      */
@@ -172,23 +175,6 @@ class ProfileController extends Controller
     public function destroyOtherSessions(Request $request): RedirectResponse
     {
         return (new SessionController)->destroyOthers($request);
-    }
-
-    /**
-     * The user-scope generic settings shaped for the hub's folded form (mirrors
-     * the tenant ProfileController): the form-visible schema and its values.
-     *
-     * @return array{schema: array<int, array<string, mixed>>, values: array<string, mixed>}
-     */
-    protected function accountSettings(): array
-    {
-        $schema = $this->settings->schemaForScope('user');
-        $values = array_intersect_key(
-            $this->settings->allForScope('user'),
-            array_flip(array_column($schema, 'key')),
-        );
-
-        return ['schema' => $schema, 'values' => $values];
     }
 
     /**

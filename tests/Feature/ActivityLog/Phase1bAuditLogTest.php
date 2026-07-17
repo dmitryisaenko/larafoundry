@@ -18,8 +18,8 @@ uses(RefreshDatabase::class);
 /*
  * Phase 1b (activity completeness): RBAC role CRUD, self-service profile/password
  * edits, the previously-dead-lettered admin-access + file-upload events, and the
- * admin-editable console screens (settings / legal / email) must all reach the
- * activity log. Uses the global rbac* helpers for the role/company setup.
+ * admin-editable console screens (legal / email) must all reach the activity log.
+ * Uses the global rbac* helpers for the role/company setup.
  */
 
 beforeEach(function () {
@@ -122,17 +122,6 @@ function p1bAdmin(): User
         'email_verified_at' => now(), 'is_admin' => true,
     ]);
 }
-
-it('audits an admin settings update', function () {
-    $this->actingAs(p1bAdmin())
-        ->put('/admin/settings', ['key' => 'signups_enabled', 'value' => false])
-        ->assertRedirect();
-
-    $entry = ActivityModel::query()->where('description', 'admin.settings.updated')->latest('id')->first();
-    expect($entry)->not->toBeNull()
-        ->and($entry->log_name)->toBe('admin')
-        ->and($entry->properties['key'] ?? null)->toBe('signups_enabled');
-});
 
 it('audits an admin legal-page update', function () {
     $this->actingAs(p1bAdmin())

@@ -82,15 +82,10 @@ it('forbids an unprivileged member from the company settings page', function () 
         ->assertForbidden();
 });
 
-it('renders the app settings page for a super-admin', function () {
-    $admin = settingsUser('boss@x.test', admin: true);
-
-    $this->actingAs($admin)
-        ->withHeader('X-Inertia', 'true')
-        ->get('/admin/settings')
-        ->assertOk()
-        ->assertJsonPath('component', 'Admin/Settings');
-});
+// NOTE: the app-scope settings screen + endpoint (admin.settings.*) were removed
+// — the two app keys (support_email / signups_enabled) are reserved config with
+// no consumer yet, so there is no operator UI to edit them. The user- and
+// company-scope self-service settings below still ship.
 
 // --- Account (user scope) ---------------------------------------------------
 
@@ -155,35 +150,5 @@ it('forbids a non-privileged member from writing company settings', function () 
 
     $this->actingAs($member)
         ->put('/settings/company', ['key' => 'c_tz', 'value' => 'Europe/Kyiv'])
-        ->assertForbidden();
-});
-
-// --- App scope (super-admin) ------------------------------------------------
-
-it('lets a super-admin save an app setting', function () {
-    $admin = settingsUser('boss@x.test', admin: true);
-
-    $this->actingAs($admin)
-        ->put('/admin/settings', ['key' => 'a_email', 'value' => 'help@x.test'])
-        ->assertRedirect();
-
-    $row = Setting::query()->where('scope', 'app')->where('scope_id', '0')->where('key', 'a_email')->first();
-    expect($row)->not->toBeNull()
-        ->and(Settings::get('a_email'))->toBe('help@x.test');
-});
-
-it('rejects a non-app key on the admin endpoint', function () {
-    $admin = settingsUser('boss@x.test', admin: true);
-
-    $this->actingAs($admin)
-        ->put('/admin/settings', ['key' => 'u_flag', 'value' => true])
-        ->assertSessionHasErrors('key');
-});
-
-it('forbids a non-admin from the app settings endpoint', function () {
-    $user = settingsUser();
-
-    $this->actingAs($user)
-        ->put('/admin/settings', ['key' => 'a_email', 'value' => 'x@y.test'])
         ->assertForbidden();
 });

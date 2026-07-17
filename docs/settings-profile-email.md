@@ -34,7 +34,9 @@ php artisan vendor:publish --tag=larafoundry-pages
 
 The email-template editor pulls in [ezyang/htmlpurifier](https://github.com/ezyang/htmlpurifier) as a dependency (it sanitizes the HTML body). `composer require dmitryisaenko/larafoundry` brings it along; nothing to install by hand.
 
-The profile and account-settings menu entries are personal, so the core deliberately does not put them in the tenant sidebar (that would break the "a bare employee sees an empty menu" invariant). The host links to `/profile` and `/settings` from wherever it surfaces the signed-in user (a header dropdown, the dashboard). The company-settings and the super-admin settings / email-template screens are wired into the core's tenant and admin menus automatically.
+The profile and account-settings menu entries are personal, so the core deliberately does not put them in the tenant sidebar (that would break the "a bare employee sees an empty menu" invariant). The host links to `/profile` and `/settings` from wherever it surfaces the signed-in user (a header dropdown, the dashboard). The company-settings and the email-template screens are wired into the core's tenant and admin menus automatically.
+
+> **App-scope settings are reserved, not editable.** The two app keys (`support_email`, `signups_enabled`) stay registered so you can read/share them, but the core no longer ships an operator screen to edit them (there is no consumer wired yet). Set them from a seeder or `Settings::set()` if you need a value, and re-add an admin editor when your app actually consumes them.
 
 To surface the public app settings to the frontend (for example, whether sign-ups are open), share them from the host's Inertia middleware:
 
@@ -144,7 +146,7 @@ Settings::set('timezone', 'Europe/Kyiv', $company->id);
 
 `get()` is fail-closed: an unregistered key returns its `default` (or your fallback), never a raw row. `set()` validates the value against the key's rule, casts it, and busts a per-scope cache (`Cache::rememberForever`, so it works on file or database cache with no Redis).
 
-The self-service screens are already wired: a user edits their own settings at `/settings`, an authorised company member edits the active company's settings at `/settings/company` (gated by the `company.settings.view` / `company.settings.update` RBAC permissions, owners and super-admins bypass), and the super-admin edits platform settings at `/admin/settings`.
+The self-service screens are already wired: a user edits their own settings at `/settings`, and an authorised company member edits the active company's settings at `/settings/company` (gated by the `company.settings.view` / `company.settings.update` RBAC permissions, owners and super-admins bypass). App-scope keys have no editor screen (reserved — see the note above); write them programmatically via `Settings::set($key, $value)`.
 
 ### The profile hub
 
@@ -192,11 +194,9 @@ GET    /settings/company         settings.company
 PUT    /settings/company         settings.company.update
 ```
 
-App settings and the email-template editor (behind the admin gate plus the OTP step-up):
+The email-template editor (behind the admin gate plus the OTP step-up):
 
 ```
-GET    /admin/settings                       admin.settings.index
-PUT    /admin/settings                       admin.settings.update
 GET    /admin/email-templates                admin.email-templates.index
 GET    /admin/email-templates/{code}/edit    admin.email-templates.edit
 PUT    /admin/email-templates/{code}         admin.email-templates.update

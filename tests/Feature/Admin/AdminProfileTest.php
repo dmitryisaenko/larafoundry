@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
-use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
-use Dmitryisaenko\LaraFoundry\Settings\Models\Setting;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -137,21 +135,29 @@ it('stores and removes the operator avatar', function () {
     Storage::disk('public')->assertMissing($stored);
 });
 
-// --- Account setting (user scope resolves to the operator) -------------------
+// --- Preferences (ui_settings) trimmed to the core appearance keys -----------
 
-it('saves a user-scope account setting for the operator', function () {
-    config()->set('larafoundry.settings', [
-        'u_flag' => ['scope' => 'user', 'type' => 'boolean', 'default' => true, 'validation' => ['boolean']],
+it('exposes only the core appearance ui_settings to the operator', function () {
+    // Simulate a host that registered an extra app toggle at runtime — it must
+    // NOT leak into the operator Preferences tab (allowlist is fail-closed).
+    config()->set('larafoundry.profile.ui_settings.host_widget', [
+        'type' => 'boolean', 'default' => false, 'label' => 'Host widget',
     ]);
-    $admin = profileAdmin();
 
-    $this->actingAs($admin)
-        ->put('/admin/profile/account', ['key' => 'u_flag', 'value' => false])
-        ->assertRedirect();
+    $keys = ['theme', 'sidebar_collapsed', 'date_format', 'time_format'];
 
-    $row = Setting::query()->where('scope', 'user')->where('scope_id', (string) $admin->id)->where('key', 'u_flag')->first();
-    expect($row)->not->toBeNull()
-        ->and(Settings::get('u_flag', $admin->id))->toBeFalse();
+    $this->actingAs(profileAdmin())
+        ->get('/admin/profile', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonPath('props.uiSettings.host_widget', null)
+        ->assertJsonPath('props.uiSettings.theme', 'system')
+        ->assertJsonPath('props.uiSettingsSchema', function (array $schema) use ($keys) {
+            $schemaKeys = array_column($schema, 'key');
+            sort($schemaKeys);
+            sort($keys);
+
+            return $schemaKeys === $keys;
+        });
 });
 
 // --- Sessions ---------------------------------------------------------------
