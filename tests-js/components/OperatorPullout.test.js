@@ -48,7 +48,7 @@ describe('OperatorPullout', () => {
         expect(wrapper.find('button[aria-label="Operator menu"]').exists()).toBe(true);
     });
 
-    it('shows the operator identity and the security + logout links when open', async () => {
+    it('shows the operator identity and the profile + logout links when open', async () => {
         const wrapper = mount(OperatorPullout, mounts);
         await openPullout(wrapper);
 
@@ -56,7 +56,7 @@ describe('OperatorPullout', () => {
         expect(wrapper.text()).toContain('boss@x.test');
 
         const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'));
-        expect(hrefs).toContain('/admin/security');
+        expect(hrefs).toContain('/admin/profile');
         expect(hrefs).toContain('/logout');
     });
 

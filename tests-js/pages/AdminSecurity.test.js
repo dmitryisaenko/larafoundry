@@ -32,10 +32,12 @@ vi.mock('@inertiajs/vue3', () => ({
 // The page translates confirm-dialog copy through useT() (vue-i18n) in script.
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key) => key }) }));
 
-import AdminSecurity from '../../resources/js/Pages/Admin/Security/Index.vue';
+// The operator security surface is now the Security TAB of the profile hub —
+// this component holds the same sections/endpoints the old Admin/Security page did.
+import AdminSecurity from '../../resources/js/Pages/Admin/Profile/sections/OperatorSecurity.vue';
 
-// Stub AdminLayout to a passthrough — the page's own sections are what we assert,
-// not the whole console shell.
+// The section renders no shell of its own (the hub tab supplies it), but keep the
+// passthrough stub harmless in case a nested import pulls it in.
 const mounts = {
     global: {
         stubs: {
@@ -44,7 +46,7 @@ const mounts = {
     },
 };
 
-describe('Admin/Security page', () => {
+describe('Operator security section', () => {
     beforeEach(() => {
         post.mockClear();
         del.mockClear();
