@@ -5,7 +5,7 @@
  * The super-admin equivalent of the tenant app's account pull-out: a right-hand
  * slide-over reached from an avatar button in the AdminLayout header. It carries
  * the operator's identity card plus the one-off shell actions the console lacked
- * — theme, language, a link to the operator security page, and log out.
+ * — theme, language, a link to the operator profile hub, and log out.
  *
  * Self-contained: it owns its trigger and open state and reuses {@see
  * AdminFilterDrawer} as the slide-over shell (teleported overlay, reference-counted
@@ -82,14 +82,14 @@ function switchLocale(locale) {
             </div>
 
             <nav class="flex flex-col gap-1 text-sm">
-                <!-- Operator security -->
+                <!-- Operator profile (profile / photo / security / sessions / preferences) -->
                 <Link
-                    href="/admin/security"
+                    href="/admin/profile"
                     class="flex items-center gap-3 rounded-md px-3 py-2.5 text-ink transition hover:bg-surface-subtle"
                     @click="open = false"
                 >
-                    <svg class="h-4.5 w-4.5 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-                    <span>{{ $t('Operator security') }}</span>
+                    <svg class="h-4.5 w-4.5 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>{{ $t('Profile') }}</span>
                 </Link>
 
                 <!-- Language: inline expandable list (keeps the pull-out open). -->

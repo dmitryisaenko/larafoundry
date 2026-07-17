@@ -38,7 +38,7 @@ const navigation = computed(() => page.props.navigation ?? []);
         <ImpersonationBanner />
         <AppFlashMessage />
 
-        <header class="border-b border-border bg-surface">
+        <header class="sticky top-0 z-30 border-b border-border bg-surface">
             <div class="mx-auto flex w-full max-w-[var(--lf-max-width)] items-center justify-between px-4 py-3">
                 <div class="flex items-center gap-3">
                     <MobileNav :items="navigation" />

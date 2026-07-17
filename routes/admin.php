@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PaymentController;
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ProfileController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PromoController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\SecurityController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
@@ -58,7 +59,41 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
         // codes (which would otherwise satisfy the step-up challenge). Everything is
         // behind `larafoundry.admin` (super-admin only) and proxies the core's /
         // Fortify's own actions (no dependence on Fortify's unnamed /user/* routes).
-        Route::get('security', [SecurityController::class, 'show'])->name('security.show');
+        // The operator's own profile hub — self-service account screens (profile /
+        // photo / security / sessions / preferences), exposed under `admin.*` so
+        // the confine allows them (the operator is locked out of the tenant
+        // `/profile`, `/user`, `/settings`, `/auth/sessions` routes). Deliberately
+        // OUTSIDE the OTP step-up gate for the same reason as `security.show`: the
+        // hub's Security tab IS the 2FA enrolment surface, so gating the page would
+        // loop an un-enrolled operator. Each write delegates to the tenant
+        // self-service controller acting on the operator (no logic duplicated); the
+        // destructive 2FA actions stay behind the gate on `security.two-factor.*`.
+        // The EMAIL is not editable here — it is the reserved operator identity.
+        Route::get('profile', [ProfileController::class, 'show'])->name('profile.show');
+        Route::put('profile/information', [ProfileController::class, 'updateInformation'])
+            ->middleware('throttle:20,1')
+            ->name('profile.information.update');
+        Route::post('profile/avatar', [ProfileController::class, 'updateAvatar'])
+            ->middleware('throttle:20,1')
+            ->name('profile.avatar.update');
+        Route::delete('profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+        Route::put('profile/account', [ProfileController::class, 'updateAccount'])->name('profile.account.update');
+        // 'others' before '{session}' so the literal segment wins the match.
+        Route::delete('profile/sessions/others', [ProfileController::class, 'destroyOtherSessions'])
+            ->name('profile.sessions.destroy-others');
+        Route::delete('profile/sessions/{session}', [ProfileController::class, 'destroySession'])
+            ->name('profile.sessions.destroy');
+
+        // The old standalone operator-security page is now the hub's Security tab;
+        // keep its route name (the OTP gate's `two_factor_setup_route` points at it)
+        // as a redirect into the hub, so bookmarks and the enrolment redirect land
+        // on the right tab. reflash() carries any flash the gate set (e.g. the
+        // "set up 2FA" nudge) across this extra hop so the hub still shows it.
+        Route::get('security', function () {
+            session()->reflash();
+
+            return redirect()->route('admin.profile.show', ['tab' => 'security']);
+        })->name('security.show');
         Route::post('security/two-factor/enable', [SecurityController::class, 'enableTwoFactor'])
             ->middleware('throttle:6,1')
             ->name('security.two-factor.enable');

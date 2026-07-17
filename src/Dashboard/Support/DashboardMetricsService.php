@@ -43,7 +43,9 @@ class DashboardMetricsService
 
         $activeDays = (int) config('larafoundry.admin.active_within_days', 30);
 
-        $row = $model::query()->selectRaw(
+        // Exclude the operator account from every user aggregate (config-gated),
+        // so the dashboard "users" figures count ordinary users only.
+        $row = $model::query()->withoutSuperAdmin()->selectRaw(
             'COUNT(*) as total, '
             .'SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_today, '
             .'SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_month, '

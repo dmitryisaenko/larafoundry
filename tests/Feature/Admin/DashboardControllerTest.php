@@ -52,6 +52,9 @@ it('renders the dashboard for a super-admin', function () {
 });
 
 it('ships the three FREE core widgets in order with their components and data', function () {
+    // A real (non-operator) user: the operator is excluded from the user metrics.
+    dashUser();
+
     $widgets = $this->actingAs(dashAdmin())
         ->get('/admin', ['X-Inertia' => 'true'])
         ->assertOk()
@@ -60,7 +63,7 @@ it('ships the three FREE core widgets in order with their components and data', 
     expect(array_column($widgets, 'key'))->toBe(['core.users', 'core.companies', 'core.activity'])
         ->and($widgets[0]['component'])->toBe('UsersWidget')
         ->and($widgets[0]['titleKey'])->toBe('Users')
-        // The acting super-admin is itself a user, so the count is real.
+        // The operator is excluded from the aggregate; the seeded user is counted.
         ->and($widgets[0]['data']['total'])->toBeGreaterThanOrEqual(1)
         ->and($widgets[1]['component'])->toBe('CompaniesWidget')
         ->and($widgets[2]['component'])->toBe('ActivityWidget');

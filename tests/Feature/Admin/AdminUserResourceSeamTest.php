@@ -43,6 +43,8 @@ function seamAdmin(): User
 it('renders host extra columns when the resource is swapped via config', function () {
     config(['larafoundry.admin.user_resource' => SeamAdminUserResource::class]);
     $admin = seamAdmin();
+    // A listed (non-operator) user: the operator itself is hidden from the list.
+    User::create(['name' => 'Joe', 'email' => 'joe@x.test', 'password' => 'secret-pass', 'email_verified_at' => now()]);
 
     $first = $this->actingAs($admin)
         ->get('/admin/users', ['X-Inertia' => 'true'])
@@ -61,6 +63,8 @@ it('renders host extra columns when the resource is swapped via config', functio
 it('ignores a config class that does not extend AdminUserResource (falls back to core)', function () {
     config(['larafoundry.admin.user_resource' => stdClass::class]);
     $admin = seamAdmin();
+    // A listed (non-operator) user: the operator itself is hidden from the list.
+    User::create(['name' => 'Joe', 'email' => 'joe@x.test', 'password' => 'secret-pass', 'email_verified_at' => now()]);
 
     $first = $this->actingAs($admin)
         ->get('/admin/users', ['X-Inertia' => 'true'])

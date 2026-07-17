@@ -11,6 +11,7 @@ use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Media\LaraFoundryMedia;
 use Dmitryisaenko\LaraFoundry\Profile\Models\UserSocialLink;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -285,5 +286,26 @@ trait IsLaraFoundryUser
         $hash = $this->getAttribute('pin_code');
 
         return is_string($hash) && $hash !== '' && Hash::check($pin, $hash);
+    }
+
+    /**
+     * Exclude the platform super-admin (operator) from a user LIST query.
+     *
+     * A LOCAL scope, applied ONLY at list/count build sites (the admin user
+     * console + type-ahead, the dashboard aggregates, the ticket user picker) —
+     * NEVER booted globally, so auth/login, by-id lookups and impersonation keep
+     * finding the operator. The operator carries the `is_admin` flag; ordinary
+     * users never do, so filtering it out hides exactly the operator account(s).
+     * Gated by config so a host can opt back in to seeing the operator in lists.
+     */
+    public function scopeWithoutSuperAdmin(Builder $query): Builder
+    {
+        if (! config('larafoundry.admin.exclude_super_admin_from_lists', true)) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $inner): void {
+            $inner->where('is_admin', false)->orWhereNull('is_admin');
+        });
     }
 }

@@ -12,12 +12,15 @@ import { ImageUpload, UserAvatar } from '@dmitryisaenko/larafoundry';
 
 const props = defineProps({
     profile: { type: Object, required: true },
+    // Where the avatar posts/deletes. Defaults to the tenant endpoint; the
+    // operator hub points it at its admin-namespaced clone.
+    endpoint: { type: String, default: '/profile/avatar' },
 });
 
 const form = useForm({ avatar: null });
 
 function submit() {
-    form.post('/profile/avatar', {
+    form.post(props.endpoint, {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => form.reset('avatar'),
@@ -25,7 +28,7 @@ function submit() {
 }
 
 function remove() {
-    router.delete('/profile/avatar', { preserveScroll: true });
+    router.delete(props.endpoint, { preserveScroll: true });
 }
 </script>
 

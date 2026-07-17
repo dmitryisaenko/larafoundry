@@ -14,6 +14,12 @@ import { InputField, SelectField, DateField } from '@dmitryisaenko/larafoundry';
 
 const props = defineProps({
     profile: { type: Object, required: true },
+    // Where the form PUTs. Defaults to Fortify's profile-information endpoint;
+    // the operator hub points it at its admin-namespaced clone.
+    endpoint: { type: String, default: '/user/profile-information' },
+    // The operator's email is their reserved identity — the operator hub renders
+    // it read-only (and the admin endpoint ignores email), so it stays immutable.
+    emailEditable: { type: Boolean, default: true },
 });
 
 const form = useForm({
@@ -38,7 +44,7 @@ const sexOptions = [
 ];
 
 function submit() {
-    form.put('/user/profile-information', {
+    form.put(props.endpoint, {
         preserveScroll: true,
         onSuccess: () => form.reset('current_password'),
     });
@@ -60,6 +66,7 @@ function submit() {
             type="email"
             :title="$t('Email')"
             :errors="form.errors"
+            :is-disabled="!emailEditable"
             autocomplete="email"
             required
         />

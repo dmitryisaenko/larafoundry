@@ -28,8 +28,19 @@ class StoreTicketRequest extends FormRequest
      */
     public function rules(): array
     {
+        // The user picker (UserController::search) already hides the operator, so
+        // the target can only be an ordinary user; harden the `exists` rule to
+        // match, so a hand-crafted user_id cannot open a ticket for the operator.
+        $userExists = Rule::exists($this->usersTable(), $this->usersKey());
+
+        if ((bool) config('larafoundry.admin.exclude_super_admin_from_lists', true)) {
+            $userExists->where(function ($query): void {
+                $query->where('is_admin', false)->orWhereNull('is_admin');
+            });
+        }
+
         return [
-            'user_id' => ['required', 'integer', Rule::exists($this->usersTable(), $this->usersKey())],
+            'user_id' => ['required', 'integer', $userExists],
             'title' => ['required', 'string', 'max:255'],
             'message' => ['required', 'string', 'min:2', 'max:5000'],
             'priority' => ['nullable', 'string', Rule::in($this->slugs('priorities'))],

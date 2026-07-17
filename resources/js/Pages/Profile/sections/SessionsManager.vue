@@ -9,19 +9,23 @@
 import { router } from '@inertiajs/vue3';
 import { useDateFormat } from '../../../composables/useDateFormat.js';
 
-defineProps({
+const props = defineProps({
     sessions: { type: Array, default: () => [] },
+    // Base path for revoke actions: `${endpoint}/{id}` and `${endpoint}/others`.
+    // Defaults to the tenant endpoint; the operator hub points it at its
+    // admin-namespaced clone.
+    endpoint: { type: String, default: '/auth/sessions' },
 });
 
 // Honours the user's date_format preference (auto/dmy/mdy/iso) + app locale.
 const { formatDateTime } = useDateFormat();
 
 function revoke(id) {
-    router.delete(`/auth/sessions/${id}`, { preserveScroll: true });
+    router.delete(`${props.endpoint}/${id}`, { preserveScroll: true });
 }
 
 function revokeOthers() {
-    router.delete('/auth/sessions/others', { preserveScroll: true });
+    router.delete(`${props.endpoint}/others`, { preserveScroll: true });
 }
 </script>
 

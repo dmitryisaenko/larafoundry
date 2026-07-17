@@ -49,14 +49,22 @@ function securityAdmin(bool $with2fa = false, bool $confirmed = false): array
 
 // --- Access: closes the chicken-and-egg -----------------------------------
 
-it('lets an un-enrolled operator reach the security page (no OTP-gate loop)', function () {
+it('lets an un-enrolled operator reach the profile hub (no OTP-gate loop)', function () {
     config()->set('larafoundry.security.super_admin.require_otp', true);
     [$admin] = securityAdmin(with2fa: false);
 
     $this->actingAs($admin)
-        ->get('/admin/security', ['X-Inertia' => 'true'])
+        ->get('/admin/profile', ['X-Inertia' => 'true'])
         ->assertOk()
-        ->assertJsonPath('component', 'Admin/Security/Index');
+        ->assertJsonPath('component', 'Admin/Profile/Hub');
+});
+
+it('redirects the legacy /admin/security to the hub security tab', function () {
+    [$admin] = securityAdmin(with2fa: false);
+
+    $this->actingAs($admin)
+        ->get('/admin/security')
+        ->assertRedirect(route('admin.profile.show', ['tab' => 'security']));
 });
 
 it('forbids a non-admin from the operator security page', function () {
@@ -159,7 +167,7 @@ it('exposes the enrolment QR + recovery codes only while enrolment is unconfirme
     [$admin] = securityAdmin(with2fa: true, confirmed: false);
 
     $this->actingAs($admin)
-        ->get('/admin/security', ['X-Inertia' => 'true'])
+        ->get('/admin/profile', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonPath('props.two_factor_setup.svg', fn ($svg) => is_string($svg) && $svg !== '')
         ->assertJsonPath('props.two_factor_setup.recovery_codes', fn ($codes) => is_array($codes) && count($codes) > 0);
@@ -171,7 +179,7 @@ it('hides recovery codes from a confirmed operator who has not stepped up', func
     // Confirmed 2FA but NO step-up flag: neither the enrolment payload nor the
     // review codes are shipped, and destructive actions are hidden.
     $this->actingAs($admin)
-        ->get('/admin/security', ['X-Inertia' => 'true'])
+        ->get('/admin/profile', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonPath('props.two_factor_setup', null)
         ->assertJsonPath('props.recovery_codes', null)
@@ -183,7 +191,7 @@ it('ships recovery codes for review to a stepped-up operator', function () {
 
     $this->actingAs($admin)
         ->withSession([EnsureAdminOtpVerified::SESSION_KEY => true])
-        ->get('/admin/security', ['X-Inertia' => 'true'])
+        ->get('/admin/profile', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonPath('props.recovery_codes', fn ($codes) => is_array($codes) && count($codes) > 0)
         ->assertJsonPath('props.can_manage_two_factor', true);

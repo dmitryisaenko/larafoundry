@@ -67,16 +67,31 @@ it('redirects a guest from the user list', function () {
     $this->get('/admin/users')->assertRedirect();
 });
 
-it('lets a super-admin list users', function () {
+it('lets a super-admin list users, excluding the operator account itself', function () {
     $admin = auAdmin();
     auMember('a@x.test');
     auMember('b@x.test');
 
+    // The operator (is_admin) is hidden from the list by the withoutSuperAdmin
+    // scope (config `admin.exclude_super_admin_from_lists`, default true), so only
+    // the two ordinary members show.
     $this->actingAs($admin)
         ->get('/admin/users', ['X-Inertia' => 'true'])
         ->assertOk()
         ->assertJsonPath('component', 'Admin/Users/Index')
-        ->assertJsonCount(3, 'props.users.data');
+        ->assertJsonCount(2, 'props.users.data')
+        ->assertJsonMissing(['email' => 'boss@x.test']);
+});
+
+it('includes the operator in the list when the exclusion is turned off', function () {
+    config(['larafoundry.admin.exclude_super_admin_from_lists' => false]);
+    $admin = auAdmin();
+    auMember('a@x.test');
+
+    $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->assertJsonCount(2, 'props.users.data');
 });
 
 it('filters the list by status', function () {
@@ -492,11 +507,12 @@ it('ignores an unknown age bucket instead of hiding everyone', function () {
     auMember('a@x.test')->forceFill(['birth_date' => now()->subYears(30)])->save();
     auMember('b@x.test')->forceFill(['birth_date' => now()->subYears(50)])->save();
 
-    // admin + 2 members = 3 rows; a garbage bucket is a no-op.
+    // A garbage bucket is a no-op, so all LISTED users show — 2 members (the
+    // operator is hidden by the withoutSuperAdmin scope).
     $this->actingAs($admin)
         ->get('/admin/users?ageRange=garbage', ['X-Inertia' => 'true'])
         ->assertOk()
-        ->assertJsonCount(3, 'props.users.data');
+        ->assertJsonCount(2, 'props.users.data');
 });
 
 it('force-verifies a user email and logs it', function () {

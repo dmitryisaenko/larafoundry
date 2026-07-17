@@ -43,7 +43,10 @@ class UserController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = (new AdminUsersFilter($request))->apply($this->query());
+        // withoutSuperAdmin(): keep the operator account out of the user list
+        // (config-gated). By-id actions below still go through the unscoped
+        // find()/query(), so editing/blocking any user keeps working.
+        $query = (new AdminUsersFilter($request))->apply($this->query()->withoutSuperAdmin());
 
         $columns = AdminUserResource::enabledColumns();
 
@@ -175,7 +178,9 @@ class UserController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        $query = (new AdminUsersFilter($request))->apply($this->query());
+        // Same exclusion as index(): the type-ahead (also the admin ticket user
+        // picker) must never surface the operator account.
+        $query = (new AdminUsersFilter($request))->apply($this->query()->withoutSuperAdmin());
 
         // Eager-load socialLinks only when the token is on (mirrors index()), so
         // the resource's social_links serialisation does not N+1 over the results.

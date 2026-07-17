@@ -431,6 +431,15 @@ return [
         // tokens: 'phone', 'sex', 'age', 'social'. Unknown tokens are ignored.
         // ('social' lights up in phase 3b once social-link storage ships.)
         'user_columns' => [],
+
+        // Hide the platform super-admin (operator) account from every user LIST
+        // and count, so the operator never appears among ordinary users (the admin
+        // console list + type-ahead, the dashboard user aggregates, the ticket
+        // user picker). This is a LIST-only filter via the `withoutSuperAdmin`
+        // scope — it never touches auth/login, by-id lookups or impersonation, so
+        // the operator can still be found and act. Set false to include the
+        // operator in listings (e.g. a single-admin dev box that wants to see it).
+        'exclude_super_admin_from_lists' => true,
     ],
 
     /*

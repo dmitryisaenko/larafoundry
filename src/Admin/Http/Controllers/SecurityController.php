@@ -5,37 +5,36 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Admin\Http\Controllers;
 
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
-use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Inertia\Inertia;
-use Inertia\Response;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 
 /**
- * The operator's own self-service security page (in-console).
+ * The operator's own self-service security ACTIONS (in-console).
  *
- * Lets the super-admin enrol Fortify per-user 2FA (TOTP), manage recovery codes,
- * set a session PIN and change their password — all from inside `/admin`, without
- * touching the tenant profile screens (which the confine keeps them out of, and
- * whose identity is deliberately separate from the operator's).
+ * Lets the super-admin enrol Fortify per-user 2FA (TOTP), manage recovery codes
+ * and change their password — all from inside `/admin`, without touching the
+ * tenant profile screens (which the confine keeps them out of). The PAGE that
+ * renders this surface is the operator profile hub's Security tab
+ * ({@see ProfileController::show});
+ * this controller holds only the mutating endpoints it posts to.
  *
  * WHY the ENROLMENT actions live OUTSIDE `larafoundry.admin.otp` (see
  * routes/admin.php): the OTP step-up gate redirects an operator WITHOUT confirmed
- * 2FA to `two_factor_setup_route` — which defaults to this page. If the page were
- * behind the gate, that redirect would loop and the operator could never enrol. So
- * `show` / `enable` / `confirm` (and password change, itself defended by
+ * 2FA to `two_factor_setup_route` — which resolves to the hub's Security tab. If
+ * enrolment were behind the gate, that redirect would loop and the operator could
+ * never enrol. So `enable` / `confirm` (and password change, itself defended by
  * `current_password`) sit behind only `larafoundry.admin`. The DESTRUCTIVE actions
  * — `disableTwoFactor` / `regenerateRecoveryCodes` — instead live INSIDE the
  * step-up gate: they only matter post-enrolment, when the operator can pass the
  * step-up, so requiring a stepped-up session closes the stolen-cookie path.
  *
  * The QR and recovery codes are NOT exposed as re-fetchable GET endpoints. They
- * are surfaced through {@see show} props ONLY while enrolment is in progress
+ * are surfaced through the hub's `show` props ONLY while enrolment is in progress
  * (secret set, not yet confirmed) or, for review, to a session that has cleared
  * the OTP step-up. A non-stepped-up session therefore cannot read the live TOTP
  * secret or recovery codes — which the step-up challenge itself accepts, so
@@ -51,60 +50,14 @@ use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 class SecurityController extends Controller
 {
     /**
-     * Render the operator security page with the current 2FA / PIN / password state.
-     *
-     * `two_factor_setup` carries the QR + recovery codes ONLY during enrolment
-     * (secret set, not confirmed). `recovery_codes` carries them for review ONLY
-     * once confirmed AND the session has cleared the OTP step-up. Both are null
-     * otherwise, so a non-stepped-up session never receives the operator's secrets.
-     */
-    public function show(Request $request): Response
-    {
-        $user = $request->user();
-
-        // Detect state from the columns directly (secret + confirmation), NOT from
-        // Fortify's hasEnabledTwoFactorAuthentication() — that predicate collapses
-        // the "secret set but not yet confirmed" state into "enabled" when the
-        // global Fortify `confirm` feature is off, which would hide the enrolment
-        // QR. The operator page always runs a confirm step, so it keys off
-        // `two_factor_confirmed_at` and stays correct regardless of that flag.
-        $hasSecret = $user->two_factor_secret !== null;
-        $confirmed = $hasSecret && $user->two_factor_confirmed_at !== null;
-        $enrolling = $hasSecret && ! $confirmed;
-        $steppedUp = $request->session()->get(EnsureAdminOtpVerified::SESSION_KEY) === true;
-
-        return Inertia::render('Admin/Security/Index', [
-            'two_factor_enabled' => $confirmed,
-            // Enrolment-only: the QR to scan and the recovery codes to store, shown
-            // once while the operator is setting 2FA up (before they can step up).
-            'two_factor_setup' => $enrolling
-                ? [
-                    'svg' => $user->twoFactorQrCodeSvg(),
-                    'recovery_codes' => $user->recoveryCodes(),
-                ]
-                : null,
-            // Review-only: the current recovery codes, exposed strictly to a
-            // stepped-up session (never to a bare/stolen cookie).
-            'recovery_codes' => ($confirmed && $steppedUp) ? $user->recoveryCodes() : null,
-            // Whether destructive 2FA actions (disable / regenerate) are reachable
-            // this session — they sit behind the step-up gate, so the UI hides them
-            // for a non-stepped-up session rather than bouncing the click.
-            'can_manage_two_factor' => $steppedUp,
-            'has_pin' => $user->hasPin(),
-            'pin_length' => (int) config('larafoundry.pin.length', 4),
-            'has_password' => $user->password !== null,
-        ]);
-    }
-
-    /**
      * Step 1 — generate the secret + recovery codes so the operator can enrol. The
-     * page then shows the QR + codes from the refreshed `show()` props.
+     * hub's Security tab then shows the QR + codes from the refreshed hub props.
      */
     public function enableTwoFactor(Request $request, EnableTwoFactorAuthentication $enable): RedirectResponse
     {
         $enable($request->user());
 
-        return redirect()->route('admin.security.show');
+        return redirect()->route('admin.profile.show', ['tab' => 'security']);
     }
 
     /**
@@ -116,7 +69,7 @@ class SecurityController extends Controller
     {
         $confirm($request->user(), (string) $request->input('code'));
 
-        return redirect()->route('admin.security.show')
+        return redirect()->route('admin.profile.show', ['tab' => 'security'])
             ->with('message-info', __('larafoundry::auth.operator_security.two_factor_enabled'));
     }
 
@@ -128,7 +81,7 @@ class SecurityController extends Controller
     {
         $generate($request->user());
 
-        return redirect()->route('admin.security.show')
+        return redirect()->route('admin.profile.show', ['tab' => 'security'])
             ->with('message-info', __('larafoundry::auth.operator_security.recovery_codes_regenerated'));
     }
 
@@ -139,7 +92,7 @@ class SecurityController extends Controller
     {
         $disable($request->user());
 
-        return redirect()->route('admin.security.show')
+        return redirect()->route('admin.profile.show', ['tab' => 'security'])
             ->with('message-info', __('larafoundry::auth.operator_security.two_factor_disabled'));
     }
 
@@ -157,7 +110,7 @@ class SecurityController extends Controller
             'password_confirmation',
         ]));
 
-        return redirect()->route('admin.security.show')
+        return redirect()->route('admin.profile.show', ['tab' => 'security'])
             ->with('message-info', __('larafoundry::auth.operator_security.password_updated'));
     }
 }
