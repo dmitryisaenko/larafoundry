@@ -71,6 +71,7 @@ class HandleInertiaRequests extends Middleware
             'auth_presentation' => fn () => $this->authPresentation(),
             'auth_qr' => fn () => $this->qrSettings(),
             'auth_oauth' => fn () => $this->oauthSettings(),
+            'auth_magic_link' => fn () => $this->magicLinkSettings(),
             'consent' => fn () => $this->consentState($request),
         ];
     }
@@ -122,6 +123,22 @@ class HandleInertiaRequests extends Middleware
         return [
             'enabled' => (bool) config('larafoundry.auth.qr.enabled', true),
             'poll_interval_ms' => (int) config('larafoundry.auth.qr.poll_interval_ms', 2000),
+        ];
+    }
+
+    /**
+     * Passwordless magic-link settings the Login screen needs: whether to render
+     * the email field that posts to `magic-link.request`. Driven by the same
+     * master switch that (un)registers the routes, so the field never appears
+     * without a live endpoint behind it. Shape is a host contract — Comentor's
+     * Login.vue reads `page.props.auth_magic_link.enabled`.
+     *
+     * @return array{enabled: bool}
+     */
+    protected function magicLinkSettings(): array
+    {
+        return [
+            'enabled' => (bool) config('larafoundry.auth.magic_link.enabled', false),
         ];
     }
 

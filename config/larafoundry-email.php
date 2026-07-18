@@ -100,6 +100,25 @@ return [
             ],
         ],
 
+        // Passwordless sign-in (magic-link). Sent on demand to a raw address that
+        // may not own an account yet, so there is no {{name}} — the greeting is
+        // neutral. {{minutes}} is the link's validity window.
+        'magic_login_link' => [
+            'variables' => ['app_name', 'login_url', 'minutes'],
+            'subject' => [
+                'en' => 'Your sign-in link for {{app_name}}',
+                'uk' => 'Ваше посилання для входу до {{app_name}}',
+            ],
+            'body_html' => [
+                'en' => '<p>Hi,</p><p>Click the button below to sign in to {{app_name}}. This link works once and expires in {{minutes}} minutes.</p><p><a href="{{login_url}}">Sign in</a></p><p>If you did not request this, you can safely ignore this email.</p>',
+                'uk' => '<p>Вітаємо!</p><p>Натисніть кнопку нижче, щоб увійти до {{app_name}}. Посилання одноразове й діє {{minutes}} хв.</p><p><a href="{{login_url}}">Увійти</a></p><p>Якщо ви цього не робили, просто проігноруйте цей лист.</p>',
+            ],
+            'body_text' => [
+                'en' => "Hi,\n\nClick the link below to sign in to {{app_name}}. This link works once and expires in {{minutes}} minutes.\n\nSign in: {{login_url}}\n\nIf you did not request this, you can safely ignore this email.",
+                'uk' => "Вітаємо!\n\nПерейдіть за посиланням нижче, щоб увійти до {{app_name}}. Посилання одноразове й діє {{minutes}} хв.\n\nУвійти: {{login_url}}\n\nЯкщо ви цього не робили, просто проігноруйте цей лист.",
+            ],
+        ],
+
         // Company invitation.
         'company_invitation' => [
             'variables' => ['company_name', 'inviter_name', 'accept_url', 'expires_at'],

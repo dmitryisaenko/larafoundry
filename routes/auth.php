@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Auth\Http\Controllers\OAuthController;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Controllers\SessionController;
+use Dmitryisaenko\LaraFoundry\Auth\MagicLink\Http\Controllers\MagicLinkController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,6 +25,24 @@ Route::middleware('web')->group(function () {
         Route::get('auth/oauth/{provider}/callback', [OAuthController::class, 'callback'])
             ->name('larafoundry.oauth.callback');
     });
+
+    // Passwordless email sign-in (magic-link). Guest-facing, and — like the QR
+    // master switch — registered ONLY when the feature is enabled, so a disabled
+    // feature leaves no live surface (the routes 404) rather than merely hiding
+    // the UI. Route NAMES are a host contract (Comentor's Login.vue posts to
+    // `magic-link.request`), so they must not change. `request` is throttled per
+    // (email + IP) by the named limiter; `verify` is `signed` (tamper + expiry).
+    if (config('larafoundry.auth.magic_link.enabled', false)) {
+        Route::middleware('guest')->group(function () {
+            Route::post('auth/magic/request', [MagicLinkController::class, 'request'])
+                ->middleware('throttle:larafoundry-magic-link')
+                ->name('magic-link.request');
+
+            Route::get('auth/magic/verify', [MagicLinkController::class, 'verify'])
+                ->middleware('signed')
+                ->name('magic-link.verify');
+        });
+    }
 
     // Session management — authenticated only. The literal `others` route is
     // declared before the `{session}` model-bound one so it wins the match

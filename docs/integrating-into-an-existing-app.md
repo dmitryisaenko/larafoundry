@@ -83,6 +83,9 @@ GOOGLE_CLIENT_REDIRECT=https://yourcrm.test/auth/oauth/google/callback
 # --- QR cross-device login ---
 LARAFOUNDRY_QR_ENABLED=true
 
+# --- Passwordless email sign-in (magic-link) ---
+LARAFOUNDRY_MAGIC_LINK_ENABLED=true    # off by default; also requires mail to be configured
+
 # --- Session PIN-lock (optional Telegram-style re-entry) ---
 LARAFOUNDRY_PIN_ENABLED=true
 
@@ -339,6 +342,20 @@ Flow: the **guest web page** generates a QR (`POST larafoundry/qr/generate`) and
   npm i html5-qrcode
   ```
   The Login page's `QrLoginPanel` (generation + polling) **is** in the barrel.
+
+---
+
+## 10a. Passwordless email sign-in (magic-link)
+
+Config `larafoundry.auth.magic_link` (`enabled`, `ttl_minutes=15`, `absolute_ttl_minutes=30`, `throttle='5,1'`, `invalidate_previous=true`). **Off by default** — enable with `LARAFOUNDRY_MAGIC_LINK_ENABLED=true` **and** configure mail.
+
+Flow: the guest enters an email → `POST auth/magic/request` (route name **`magic-link.request`**, throttled per email+IP) mails a one-time **signed** link → clicking `GET auth/magic/verify` (route name **`magic-link.verify`**, `signed`) logs the user in. The same click is **registration**: a first sign-in by an unknown email creates the account with the address pre-verified. Model: `MagicLoginToken` (token stored as a SHA-256 hash, sliding + absolute TTL, single-use `consumed_at`).
+
+- Routes register **only when enabled** (a disabled feature 404s, it does not merely hide the UI). The shared prop `auth_magic_link.enabled` tells the frontend whether to render the email field.
+- **Route names are a contract** — the host Login screen posts to `magic-link.request`; do not rename them.
+- **This is the only way to authenticate the reserved super-admin email.** Unlike OAuth/registration (which refuse it because a provider/stranger merely *asserts* an email), magic-link *proves* ownership by delivery — so the operator (`admin@…`), who by definition has no Google account, signs in here and then clears the console OTP gate (§11). The OAuth/registration reservation is unchanged.
+- Email body renders from the editable `magic_login_link` template (falls back to the core `larafoundry::auth.magic_link` strings). Prune spent tokens with `larafoundry:magic-links:prune` (schedule it hourly, as with QR prune).
+- **Host wiring:** publish the new migration (`php artisan migrate`), set `LARAFOUNDRY_MAGIC_LINK_ENABLED=true`, configure `MAIL_*`, and render an email field on your Login page that posts to `route('magic-link.request')`. The core ships the routes + prop; the UI is the host's.
 
 ---
 

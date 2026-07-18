@@ -300,6 +300,36 @@ return [
             'poll_interval_ms' => 2000,
         ],
 
+        // Passwordless email sign-in (magic-link). A first-class login method next
+        // to OAuth/QR/passkeys: enter an email → a one-time signed link is mailed →
+        // clicking it logs in. The same click is registration (a first sign-in by
+        // an unknown email creates the account, email pre-verified by the click),
+        // and it is the ONLY way to authenticate the reserved super-admin email
+        // (which OAuth and public registration refuse — ownership is proven by
+        // receiving the mail).
+        //
+        //  enabled              — master switch for the routes + the `auth_magic_link`
+        //                         shared prop. false = the routes are not registered
+        //                         at all (a disabled feature 404s, it does not just
+        //                         hide the UI), mirroring the QR switch.
+        //  ttl_minutes          — how long a freshly issued link stays valid; also
+        //                         the temporary-signed-URL expiry.
+        //  absolute_ttl_minutes — a hard cap measured from creation (donor hole #4,
+        //                         as in qr) so a token can never outlive this.
+        //  throttle             — "attempts,minutes" for the request endpoint, keyed
+        //                         per (email + IP) via a named limiter (same idiom as
+        //                         Fortify's login limiter) — an attacker cannot spam
+        //                         one address nor sweep many from one IP.
+        //  invalidate_previous  — a new request marks the email's earlier unused
+        //                         tokens consumed, so only the latest link works.
+        'magic_link' => [
+            'enabled' => env('LARAFOUNDRY_MAGIC_LINK_ENABLED', false),
+            'ttl_minutes' => 15,
+            'absolute_ttl_minutes' => 30,
+            'throttle' => '5,1',
+            'invalidate_previous' => true,
+        ],
+
         // Social sign-in (Socialite). The controller is provider-agnostic: any
         // slug listed here is accepted as long as a Socialite driver is
         // registered and `enabled` is true. The frontend renders one button per

@@ -84,6 +84,15 @@ return [
         'admin_forbidden' => 'Administrators cannot sign in by QR code.',
     ],
 
+    'magic_link' => [
+        'subject' => 'Your sign-in link for :app',
+        'intro' => 'Click the button below to sign in. This link works once and expires in :minutes minutes.',
+        'action' => 'Sign in',
+        'outro' => 'If you did not request this, you can safely ignore this email.',
+        'sent' => 'If that email address can receive mail, a sign-in link is on its way. Please check your inbox.',
+        'invalid' => 'This sign-in link is invalid or has expired. Please request a new one.',
+    ],
+
     'admin_alert' => [
         'subject' => 'Security alert: admin access attempt',
         'intro' => 'A failed :step attempt was made on the admin account.',

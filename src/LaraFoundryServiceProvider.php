@@ -24,6 +24,7 @@ use Dmitryisaenko\LaraFoundry\Auth\Listeners\LogFailedLoginAttempt;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendAdminAccessAlertMail;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SendWelcomeNotification;
 use Dmitryisaenko\LaraFoundry\Auth\Listeners\SyncCookieConsentOnLogin;
+use Dmitryisaenko\LaraFoundry\Auth\MagicLink\Console\Commands\PruneMagicLoginTokensCommand;
 use Dmitryisaenko\LaraFoundry\Auth\Qr\Console\Commands\PruneSignInRequestsCommand;
 use Dmitryisaenko\LaraFoundry\Auth\Support\UserAgentDeviceResolver;
 use Dmitryisaenko\LaraFoundry\Authorization\Console\Commands\SyncPermissionsCommand;
@@ -126,13 +127,17 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
@@ -488,6 +493,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
 
         $this->registerAuthMiddleware();
         $this->registerAuthEventListeners();
+        $this->registerMagicLinkRateLimiter();
         $this->bootOAuthCommunityDrivers();
         $this->localizeAuthMail();
         $this->registerTenancy();
@@ -507,6 +513,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 InstallCommand::class,
                 SyncPermissionsCommand::class,
                 PruneSignInRequestsCommand::class,
+                PruneMagicLoginTokensCommand::class,
                 PruneNotificationsCommand::class,
                 PurgeDeletedAccountsCommand::class,
                 PreviewEmailTemplatesCommand::class,
@@ -714,6 +721,45 @@ class LaraFoundryServiceProvider extends ServiceProvider
         // its authenticated web group; it is fail-open (no published Terms = no
         // enforcement), so adding it is always safe.
         $router->aliasMiddleware('larafoundry.terms', EnsureTermsAccepted::class);
+    }
+
+    /**
+     * The rate limiter behind the magic-link request route (phase: magic-link).
+     *
+     * Keyed per (email + IP) — the same shape as Fortify's login limiter — so an
+     * attacker can neither spam one address nor sweep many addresses from one IP.
+     * The window comes from `auth.magic_link.throttle` ("attempts,minutes"). The
+     * route references it by name; it is resolved at dispatch time, so registering
+     * it here in boot() is safe regardless of route-load order.
+     */
+    protected function registerMagicLinkRateLimiter(): void
+    {
+        RateLimiter::for('larafoundry-magic-link', function (Request $request) {
+            [$attempts, $minutes] = $this->magicLinkThrottle();
+            // Normalise the same way RequestMagicLinkAction does (trim + lower) so
+            // the throttle key cannot be split by surrounding whitespace on a host
+            // that has disabled the global TrimStrings middleware.
+            $email = Str::lower(trim((string) $request->input('email')));
+
+            return Limit::perMinutes($minutes, $attempts)->by($email.'|'.$request->ip());
+        });
+    }
+
+    /**
+     * Parse `auth.magic_link.throttle` ("attempts,minutes") into [attempts, minutes],
+     * falling back to a safe default if it is malformed.
+     *
+     * @return array{0: int, 1: int}
+     */
+    protected function magicLinkThrottle(): array
+    {
+        $raw = (string) config('larafoundry.auth.magic_link.throttle', '5,1');
+        $parts = array_map('trim', explode(',', $raw));
+
+        $attempts = isset($parts[0]) && is_numeric($parts[0]) ? (int) $parts[0] : 5;
+        $minutes = isset($parts[1]) && is_numeric($parts[1]) ? (int) $parts[1] : 1;
+
+        return [max(1, $attempts), max(1, $minutes)];
     }
 
     /**

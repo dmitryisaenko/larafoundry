@@ -35,6 +35,13 @@ abstract class AuthTestCase extends TestCase
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('a', 32)));
         $app['config']->set('database.default', 'testing');
         $app['config']->set('auth.providers.users.model', User::class);
+
+        // Magic-link ships OFF by default (routes are only registered when
+        // enabled). Turn it on at boot so the auth suite can drive the real
+        // routes; no other auth test references them, and the disabled-state
+        // assertions re-evaluate the guard against a fresh router / the config
+        // directly rather than relying on this boot value.
+        $app['config']->set('larafoundry.auth.magic_link.enabled', true);
     }
 
     /**
