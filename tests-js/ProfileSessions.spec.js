@@ -45,4 +45,36 @@ describe('SessionsManager', () => {
 
         expect(router.delete).toHaveBeenCalledWith('/auth/sessions/others', { preserveScroll: true });
     });
+
+    // API-token devices (mobile app) share the list, discriminated by type: 'token'.
+    const mixed = [
+        { id: 1, type: 'session', browser: 'Chrome', os: 'macOS', ip_address: '1.1.1.1', is_current: true },
+        { id: 1, type: 'token', label: 'Android · SM-M127F', last_activity: '2026-07-19T10:00:00+00:00' },
+    ];
+
+    it('renders a token device by its label with a log-out button', () => {
+        const wrapper = mount(SessionsManager, { props: { sessions: mixed } });
+
+        // A token id can collide with a session id; the composite key must keep
+        // both rows (no Vue key clash dropping one).
+        expect(wrapper.findAll('li')).toHaveLength(2);
+        expect(wrapper.text()).toContain('Android · SM-M127F');
+        const logoutButton = wrapper.findAll('button').find((b) => b.text() === 'Log out this device');
+        expect(logoutButton).toBeTruthy();
+    });
+
+    it('revokes a token device via the token endpoint', async () => {
+        const wrapper = mount(SessionsManager, { props: { sessions: mixed } });
+        const logoutButton = wrapper.findAll('button').find((b) => b.text() === 'Log out this device');
+        await logoutButton.trigger('click');
+
+        expect(router.delete).toHaveBeenCalledWith('/auth/tokens/1', { preserveScroll: true });
+    });
+
+    it('hides "Sign out other devices" when only one web session remains beside a token', () => {
+        const wrapper = mount(SessionsManager, { props: { sessions: mixed } });
+        const othersButton = wrapper.findAll('button').find((b) => b.text() === 'Sign out other devices');
+
+        expect(othersButton).toBeFalsy();
+    });
 });

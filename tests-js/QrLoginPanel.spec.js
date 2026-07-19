@@ -81,12 +81,73 @@ describe('QrLoginPanel', () => {
         expect(global.fetch.mock.calls.length).toBe(callsAfterHide);
     });
 
-    it('shows an error when generate fails', async () => {
-        global.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+    it('retries generate once silently and succeeds without showing an error', async () => {
+        // First POST fails (as a stale-CSRF 419 would), the silent retry succeeds.
+        let i = 0;
+        global.fetch = vi.fn(() => {
+            i += 1;
+            if (i === 1) {
+                return Promise.resolve({ ok: false, status: 419 });
+            }
+
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ qrCode: 'RETRIED' }) });
+        });
 
         const wrapper = mount(QrLoginPanel, { props: { active: true, pollIntervalMs: 2000 } });
         await flushPromises();
 
-        expect(wrapper.text()).toContain('Could not generate');
+        // During the retry backoff we stay in the "generating" state, not an error.
+        expect(wrapper.text()).not.toContain('Could not load the QR code.');
+
+        // Let the retry's short delay elapse, then it resolves with a QR.
+        await vi.advanceTimersByTimeAsync(600);
+        await flushPromises();
+
+        const img = wrapper.find('img');
+        expect(img.exists()).toBe(true);
+        expect(img.attributes('src')).toContain('RETRIED');
+        expect(wrapper.text()).not.toContain('Could not load the QR code.');
+    });
+
+    it('shows only the error state after the retry also fails', async () => {
+        global.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+
+        const wrapper = mount(QrLoginPanel, { props: { active: true, pollIntervalMs: 2000 } });
+        await flushPromises();
+        await vi.advanceTimersByTimeAsync(600);
+        await flushPromises();
+
+        const text = wrapper.text();
+        // The three box states are mutually exclusive: only the error is shown.
+        expect(text).toContain('Could not load the QR code.');
+        expect(text).toContain('Try again');
+        expect(text).not.toContain('Scan this code with your phone to sign in.');
+        expect(text).not.toContain('Generating QR code');
+    });
+
+    it('regenerates when Try again is clicked', async () => {
+        // Initial POST + its auto-retry both fail, then a manual retry succeeds.
+        let i = 0;
+        global.fetch = vi.fn(() => {
+            i += 1;
+            if (i <= 2) {
+                return Promise.resolve({ ok: false, status: 500 });
+            }
+
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ qrCode: 'AFTERCLICK' }) });
+        });
+
+        const wrapper = mount(QrLoginPanel, { props: { active: true, pollIntervalMs: 2000 } });
+        await flushPromises();
+        await vi.advanceTimersByTimeAsync(600);
+        await flushPromises();
+        expect(wrapper.text()).toContain('Could not load the QR code.');
+
+        await wrapper.find('button').trigger('click');
+        await flushPromises();
+
+        const img = wrapper.find('img');
+        expect(img.exists()).toBe(true);
+        expect(img.attributes('src')).toContain('AFTERCLICK');
     });
 });

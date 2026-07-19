@@ -69,4 +69,30 @@ class SessionController extends Controller
 
         return back()->with('status', __('larafoundry::profile.sessions.revoked'));
     }
+
+    /**
+     * Revoke one API-token device (mobile app / other API client) of the current
+     * user — the token counterpart of {@see destroy}.
+     *
+     * The token is resolved strictly within the caller's own `tokens()` relation
+     * (not a global lookup), so a foreign or missing id both answer 404 with no
+     * deletion — the same no-IDOR-probe contract as the session revoke. Deleting
+     * the personal_access_token row is what evicts the device: its next API
+     * request authenticates against a row that no longer exists and gets 401.
+     */
+    public function destroyToken(Request $request, int $tokenId): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user === null || ! method_exists($user, 'tokens')) {
+            abort(403);
+        }
+
+        $token = $user->tokens()->whereKey($tokenId)->first();
+        abort_if($token === null, 404);
+
+        $token->delete();
+
+        return back()->with('status', __('larafoundry::profile.sessions.revoked'));
+    }
 }

@@ -54,5 +54,12 @@ Route::middleware('web')->group(function () {
         Route::delete('auth/sessions/{session}', [SessionController::class, 'destroy'])
             ->whereNumber('session')
             ->name('larafoundry.sessions.destroy');
+
+        // Revoke one API-token device (mobile app / other API client). Separate
+        // path from sessions/* because it deletes a personal_access_token, not a
+        // tracked web session.
+        Route::delete('auth/tokens/{token}', [SessionController::class, 'destroyToken'])
+            ->whereNumber('token')
+            ->name('larafoundry.sessions.destroy-token');
     });
 });

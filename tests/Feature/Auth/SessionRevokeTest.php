@@ -63,3 +63,43 @@ it('does not revoke the current session', function () {
     expect($response->isRedirect())->toBeTrue()
         ->and(UserSession::find($session->id))->not->toBeNull();
 });
+
+/**
+ * destroyToken() takes a token id, not a route-model-bound instance, so a plain
+ * request carrying the user resolver is enough to drive it.
+ */
+function tokenRevokeRequest(User $user): Request
+{
+    $request = Request::create('/auth/tokens/1', 'DELETE');
+    $request->setUserResolver(fn () => $user);
+
+    return $request;
+}
+
+it('revokes an API-token device of the user', function () {
+    $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'secret-pass']);
+    $token = $user->createToken('Android · SM-M127F')->accessToken;
+
+    $response = (new SessionController)->destroyToken(tokenRevokeRequest($user), $token->id);
+
+    expect($response->isRedirect())->toBeTrue()
+        ->and($user->tokens()->whereKey($token->id)->exists())->toBeFalse();
+});
+
+it('aborts 404 when revoking another user\'s API token (IDOR)', function () {
+    $owner = User::create(['name' => 'O', 'email' => 'o@x.test', 'password' => 'secret-pass']);
+    $attacker = User::create(['name' => 'X', 'email' => 'x@x.test', 'password' => 'secret-pass']);
+    $token = $owner->createToken('mobile')->accessToken;
+
+    expect(fn () => (new SessionController)->destroyToken(tokenRevokeRequest($attacker), $token->id))
+        ->toThrow(HttpException::class);
+
+    expect($owner->tokens()->whereKey($token->id)->exists())->toBeTrue();
+});
+
+it('aborts 404 when revoking a missing API token', function () {
+    $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'secret-pass']);
+
+    expect(fn () => (new SessionController)->destroyToken(tokenRevokeRequest($user), 999999))
+        ->toThrow(HttpException::class);
+});

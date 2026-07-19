@@ -61,13 +61,22 @@ async function post(name) {
     return response.json();
 }
 
-async function generate() {
+async function generate({ isRetry = false } = {}) {
     error.value = null;
 
     try {
         const data = await post('larafoundry.qr.generate');
         qrCode.value = data.qrCode;
     } catch {
+        if (!isRetry) {
+            // The failed POST refreshed the XSRF-TOKEN cookie (a 419 starts a fresh
+            // session); a single retry with the new token normally succeeds. A short
+            // delay lets the Set-Cookie land before we read it again.
+            await new Promise((r) => setTimeout(r, 600));
+
+            return generate({ isRetry: true });
+        }
+
         error.value = 'qr_generate_failed';
     }
 }
@@ -118,7 +127,8 @@ onBeforeUnmount(stopPolling);
 
 <template>
     <div class="flex flex-col items-center gap-4">
-        <p class="text-sm text-ink-soft">
+        <!-- Instruction only in the normal (non-error) state. -->
+        <p v-if="!error" class="text-sm text-ink-soft">
             {{ $t('Scan this code with your phone to sign in.') }}
         </p>
 
@@ -129,11 +139,17 @@ onBeforeUnmount(stopPolling);
                 :alt="$t('Sign-in QR code')"
                 class="h-full w-full"
             />
+            <div v-else-if="error" class="flex flex-col items-center gap-3 px-3 text-center">
+                <p class="text-sm text-ink-soft">{{ $t('Could not load the QR code.') }}</p>
+                <button
+                    type="button"
+                    class="cursor-pointer text-sm font-medium text-brand-600 hover:text-brand-700"
+                    @click="generate()"
+                >
+                    {{ $t('Try again') }}
+                </button>
+            </div>
             <span v-else class="text-sm text-ink-soft">{{ $t('Generating QR code…') }}</span>
         </div>
-
-        <p v-if="error" class="text-sm text-danger">
-            {{ $t('Could not generate a QR code. Please try again.') }}
-        </p>
     </div>
 </template>

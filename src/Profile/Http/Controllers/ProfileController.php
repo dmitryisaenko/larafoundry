@@ -32,9 +32,11 @@ class ProfileController extends Controller
         $user = $request->user();
         $currentSessionId = $request->session()->getId();
 
-        $sessions = method_exists($user, 'sessions')
+        // Web (browser) sessions — the database session driver's tracked rows.
+        $webSessions = method_exists($user, 'sessions')
             ? $user->sessions()->orderByDesc('last_activity')->get()->map(fn ($session) => [
                 'id' => $session->id,
+                'type' => 'session',
                 'ip_address' => $session->ip_address,
                 'user_agent' => $session->user_agent,
                 'device_type' => $session->user_device_type,
@@ -44,8 +46,36 @@ class ProfileController extends Controller
                 'login_method' => $session->login_method,
                 'last_activity' => optional($session->last_activity)->toIso8601String(),
                 'is_current' => $session->session_id === $currentSessionId,
-            ])->values()->all()
-            : [];
+            ])
+            : collect();
+
+        // API-token devices (mobile app / other API clients). These authenticate
+        // with a Sanctum personal_access_token, not a web session, so they never
+        // land in the sessions table — without this the mobile device is invisible
+        // in "where am I signed in". Sanctum stamps last_used_at per authenticated
+        // request; a token never used since issue falls back to created_at. The
+        // name is host-provided (e.g. "Android · SM-M127F"); the core shows it verbatim.
+        $tokenDevices = method_exists($user, 'tokens')
+            ? $user->tokens()->orderByDesc('last_used_at')->get()->map(fn ($token) => [
+                'id' => $token->id,
+                'type' => 'token',
+                'label' => $token->name,
+                'ip_address' => null,
+                'user_agent' => null,
+                'device_type' => null,
+                'device_name' => null,
+                'os' => null,
+                'browser' => null,
+                'login_method' => null,
+                'last_activity' => optional($token->last_used_at ?? $token->created_at)->toIso8601String(),
+                'is_current' => false, // a web view is never "on" a token device
+            ])
+            : collect();
+
+        $sessions = $webSessions->concat($tokenDevices)
+            ->sortByDesc('last_activity')
+            ->values()
+            ->all();
 
         return Inertia::render('Profile/ProfileHub', [
             'profile' => new ProfileResource($user),
