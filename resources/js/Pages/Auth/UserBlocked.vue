@@ -11,8 +11,7 @@
  *  - status {string|null} optional human-readable reason for the block
  *  - blockedAt {string|null} optional timestamp the block took effect
  */
-import { Link } from '@inertiajs/vue3';
-import { AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { AuthCard, AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     status: { type: String, default: null },
@@ -40,14 +39,9 @@ defineProps({
                     </div>
                 </dl>
 
-                <Link
-                    href="/logout"
-                    method="post"
-                    as="button"
-                    class="rounded-sm bg-brand-500 px-4 py-2 text-white transition hover:bg-brand-600"
-                >
+                <LogoutForm button-class="rounded-sm bg-brand-500 px-4 py-2 text-white transition hover:bg-brand-600">
                     {{ $t('Log out') }}
-                </Link>
+                </LogoutForm>
             </div>
         </AuthCard>
     </AppBaseLayout>

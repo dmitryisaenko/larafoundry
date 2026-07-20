@@ -8,7 +8,7 @@
  * version against their account.
  */
 import { useForm, Link } from '@inertiajs/vue3';
-import { AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     version: { type: [Number, String], default: null },
@@ -47,9 +47,9 @@ function accept() {
                 >
                     {{ $t('Accept and continue') }}
                 </button>
-                <Link href="/logout" method="post" as="button" class="text-sm text-ink-soft hover:text-ink">
+                <LogoutForm button-class="text-sm text-ink-soft hover:text-ink">
                     {{ $t('Log out') }}
-                </Link>
+                </LogoutForm>
             </div>
         </div>
     </AppBaseLayout>

@@ -48,7 +48,7 @@ describe('OperatorPullout', () => {
         expect(wrapper.find('button[aria-label="Super-admin"]').exists()).toBe(true);
     });
 
-    it('shows the operator identity and the profile + logout links when open', async () => {
+    it('shows the operator identity, the profile link, and a native logout form when open', async () => {
         const wrapper = mount(OperatorPullout, mounts);
         await openPullout(wrapper);
 
@@ -57,7 +57,13 @@ describe('OperatorPullout', () => {
 
         const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'));
         expect(hrefs).toContain('/admin/profile');
-        expect(hrefs).toContain('/logout');
+
+        // Logout is a native form POST (not an Inertia Link): it triggers a
+        // full-page navigation, so the redirect to a non-Inertia guest landing
+        // never pops Inertia's error-modal overlay.
+        const logout = wrapper.find('form[action="/logout"]');
+        expect(logout.exists()).toBe(true);
+        expect(logout.attributes('method')).toBe('POST');
     });
 
     it('persists the theme (save-only) via the ui-settings endpoint', async () => {

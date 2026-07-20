@@ -429,6 +429,18 @@ createInertiaApp({
 
 **npm peers:** `@inertiajs/vue3`, `vue`, `vue-i18n`, `ziggy-js`, `@vitejs/plugin-vue`, `laravel-vite-plugin`, `tailwindcss@^4` (+ `@tailwindcss/vite` or the postcss plugin), and `html5-qrcode` **only** if you build the QR scanner page.
 
+### 12.1 CSRF meta tag — required in your root Blade view
+
+The core's log-out control (`LogoutForm`, used on the account-blocked, email-verification, terms-acceptance and operator pull-out screens) submits a **native `<form method="POST" action="/logout">`**, not an Inertia visit. A native submit is a full-page navigation, so the browser follows Fortify's `302` to the guest landing itself — even when that landing is a plain (non-Inertia) SEO page. An Inertia logout, by contrast, expects a valid Inertia response from the redirect target and pops its **error-modal overlay** over a non-Inertia landing (a common "logout shows a popup" symptom).
+
+Because that form is outside Inertia's axios pipeline, it needs the CSRF token from the DOM. **Your root Blade view (`resources/views/app.blade.php`) MUST render the token in `<head>`:**
+
+```blade
+<meta name="csrf-token" content="{{ csrf_token() }}">
+```
+
+Without it, `POST /logout` returns **419 (page expired)**. This is the standard Laravel meta tag; if your host was scaffolded from a Breeze/Jetstream/Laravel starter it is almost certainly already there — just confirm it survived any custom `<head>`.
+
 ---
 
 ## 13. Vue layouts & the operator-console seam (host "Statistics / Logs")
@@ -503,6 +515,7 @@ Avoid N+1: `extra()` runs per row. If your column reads a relation, eager-load i
 - [ ] **Vite alias** `@dmitryisaenko/larafoundry` → `vendor/.../resources/js/index.js` (the make-or-break step).
 - [ ] `import.meta.glob('./Pages/**/*.vue')` over the **published** `resources/js/Pages`.
 - [ ] `theme.css` imported from `vendor/`.
+- [ ] `<meta name="csrf-token" content="{{ csrf_token() }}">` in your root Blade `<head>` — the native `LogoutForm` reads it, else `POST /logout` 419s (§12.1).
 - [ ] `LARAFOUNDRY_TENANCY_MODE=personal`; domain models `use BelongsToTenant` (auto `user_id` scope); drive your own app shell (§5.6).
 - [ ] Registration disabled by **omitting `Features::registration()`**; keep `Features::twoFactorAuthentication()`.
 - [ ] Super-admin user has **both** `is_admin=true` **and** the configured email; `LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE` set, or the OTP gate 403s.

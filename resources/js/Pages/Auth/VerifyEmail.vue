@@ -10,9 +10,9 @@
  * Props:
  *  - status {string|null} session status flash
  */
-import { router, Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import { AuthCard, AppBaseLayout } from '@dmitryisaenko/larafoundry';
+import { AuthCard, AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     status: { type: String, default: null },
@@ -55,14 +55,9 @@ function resend() {
                     {{ $t('Resend verification email') }}
                 </button>
 
-                <Link
-                    href="/logout"
-                    method="post"
-                    as="button"
-                    class="text-sm text-ink-soft hover:text-ink"
-                >
+                <LogoutForm button-class="text-sm text-ink-soft hover:text-ink">
                     {{ $t('Log out') }}
-                </Link>
+                </LogoutForm>
             </div>
         </AuthCard>
     </AppBaseLayout>

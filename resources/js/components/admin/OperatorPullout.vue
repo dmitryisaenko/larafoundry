@@ -19,7 +19,7 @@
  */
 import { computed, ref } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { UserAvatar } from '@dmitryisaenko/larafoundry';
+import { UserAvatar, LogoutForm } from '@dmitryisaenko/larafoundry';
 import AdminFilterDrawer from './AdminFilterDrawer.vue';
 
 const page = usePage();
@@ -133,15 +133,10 @@ function switchLocale(locale) {
             </nav>
 
             <template #footer>
-                <Link
-                    href="/logout"
-                    method="post"
-                    as="button"
-                    class="flex w-full items-center justify-center gap-2 rounded-md bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-950 dark:bg-brand-700 dark:hover:bg-brand-600"
-                >
+                <LogoutForm button-class="flex w-full items-center justify-center gap-2 rounded-md bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-950 dark:bg-brand-700 dark:hover:bg-brand-600">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                     <span>{{ $t('Log out') }}</span>
-                </Link>
+                </LogoutForm>
             </template>
         </AdminFilterDrawer>
     </div>

@@ -32,6 +32,7 @@ import { setupTheme } from './composables/useTheme.js';
 export { default as AppFlashMessage } from './components/AppFlashMessage.vue';
 export { default as PagePaginator } from './components/PagePaginator.vue';
 export { default as AuthCard } from './components/AuthCard.vue';
+export { default as LogoutForm } from './components/LogoutForm.vue';
 export { default as AuthScreen } from './components/auth/AuthScreen.vue';
 export { default as Modal } from './components/ui/Modal.vue';
 export { default as QrLoginPanel } from './components/auth/QrLoginPanel.vue';
