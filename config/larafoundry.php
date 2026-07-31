@@ -171,6 +171,9 @@ return [
     |                     the console redirect (the console itself, OTP gate, PIN, logout,
     |                     and the operator pull-out's own preference actions: language
     |                     switch + the allowlisted ui-settings PUT for theme).
+    |   allowed_paths   — request PATHS (fnmatch) available to the super-admin outside
+    |                     the console redirect, for packages that register routes with
+    |                     no name (allowed_routes cannot match those). Empty by default.
     | email_verification — settings for the EnsureEmailIsVerified middleware:
     |   redirect_route  — where to send an unverified user.
     |   except_routes   — route names (fnmatch patterns) available without verification.
@@ -195,6 +198,40 @@ return [
                 'larafoundry.language.switch',
                 'profile.ui-settings.update',
             ],
+
+            // Paths (glob, matched with Request::is) the super-admin may keep
+            // instead of being bounced to the console. allowed_routes above matches
+            // by route NAME, and operator tooling routinely registers routes without
+            // one — Telescope names only its SPA shell, every data call it makes
+            // (/telescope/telescope-api/*) is unnamed, so the name list cannot reach
+            // it and the XHR gets a 403 that reads like a broken tool. List such
+            // surfaces here. An empty array = exactly the behaviour before this key
+            // existed.
+            //
+            // Matching rules, all of which bite in practice:
+            //   - `*` is the ONLY wildcard (it crosses slashes); `?` and `[abc]` are
+            //     literals, unlike real fnmatch().
+            //   - These are GLOBS, not prefixes — unlike email_verification's
+            //     `except_prefixes`, 'telescope' does NOT cover 'telescope/anything'.
+            //     List both: 'telescope', 'telescope/*'.
+            //   - Keep patterns narrow. 'telescope*' also matches 'telescope-notes'
+            //     and any other path that merely starts with those letters.
+            //   - A leading slash is optional ('/telescope' == 'telescope'); '/' on
+            //     its own means the root path.
+            //   - '' and '*' are ignored: '*' would switch the confinement off
+            //     wholesale, which no list of tool paths is meant to say.
+            //
+            // WARNING: a path here switches off the CONFINEMENT, not authorization —
+            // and, if your tooling sits on the `web` group, also the operator OTP
+            // step-up gate, which only guards the core's own /admin routes. Only put
+            // surfaces that gate themselves (Telescope — the `viewTelescope` gate,
+            // log-viewer — its `LogViewer::auth()` callback) AND make sure that gate
+            // is actually closed in production. A surface with no gate of its own
+            // becomes reachable by the operator, which breaks precisely the
+            // console/tenant separation this middleware exists to enforce.
+            //
+            // Example (host side): ['telescope', 'telescope/*', 'log-viewer', 'log-viewer/*']
+            'allowed_paths' => [],
 
             // OTP step-up gate (phase 1.4): the operator console requires a
             // fresh two-factor code once per session (EnsureAdminOtpVerified),

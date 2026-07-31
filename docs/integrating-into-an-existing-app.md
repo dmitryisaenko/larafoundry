@@ -373,6 +373,50 @@ A user is the super-admin when **`users.is_admin = true` AND their email equals 
 
 > Wire a Telegram/Slack alert for failed operator logins by listening to `Dmitryisaenko\LaraFoundry\Auth\Events\AdminAccessAttemptFailed` and appending your channel to `larafoundry.auth.failed_login.channels` — no core change.
 
+### 11.1 Operator tooling behind the confinement (Telescope, log-viewer, Horizon)
+
+**Symptom:** you put `larafoundry.confine_admin` on the `web` group, and now an operator tool **opens but never loads its data** — the page shell renders, every panel sits on an endless spinner, and the browser console shows `403` on the tool's XHR (for Telescope: `AxiosError: Request failed with status code 403` on `POST /telescope/telescope-api/commands`). **The tool is not broken — the confinement is closing it.**
+
+Why: `allowed_routes` matches by route **name**, and these packages register their data endpoints **without names**. Telescope names only its SPA shell (`->name('telescope')`); everything under `/telescope/telescope-api/*` is unnamed, so there is nothing for the name list to match, and an XHR (which cannot follow a redirect to the console) gets a `403`.
+
+That `403` carries a body naming the cause — `{"error":"super_admin_confined","message":"…"}` — so you can tell "the confinement refused this" from "the tool is broken". Only pure JSON/XHR clients see it; Inertia and browser navigations still get the `302` to the console.
+
+**Fix — list the paths** in `config/larafoundry.php`:
+
+```php
+'security' => [
+    'super_admin' => [
+        // ...
+        'allowed_paths' => [
+            'telescope', 'telescope/*',
+            'log-viewer', 'log-viewer/*',
+        ],
+    ],
+],
+```
+
+- Patterns are matched with `Request::is()` — globs **on the path**, not on the route name. `*` is the **only** wildcard (it crosses slashes); `?` and `[abc]` are literals, unlike real `fnmatch()`.
+- `'telescope/*'` does **not** cover `'telescope'` itself, and vice versa — list **both**, as above. These are globs, not prefixes (unlike `email_verification.except_prefixes` in the same config).
+- **Keep patterns narrow.** `'telescope*'` also matches `telescope-notes` and anything else merely starting with those letters; a shared prefix like `'api/*'` opens every tenant endpoint under it. Two entries per tool — `tool` and `tool/*` — is the shape you want.
+- `''` and `'*'` are ignored on purpose: `'*'` matches everything, so it would switch the confinement off wholesale. `'/'` on its own means the root path. A leading slash is otherwise optional: `'/telescope'` == `'telescope'`.
+- Default is `[]`, i.e. exactly the behaviour of releases before this key existed.
+- If the tool's path is configurable (it usually is), read it: `config('telescope.path')`, `config('log-viewer.route_path')`.
+- **Check whether your tool actually needs this.** It helps when the data routes are *unnamed* (Telescope's `telescope-api/*`). A Livewire-driven tool such as Pulse fetches through the **named** `livewire.update` route, so `allowed_paths` will not fix it — that is an `allowed_routes` question, and opening `livewire.update` opens all of Livewire, which deserves its own thought.
+
+⚠️ **`allowed_paths` switches off the confinement, not authorization.** Only list surfaces that gate themselves — Telescope has the `viewTelescope` gate, log-viewer has its `LogViewer::auth()` callback — **and check that gate is really closed in production**, since these gates are commonly left as "open in local / this email list". A path with no gate of its own becomes reachable by the operator, which breaks precisely the console/tenant separation this middleware exists to enforce. If you need a rule the glob list cannot express, `isAllowedPath()` is `protected` — subclass the middleware.
+
+⚠️ **The OTP step-up gate does not follow.** `larafoundry.admin.otp` (`EnsureAdminOtpVerified`) guards the core's own `/admin` route group, not your `web` group — so a tool reached via `allowed_paths` is open to any live operator session without a fresh OTP. That matters for Telescope in particular: request payloads, mail and SQL across all tenants. The middleware is a no-op for non-admins, so put it back on the tool yourself:
+
+```php
+Route::middleware(['web', 'auth', 'larafoundry.admin.otp'])
+    ->group(base_path('vendor/laravel/telescope/routes/web.php'));
+```
+
+Two more things that produce the same "the tool is broken" impression and are **not** this key:
+
+- **PIN lock answers `423`.** If the operator's session is PIN-locked, `CheckPinLock` refuses the same XHR with `423` (it, too, allow-lists by route name only). Unlock the PIN; `allowed_paths` has no effect there.
+- **Custom 403 rendering is bypassed on this branch.** The confinement now *returns* the JSON response instead of throwing, so a host-level `withExceptions(...->render(...))` for 403 does not run for it. The status and the `message` key are unchanged.
+
 ---
 
 ## 12. Frontend wiring (the #1 integration risk)
@@ -519,6 +563,7 @@ Avoid N+1: `extra()` runs per row. If your column reads a relation, eager-load i
 - [ ] `LARAFOUNDRY_TENANCY_MODE=personal`; domain models `use BelongsToTenant` (auto `user_id` scope); drive your own app shell (§5.6).
 - [ ] Registration disabled by **omitting `Features::registration()`**; keep `Features::twoFactorAuthentication()`.
 - [ ] Super-admin user has **both** `is_admin=true` **and** the configured email; `LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE` set, or the OTP gate 403s.
+- [ ] Operator tools on the `web` group (Telescope, log-viewer, Horizon) listed in `security.super_admin.allowed_paths` — their data routes are unnamed, so without it the tool opens but its XHR 403s and spins forever (§11.1). Re-apply `larafoundry.admin.otp` to them yourself: the step-up gate does not follow.
 - [ ] `oauth.providers = ['google']`, creds in `config/services.php`, redirect URI registered with Google.
 - [ ] QR needs **HTTPS** + Sanctum; scanner page imports `QrScanner` directly + `npm i html5-qrcode`.
 - [ ] `password` becomes nullable (OAuth-only users) — fine for an existing table.

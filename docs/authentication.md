@@ -131,7 +131,7 @@ and `security.super_admin` (the operator OTP gate and blocked-account redirect).
         'email' => env('LARAFOUNDRY_SUPER_ADMIN_EMAIL'),
         'require_otp' => env('LARAFOUNDRY_ADMIN_REQUIRE_OTP', true),
         'two_factor_setup_route' => env('LARAFOUNDRY_ADMIN_2FA_SETUP_ROUTE'),
-        // console_route, allowed_routes also live here (operator-console phase)
+        // console_route, allowed_routes, allowed_paths also live here (operator-console phase)
     ],
 ],
 ```
@@ -165,6 +165,7 @@ and `security.super_admin` (the operator OTP gate and blocked-account redirect).
 | `security.super_admin.email` | null | The operator's exclusive email. When set, only it (with the `is_admin` flag) gets admin status, and the email is reserved (cannot register or be claimed via OAuth). |
 | `security.super_admin.require_otp` | `true` | Master switch for the operator OTP step-up gate (`EnsureAdminOtpVerified`). |
 | `security.super_admin.two_factor_setup_route` | null | Route name of the host's 2FA-enrolment screen. A super-admin without confirmed 2FA is sent here; null means the gate denies with 403 (fail closed). |
+| `security.super_admin.allowed_paths` | `[]` | Request paths (globs, via `Request::is()`; `*` is the only wildcard) the operator keeps instead of being bounced to the console — the escape hatch for packages whose routes have **no name**, which `allowed_routes` cannot match (Telescope's `/telescope/telescope-api/*`, log-viewer, Horizon). Empty = pre-existing behaviour; `''` and `'*'` are ignored. It disables the confinement — and, for tools on the `web` group, the OTP step-up gate — not the tool's own authorization: list only surfaces with a gate you have verified. See the integration guide §11.1. |
 
 ## Usage
 
