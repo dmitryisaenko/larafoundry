@@ -23,11 +23,16 @@
  * HOST SEAM (phase 7): each row may carry `extra_columns` — display cells a host
  * appended by subclassing AdminUserResource (see its `extra()`). The header is
  * derived from the union of cell keys across rows, so a host gets its column with
- * zero fork.
+ * zero fork. A cell is either text (`value` + optional `badge` pill) or a row of
+ * small badges (`items`); a badge click leaves here as `extra-action` (row, column
+ * key, badge key) and the PAGE owns the request — the table stores no badge state
+ * and knows nothing about what the host is toggling.
  */
 import { computed } from 'vue';
 import UsersTableActions from './UsersTableActions.vue';
 import SocialIcon from './SocialIcon.vue';
+import CellIcon from './CellIcon.vue';
+import { hasCellIcon } from './cellIcons.js';
 import UserAvatar from '../media/UserAvatar.vue';
 
 const props = defineProps({
@@ -49,6 +54,9 @@ defineEmits([
     'unverify-phone',
     'logs',
     'ticket',
+    // Host seam: a badge in a host extra column was clicked. Payload: the user
+    // row, the column key, the badge key. Nothing is saved or re-rendered here.
+    'extra-action',
 ]);
 
 function has(token) {
@@ -88,6 +96,57 @@ const badgeClass = {
 
 function pill(token) {
     return badgeClass[token] ?? badgeClass.slate;
+}
+
+// Host badge cells (`items`): tone -> text colour, same class families the rest
+// of this file uses, so dark theme comes along for free. An unknown tone reads as
+// `neutral` rather than dropping the badge — a stray token must not cost the
+// operator a control.
+const toneClass = {
+    on: 'text-emerald-600 dark:text-emerald-400',
+    off: 'text-rose-600 dark:text-rose-400',
+    muted: 'text-ink-faint',
+    neutral: 'text-ink-soft',
+};
+
+function tone(token) {
+    return toneClass[token] ?? toneClass.neutral;
+}
+
+// A badge is inert only when the host says so explicitly.
+function badgeClickable(item) {
+    return item.clickable !== false;
+}
+
+// The caption is the fallback for an unknown icon name too, so a glyph the
+// package does not know degrades to text instead of an empty badge.
+function badgeText(item) {
+    if (item.icon && !hasCellIcon(item.icon)) {
+        return item.text ?? '';
+    }
+    return item.icon ? '' : (item.text ?? '');
+}
+
+// A cell is a badge set as soon as it CARRIES `items` — an empty (or malformed)
+// list renders a dash, it does not fall through to `value`. That keeps the two
+// forms from mixing: a host whose badges all collapsed for one user gets the
+// dash, never a stale text value from the other form.
+function isBadgeCell(user, key) {
+    return cellFor(user, key).items !== undefined;
+}
+
+// Only real badge objects survive. A host that ships `items` as a string, or
+// with a null hole in it, gets an empty cell instead of ghost buttons or a
+// TypeError that would cost the operator the whole page — the same "a malformed
+// cell must not break the row" rule already applied to `tone` and `icon`.
+function badgeItems(user, key) {
+    const items = cellFor(user, key).items;
+
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    return items.filter((item) => item !== null && typeof item === 'object');
 }
 
 // Sex is stored canonically as a single character ('m'/'f'), the same value the
@@ -218,9 +277,38 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                     </td>
                     <td v-if="has('age')" class="px-3 py-2 text-ink-soft">{{ user.age ?? '-' }}</td>
 
-                    <td v-for="col in extraColumns" :key="col.key" class="px-3 py-2 text-ink-soft">
+                    <td
+                        v-for="col in extraColumns"
+                        :key="col.key"
+                        class="px-3 py-2 text-ink-soft"
+                        data-extra-cell
+                    >
+                        <!-- Badge set: one clickable control per switch, the click
+                             handed to the page (this table saves nothing). -->
+                        <div v-if="isBadgeCell(user, col.key)" class="flex items-center gap-1.5">
+                            <component
+                                :is="badgeClickable(item) ? 'button' : 'span'"
+                                v-for="(item, i) in badgeItems(user, col.key)"
+                                :key="item.key ?? i"
+                                :type="badgeClickable(item) ? 'button' : null"
+                                :title="item.title || null"
+                                :aria-label="item.title || item.text || item.key"
+                                class="inline-flex min-w-6 items-center justify-center rounded-sm px-1 py-0.5 font-mono text-xs leading-none transition"
+                                :class="[
+                                    tone(item.tone),
+                                    badgeClickable(item)
+                                        ? 'cursor-pointer hover:bg-surface-muted hover:ring-1 hover:ring-border'
+                                        : '',
+                                ]"
+                                @click="badgeClickable(item) ? $emit('extra-action', user, col.key, item.key) : null"
+                            >
+                                <CellIcon v-if="item.icon" :name="item.icon" />
+                                <span v-if="badgeText(item)">{{ badgeText(item) }}</span>
+                            </component>
+                            <span v-if="!badgeItems(user, col.key).length">-</span>
+                        </div>
                         <span
-                            v-if="cellFor(user, col.key).badge"
+                            v-else-if="cellFor(user, col.key).badge"
                             class="rounded-sm px-2 py-0.5 text-xs"
                             :class="pill(cellFor(user, col.key).badge)"
                         >{{ cellFor(user, col.key).value }}</span>

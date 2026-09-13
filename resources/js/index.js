@@ -67,6 +67,10 @@ export { default as ImpersonationBanner } from './components/admin/Impersonation
 // Admin user forms — social links (phase 3b)
 export { default as SocialLinksField } from './components/admin/SocialLinksField.vue';
 export { default as SocialIcon } from './components/admin/SocialIcon.vue';
+// Host extra-column badge glyphs (phase 7 seam): exported so a host can draw the
+// same glyph outside the table (e.g. on its own user card).
+export { default as CellIcon } from './components/admin/CellIcon.vue';
+export { CELL_ICON_PATHS, hasCellIcon } from './components/admin/cellIcons.js';
 
 // Admin companies (phase 3.3)
 export { default as CompaniesTable } from './components/admin/CompaniesTable.vue';

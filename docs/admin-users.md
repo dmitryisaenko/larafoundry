@@ -219,11 +219,77 @@ class MyUserResource extends AdminUserResource
 ],
 ```
 
-Each cell is a plain display descriptor - `key` (stable column id, also the i18n
-key for the label), `label`, `value` (already resolved text), and an optional
-`badge` colour token (`emerald` / `amber` / `rose` / `slate`). The core emits an
-empty `extra_columns`; the table renders whatever cells it finds. Keep `extra()`
-to display cells - never expose secrets or heavy relations through it.
+Each cell is a plain display descriptor. Every cell carries `key` (stable column
+id, also the i18n key for the label) and `label`, and then takes one of two
+forms. The core emits an empty `extra_columns`; the table renders whatever cells
+it finds. Keep `extra()` to display cells - never expose secrets or heavy
+relations through it.
+
+**Form 1 - text.** `value` (already resolved text) plus an optional `badge`
+colour token (`emerald` / `amber` / `rose` / `slate`), which renders the value as
+a pill. This is the form shown above.
+
+**Form 2 - a set of clickable badges.** A cell may instead carry `items`: small
+badges in one row, each of which the operator can click to act on that user
+without opening the edit card.
+
+```php
+[
+    'key'   => 'access',
+    'label' => 'Access',
+    'items' => [
+        ['key' => 'texts',   'text' => 'T',      'tone' => 'muted', 'title' => 'AI texts: as for everyone (on)'],
+        ['key' => 'learner', 'text' => 'L',      'tone' => 'on',    'title' => 'Study materials: allowed'],
+        ['key' => 'search',  'icon' => 'search', 'tone' => 'off',   'title' => 'YouTube search: blocked'],
+        ['key' => 'audio',   'icon' => 'audio',  'tone' => 'muted', 'title' => 'mp3: as for everyone (off)'],
+    ],
+]
+```
+
+| Badge field | Required | Meaning |
+|---|---|---|
+| `key` | yes | Stable badge id. This is what travels up in the click event. |
+| `text` | one of two | A short caption, 1-4 characters (`T`, `L`, `D`, `Tabs`, `$`). |
+| `icon` | one of two | A glyph name from the package's closed map (`search`, `audio` - see `resources/js/components/admin/cellIcons.js`). Mutually exclusive with `text`: ship both and the glyph wins, the caption is dropped - except when the glyph name is unknown, where the caption is exactly the fallback. |
+| `tone` | yes | `on` (green) / `off` (red) / `muted` (grey) / `neutral` (the table's own text colour). |
+| `title` | no | Hover hint. A ready-made string; the table does not translate it. |
+| `clickable` | no | Defaults to `true`. `false` renders an inert badge (a plain `span`, no hover state, no event). |
+
+A cell carries **either** `value` **or** `items`. Shipping both is a malformed
+cell: a cell that carries `items` at all is a badge cell, so the table renders
+the badges and ignores `value`. An empty `items` renders a dash - it does not
+fall back to `value`, or a host whose badges all collapsed for one user would see
+a stale text value from the other form.
+
+A malformed cell never costs the operator anything. `tone` and `icon` are
+validated in Vue, not in the resource: an unknown tone falls back to the neutral
+colour, an unknown glyph name falls back to the badge caption. `items` that is
+not a list, or holes in it, are ignored rather than rendered as empty controls or
+thrown at the page.
+
+**The host owns the request.** Clicking a badge makes the table emit
+`extra-action` with three arguments - the user row, the column key and the badge
+key - and nothing else: the package stores no badge state, issues no request and
+knows nothing about what is being toggled. It cannot invent an endpoint for a
+switch it has never heard of. The core's `Pages/Admin/Users/Index.vue` wires the
+event to a deliberately empty `extraAction(user, column, item)`; a host that
+ships badge cells publishes that page and posts from its own copy:
+
+```js
+function extraAction(user, column, item) {
+    router.post(`/admin/users/${user.id}/access/${item}`, {}, { preserveScroll: true });
+}
+```
+
+Badges are clickable buttons with an `aria-label`, and their colours use the same
+class families as the rest of the table, so dark theme needs nothing extra.
+
+The glyphs are exported too, so a host can draw the same badge outside the table
+(on its own user card, say):
+
+```js
+import { CellIcon, hasCellIcon } from '@dmitryisaenko/larafoundry';
+```
 
 ## API reference
 
@@ -356,9 +422,10 @@ The console user tests live in `tests/Feature/Admin/`:
   self, never blocked/deleted), the take/leave audit, rate limiting and session
   rotation.
 - `AdminUserResourceSeamTest` - the host resource seam: a subclass's `extra()`
-  cells surface under `extra_columns`, and a config class that does not extend
-  `AdminUserResource` is ignored (falls back to the core resource, no host
-  cells).
+  cells surface under `extra_columns` (both the text form and a badge-set cell,
+  which arrives whole - badge keys, tones, captions/glyphs and the inert flag),
+  and a config class that does not extend `AdminUserResource` is ignored (falls
+  back to the core resource, no host cells).
 - `AdminUserSocialLinksTest` - the social-links opt-in column and the
   `syncSocialLinks` guards.
 - `SuperAdminConfinementTest` / `AdminOtpGateTest` - the gate and OTP step-up
@@ -368,6 +435,16 @@ Run them with Pest:
 
 ```bash
 composer test
+```
+
+The table's own behaviour is covered on the front:
+`tests-js/components/UsersTableSocial.test.js` (the opt-in social column) and
+`tests-js/components/UsersTableExtraActions.test.js` (host badge cells: one
+control per badge, the `extra-action` payload, inert badges, the untouched text
+form, and an unknown tone or glyph name degrading instead of breaking).
+
+```bash
+npx vitest run
 ```
 
 ## What changed from the early draft
@@ -386,3 +463,4 @@ extracted from:
 | No forced verification | operator email/phone verify/unverify overrides (audited, no mail/SMS) |
 | Personal columns always present | `phone`/`sex`/`age` opt-in via `user_columns`, default empty = privacy-clean payload |
 | Fixed column set | host `extra_columns` seam via an `AdminUserResource` subclass + config, no fork of the Vue table |
+| Host cells could only show text | a cell may instead carry `items` - a row of small badges the operator clicks to act on a user from the list; the table emits `extra-action` (row, column, badge) and the host owns the request |

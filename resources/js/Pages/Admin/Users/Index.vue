@@ -134,6 +134,19 @@ function viewLogs(user) {
 function createTicket(user) {
     router.get(`/admin/tickets/create?user=${user.id}`);
 }
+
+/**
+ * A host extra column asked for an action (a badge was clicked).
+ *
+ * The core deliberately does NOTHING here: where such a request goes is the
+ * HOST's business — the package cannot invent an endpoint for a switch it knows
+ * nothing about. A host that ships badge cells publishes this page and posts
+ * from its own copy (see docs/admin-users.md, "Host list columns").
+ */
+function extraAction(user, column, item) {
+    // Intentionally empty in the core: the host's published copy of this page
+    // decides what `column` + `item` mean for `user` and posts accordingly.
+}
 </script>
 
 <template>
@@ -226,6 +239,7 @@ function createTicket(user) {
                     @unverify-phone="unverifyPhone"
                     @logs="viewLogs"
                     @ticket="createTicket"
+                    @extra-action="extraAction"
                 />
             </div>
 

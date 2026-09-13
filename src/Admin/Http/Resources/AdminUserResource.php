@@ -187,18 +187,79 @@ class AdminUserResource extends JsonResource
      *
      * The core ships none. A host subclasses this resource and overrides this
      * method to append columns (e.g. "used demo?") without touching the Vue
-     * table. Each cell is a plain display descriptor:
+     * table. Every cell carries `key` + `label` and then takes ONE of two forms.
      *
-     *   ['key' => 'demo', 'label' => 'Demo', 'value' => 'Yes', 'badge' => 'emerald']
-     *
+     * Shared keys:
      * - key   — stable column id (used as the header key; also the i18n key for
      *           the label on the front, so ship a plain string).
      * - label — column header text (an i18n key, translated in Vue).
+     *
+     * FORM 1 — text (the original): a resolved string, optionally as a pill.
+     *
+     *   ['key' => 'demo', 'label' => 'Demo', 'value' => 'Yes', 'badge' => 'emerald']
+     *
      * - value — the cell text (already resolved; the table does not interpret it).
      * - badge — (optional) a colour token ('emerald'|'amber'|'rose'|'slate'); when
      *           present the value renders as a pill instead of plain text.
      *
-     * @return array<int, array{key: string, label: string, value: string|int|null, badge?: string|null}>
+     * FORM 2 — a set of small badges, each of which the operator can click to act
+     * on that user straight from the list (no need to open the edit card):
+     *
+     *   [
+     *       'key'   => 'access',
+     *       'label' => 'Access',
+     *       'items' => [
+     *           ['key' => 'texts',   'text' => 'T',      'tone' => 'muted', 'title' => 'AI texts: as for everyone (on)'],
+     *           ['key' => 'learner', 'text' => 'L',      'tone' => 'on',    'title' => 'Study materials: allowed'],
+     *           ['key' => 'search',  'icon' => 'search', 'tone' => 'off',   'title' => 'YouTube search: blocked'],
+     *           ['key' => 'audio',   'icon' => 'audio',  'tone' => 'muted', 'title' => 'mp3: as for everyone (off)'],
+     *       ],
+     *   ]
+     *
+     * One badge:
+     *
+     * - key       — (required) stable badge id; it is what travels up in the click
+     *               event, so the host knows which switch was hit.
+     * - text      — (one of two) a short caption, 1-4 characters ('T', 'L', 'D',
+     *               'Tabs', '$'). Mutually exclusive with `icon`.
+     * - icon      — (one of two) a glyph name from the package's closed icon map
+     *               (see `CellIcon.vue`: 'search', 'audio', ...). Mutually
+     *               exclusive with `text`: shipping both draws the glyph and
+     *               drops the caption — except when the glyph name is unknown,
+     *               where `text` is exactly the fallback.
+     * - tone      — (required) 'on' (green) / 'off' (red) / 'muted' (grey) /
+     *               'neutral' (the table's own text colour).
+     * - title     — (optional) hover hint. A ready-made string; the table does not
+     *               translate it.
+     * - clickable — (optional, default true). False renders a plain, inert badge.
+     *
+     * `tone` and `icon` are validated on the Vue side, not here: an unknown value
+     * degrades (neutral colour / caption fallback) instead of breaking the row, so
+     * this method stays a pure description, as it always was.
+     *
+     * A cell carries EITHER `value` OR `items`. Shipping both is a malformed cell:
+     * the table renders `items` and ignores `value`. An empty `items` renders a
+     * dash, just like an empty `value`.
+     *
+     * The table never stores badge state and never issues the request: it only
+     * emits "badge X of column Y was clicked for user Z" and the host page acts.
+     *
+     * Keep `extra()` to display cells — never expose secrets or heavy relations.
+     *
+     * @return array<int, array{
+     *     key: string,
+     *     label: string,
+     *     value?: string|int|null,
+     *     badge?: string|null,
+     *     items?: array<int, array{
+     *         key: string,
+     *         text?: string,
+     *         icon?: string,
+     *         tone: string,
+     *         title?: string|null,
+     *         clickable?: bool,
+     *     }>,
+     * }>
      */
     protected function extra(Request $request): array
     {
