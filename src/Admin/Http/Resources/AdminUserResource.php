@@ -222,11 +222,23 @@ class AdminUserResource extends JsonResource
      *               event, so the host knows which switch was hit.
      * - text      — (one of two) a short caption, 1-4 characters ('T', 'L', 'D',
      *               'Tabs', '$'). Mutually exclusive with `icon`.
-     * - icon      — (one of two) a glyph name from the package's closed icon map
-     *               (see `CellIcon.vue`: 'search', 'audio', ...). Mutually
-     *               exclusive with `text`: shipping both draws the glyph and
-     *               drops the caption — except when the glyph name is unknown,
-     *               where `text` is exactly the fallback.
+     * - icon      — (one of two) either a glyph NAME from the package's short
+     *               common set ('search', 'audio' — see `cellIcons.js`) or the
+     *               host's OWN glyph as data:
+     *
+     *                   ['path' => 'M4 3h10l6 6v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4z']
+     *
+     *               with optional `view_box` (default '0 0 24 24', taken only as
+     *               four space-separated numbers), `fill` ('currentColor' or
+     *               'none'; 'none' by default once a stroke is given) and
+     *               `stroke_width` for outline glyphs. Shipping your own glyph is
+     *               the ORDINARY route, not a workaround — what a switch looks
+     *               like in one application's console is not the package's
+     *               business, so the common set stays short deliberately.
+     *               Mutually exclusive with `text`: shipping both draws the glyph
+     *               and drops the caption — except when the glyph is unusable
+     *               (unknown name, no path, a path over 4096 characters, a
+     *               malformed shape), where `text` is exactly the fallback.
      * - tone      — (required) 'on' (green) / 'off' (red) / 'muted' (grey) /
      *               'neutral' (the table's own text colour).
      * - title     — (optional) hover hint. A ready-made string; the table does not
@@ -244,6 +256,22 @@ class AdminUserResource extends JsonResource
      * The table never stores badge state and never issues the request: it only
      * emits "badge X of column Y was clicked for user Z" and the host page acts.
      *
+     * HEADER BADGES — a badge column may also carry an optional `head`, badges of
+     * exactly the same shape, showing the SHARED (not per-user) state of those
+     * switches above the column:
+     *
+     *   ['key' => 'access', 'label' => 'Access', 'head' => [...], 'items' => [...]]
+     *
+     * Without `head` the header renders `label`, as it always has. With it the
+     * header renders the badges and `label` moves into the header's tooltip and
+     * accessible name, so the column never loses its title for a screen reader.
+     * A header badge NEVER clicks, even with `clickable` set: it speaks about
+     * everyone, and `extra-action` carries a user the header does not have —
+     * shared settings are edited on their own screen. `head` is read from the
+     * first cell that ACTUALLY carries it, so building it conditionally does not
+     * lose the header when the first-sorted user happens to omit it. An empty or
+     * malformed `head` falls back to the label.
+     *
      * Keep `extra()` to display cells — never expose secrets or heavy relations.
      *
      * @return array<int, array{
@@ -251,10 +279,17 @@ class AdminUserResource extends JsonResource
      *     label: string,
      *     value?: string|int|null,
      *     badge?: string|null,
+     *     head?: array<int, array{
+     *         key: string,
+     *         text?: string,
+     *         icon?: string|array{path: string, view_box?: string, fill?: string, stroke_width?: float|int|string},
+     *         tone: string,
+     *         title?: string|null,
+     *     }>,
      *     items?: array<int, array{
      *         key: string,
      *         text?: string,
-     *         icon?: string,
+     *         icon?: string|array{path: string, view_box?: string, fill?: string, stroke_width?: float|int|string},
      *         tone: string,
      *         title?: string|null,
      *         clickable?: bool,

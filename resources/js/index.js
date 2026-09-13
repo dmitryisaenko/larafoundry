@@ -70,7 +70,7 @@ export { default as SocialIcon } from './components/admin/SocialIcon.vue';
 // Host extra-column badge glyphs (phase 7 seam): exported so a host can draw the
 // same glyph outside the table (e.g. on its own user card).
 export { default as CellIcon } from './components/admin/CellIcon.vue';
-export { CELL_ICON_PATHS, hasCellIcon } from './components/admin/cellIcons.js';
+export { CELL_ICON_PATHS, hasCellIcon, resolveCellIcon, MAX_ICON_PATH_LENGTH } from './components/admin/cellIcons.js';
 
 // Admin companies (phase 3.3)
 export { default as CompaniesTable } from './components/admin/CompaniesTable.vue';

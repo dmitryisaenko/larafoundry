@@ -49,6 +49,31 @@ class BadgeSeamAdminUserResource extends AdminUserResource
     }
 }
 
+/**
+ * A column that also describes the SHARED state of its switches in the header,
+ * and ships one glyph as the host's own path data rather than a name from the
+ * package's short common set.
+ */
+class HeadSeamAdminUserResource extends AdminUserResource
+{
+    protected function extra(Request $request): array
+    {
+        return [
+            [
+                'key' => 'access',
+                'label' => 'Access',
+                'head' => [
+                    ['key' => 'texts', 'text' => 'T', 'tone' => 'on', 'title' => 'AI texts: open to everyone'],
+                    ['key' => 'search', 'icon' => 'search', 'tone' => 'muted'],
+                ],
+                'items' => [
+                    ['key' => 'word', 'icon' => ['path' => 'M4 3h10l6 6v12z', 'view_box' => '0 0 16 16'], 'tone' => 'on'],
+                ],
+            ],
+        ];
+    }
+}
+
 beforeEach(function () {
     config(['larafoundry-activitylog.geo.enabled' => false]);
     config(['inertia.testing.ensure_pages_exist' => false]);
@@ -114,6 +139,29 @@ it('carries a badge-set cell through to the page props intact', function () {
         ])
         ->and($cell['items'][1])->toMatchArray(['key' => 'search', 'icon' => 'search', 'tone' => 'off'])
         ->and($cell['items'][2])->toMatchArray(['key' => 'paid', 'text' => '$', 'clickable' => false]);
+});
+
+it('carries header badges and a host-supplied glyph through to the page props', function () {
+    config(['larafoundry.admin.user_resource' => HeadSeamAdminUserResource::class]);
+    $admin = seamAdmin();
+    // A listed (non-operator) user: the operator itself is hidden from the list.
+    User::create(['name' => 'Joe', 'email' => 'joe@x.test', 'password' => 'secret-pass', 'email_verified_at' => now()]);
+
+    $cell = $this->actingAs($admin)
+        ->get('/admin/users', ['X-Inertia' => 'true'])
+        ->assertOk()
+        ->json('props.users.data.0.extra_columns.0');
+
+    // The header set arrives whole, alongside the per-user badges.
+    expect($cell['head'])->toHaveCount(2)
+        ->and(array_column($cell['head'], 'key'))->toBe(['texts', 'search'])
+        ->and($cell['head'][0])->toMatchArray(['text' => 'T', 'tone' => 'on'])
+        ->and($cell['head'][1]['icon'])->toBe('search')
+        // A glyph shipped as data survives as a structure, not a flattened string.
+        ->and($cell['items'][0]['icon'])->toMatchArray([
+            'path' => 'M4 3h10l6 6v12z',
+            'view_box' => '0 0 16 16',
+        ]);
 });
 
 it('ignores a config class that does not extend AdminUserResource (falls back to core)', function () {

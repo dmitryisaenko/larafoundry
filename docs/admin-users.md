@@ -250,7 +250,7 @@ without opening the edit card.
 |---|---|---|
 | `key` | yes | Stable badge id. This is what travels up in the click event. |
 | `text` | one of two | A short caption, 1-4 characters (`T`, `L`, `D`, `Tabs`, `$`). |
-| `icon` | one of two | A glyph name from the package's closed map (`search`, `audio` - see `resources/js/components/admin/cellIcons.js`). Mutually exclusive with `text`: ship both and the glyph wins, the caption is dropped - except when the glyph name is unknown, where the caption is exactly the fallback. |
+| `icon` | one of two | A glyph: either a name from the package's short common set, or your own as data (see below). Mutually exclusive with `text`: ship both and the glyph wins, the caption is dropped - except when the glyph is unusable, where the caption is exactly the fallback. |
 | `tone` | yes | `on` (green) / `off` (red) / `muted` (grey) / `neutral` (the table's own text colour). |
 | `title` | no | Hover hint. A ready-made string; the table does not translate it. |
 | `clickable` | no | Defaults to `true`. `false` renders an inert badge (a plain `span`, no hover state, no event). |
@@ -266,6 +266,64 @@ validated in Vue, not in the resource: an unknown tone falls back to the neutral
 colour, an unknown glyph name falls back to the badge caption. `items` that is
 not a list, or holes in it, are ignored rather than rendered as empty controls or
 thrown at the page.
+
+**Ship your own glyphs.** `icon` takes either a name from the package's short
+common set (`search`, `audio`) or your own glyph as data:
+
+```php
+['key' => 'word', 'icon' => ['path' => 'M4 3h10l6 6v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4z'], 'tone' => 'on']
+```
+
+| Glyph field | Required | Meaning |
+|---|---|---|
+| `path` | yes | The `d` attribute of a single `<path>`, up to 4096 characters. |
+| `view_box` | no | Defaults to `0 0 24 24`; taken only as four space-separated numbers. |
+| `fill` | no | `currentColor` (default) or `none`. |
+| `stroke_width` | no | For outline glyphs: a positive number up to 100, which makes `fill` default to `none`. Anything else (including `0`) reads as no stroke. |
+
+**Shipping your own glyph is the ordinary route, not a workaround.** What a
+switch looks like in one application's console is not the package's business, so
+the common set in `resources/js/components/admin/cellIcons.js` stays short on
+purpose: please do not send a PR adding a glyph for one host. Path data travels
+as the value of the `d` attribute and is never rendered as markup (`v-html` is
+forbidden in these files), which is the line that actually matters for safety. An
+unusable glyph - unknown name, no path, a path over the ceiling, a shape that is
+not a string or an object - degrades to the badge caption, exactly as an unknown
+name always has.
+
+**Header badges.** A column may also carry `head`: badges of the same shape,
+showing the **shared** (not per-user) state of those switches above the column,
+so the operator sees what is open to everyone right over the per-user settings.
+
+```php
+[
+    'key'   => 'access',
+    'label' => 'Access',
+    'head'  => [
+        ['key' => 'texts',  'text' => 'T',      'tone' => 'on',    'title' => 'AI texts: open to everyone'],
+        ['key' => 'search', 'icon' => 'search', 'tone' => 'muted', 'title' => 'Search: closed'],
+    ],
+    'items' => [ /* ... */ ],
+]
+```
+
+`head` is optional: without it (or with an empty one) the header renders `label`,
+so no existing host changes. With it the header renders the badges and `label`
+moves into the header's `title` and `aria-label`, so the column keeps its name
+for anyone reading by voice; each badge carries its own `aria-label` too, since
+the glyph itself is hidden from screen readers. Header badges use the same `tone`
+palette as the rows - a colour must mean the same thing in two cells stacked one
+above the other.
+
+A header badge **never clicks**, even with `clickable: true`: it speaks about
+everyone, and `extra-action` carries a user the header does not have. Shared
+settings are edited on their own screen.
+
+`head` is read from the first cell that actually carries it, so a host that
+builds it conditionally does not lose the header just because the user who sorted
+first happened to omit it. Any column may carry `head`, text cells included,
+though it earns its keep above a badge column. A malformed `head` - not a list,
+or holes in it - falls back to the label.
 
 **The host owns the request.** Clicking a badge makes the table emit
 `extra-action` with three arguments - the user row, the column key and the badge
@@ -438,10 +496,16 @@ composer test
 ```
 
 The table's own behaviour is covered on the front:
-`tests-js/components/UsersTableSocial.test.js` (the opt-in social column) and
+`tests-js/components/UsersTableSocial.test.js` (the opt-in social column),
 `tests-js/components/UsersTableExtraActions.test.js` (host badge cells: one
 control per badge, the `extra-action` payload, inert badges, the untouched text
-form, and an unknown tone or glyph name degrading instead of breaking).
+form, and an unknown tone or glyph name degrading instead of breaking),
+`tests-js/components/UsersTableHostIcons.test.js` (named glyphs, host glyphs from
+path data, the length ceiling, a rejected `view_box`, malformed shapes, and path
+data never becoming markup) and
+`tests-js/components/UsersTableExtraHead.test.js` (the caption without `head`,
+badges with it, the shared tone palette, header badges staying inert, and a
+malformed `head` falling back).
 
 ```bash
 npx vitest run
@@ -464,3 +528,5 @@ extracted from:
 | Personal columns always present | `phone`/`sex`/`age` opt-in via `user_columns`, default empty = privacy-clean payload |
 | Fixed column set | host `extra_columns` seam via an `AdminUserResource` subclass + config, no fork of the Vue table |
 | Host cells could only show text | a cell may instead carry `items` - a row of small badges the operator clicks to act on a user from the list; the table emits `extra-action` (row, column, badge) and the host owns the request |
+| Badge glyphs came from a closed set in the package | a host ships its own glyph as path data (bound to `d`, never markup); the package's set stays as a short convenience, so a new switch no longer needs a package release |
+| Host column headers were a caption only | a column may carry `head` - inert badges showing the shared state of its switches, with the caption kept as the header's tooltip and accessible name |

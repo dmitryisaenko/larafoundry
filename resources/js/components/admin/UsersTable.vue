@@ -26,13 +26,18 @@
  * zero fork. A cell is either text (`value` + optional `badge` pill) or a row of
  * small badges (`items`); a badge click leaves here as `extra-action` (row, column
  * key, badge key) and the PAGE owns the request — the table stores no badge state
- * and knows nothing about what the host is toggling.
+ * and knows nothing about what the host is toggling. A badge glyph may be named
+ * from the package's short common set or shipped by the host as path data, which
+ * is bound to the `d` attribute and never as markup. A column may also carry
+ * `head`: badges showing the SHARED state of those switches in the header, which
+ * never click (they have no user to act on) and keep the caption as the header's
+ * tooltip and accessible name.
  */
 import { computed } from 'vue';
 import UsersTableActions from './UsersTableActions.vue';
 import SocialIcon from './SocialIcon.vue';
 import CellIcon from './CellIcon.vue';
-import { hasCellIcon } from './cellIcons.js';
+import { resolveCellIcon } from './cellIcons.js';
 import UserAvatar from '../media/UserAvatar.vue';
 
 const props = defineProps({
@@ -68,12 +73,26 @@ function has(token) {
 // some users (e.g. a "demo" flag) then still gets a header, and the body below
 // renders one <td> per header column (looked up by key) so cells never shift
 // under the wrong header when a row omits one.
+//
+// A column's `head` (optional header badges) comes from the FIRST cell that
+// carries it. Rows can only disagree through a host bug, and picking the "right"
+// one out of disagreeing rows is not the table's call.
 const extraColumns = computed(() => {
     const seen = new Map();
     for (const user of props.users) {
         for (const cell of user.extra_columns ?? []) {
-            if (!seen.has(cell.key)) {
-                seen.set(cell.key, { key: cell.key, label: cell.label });
+            const column = seen.get(cell.key);
+
+            if (!column) {
+                seen.set(cell.key, { key: cell.key, label: cell.label, head: sanitiseBadges(cell.head) });
+                continue;
+            }
+
+            // The column is known, but its header is still empty: a host that
+            // builds `head` conditionally (so the first row happens to omit it)
+            // must not lose the header just because of who sorted first.
+            if (!column.head.length) {
+                column.head = sanitiseBadges(cell.head);
             }
         }
     }
@@ -118,10 +137,11 @@ function badgeClickable(item) {
     return item.clickable !== false;
 }
 
-// The caption is the fallback for an unknown icon name too, so a glyph the
-// package does not know degrades to text instead of an empty badge.
+// The caption is the fallback for an unusable glyph too — an unknown name, a
+// path past the length ceiling, a malformed icon object — so a badge degrades to
+// text instead of rendering empty.
 function badgeText(item) {
-    if (item.icon && !hasCellIcon(item.icon)) {
+    if (item.icon && resolveCellIcon(item.icon) === null) {
         return item.text ?? '';
     }
     return item.icon ? '' : (item.text ?? '');
@@ -135,18 +155,21 @@ function isBadgeCell(user, key) {
     return cellFor(user, key).items !== undefined;
 }
 
-// Only real badge objects survive. A host that ships `items` as a string, or
-// with a null hole in it, gets an empty cell instead of ghost buttons or a
+// Only real badge objects survive. A host that ships a badge list as a string,
+// or with a null hole in it, gets an empty list instead of ghost buttons or a
 // TypeError that would cost the operator the whole page — the same "a malformed
-// cell must not break the row" rule already applied to `tone` and `icon`.
-function badgeItems(user, key) {
-    const items = cellFor(user, key).items;
-
-    if (!Array.isArray(items)) {
+// cell must not break the row" rule already applied to `tone` and `icon`. Shared
+// by row badges (`items`) and header badges (`head`).
+function sanitiseBadges(list) {
+    if (!Array.isArray(list)) {
         return [];
     }
 
-    return items.filter((item) => item !== null && typeof item === 'object');
+    return list.filter((item) => item !== null && typeof item === 'object' && !Array.isArray(item));
+}
+
+function badgeItems(user, key) {
+    return sanitiseBadges(cellFor(user, key).items);
 }
 
 // Sex is stored canonically as a single character ('m'/'f'), the same value the
@@ -196,7 +219,33 @@ const colspan = computed(() => FIXED_COLUMNS + optionalCount.value + extraColumn
                     <th class="px-3 py-2">{{ $t('Country') }}</th>
                     <th v-if="has('sex')" class="px-3 py-2">{{ $t('Sex') }}</th>
                     <th v-if="has('age')" class="px-3 py-2">{{ $t('Age') }}</th>
-                    <th v-for="col in extraColumns" :key="col.key" class="px-3 py-2">{{ $t(col.label) }}</th>
+                    <!-- A host column may show the SHARED state of its switches as
+                         badges instead of a caption. Header badges never click:
+                         they speak about everyone, and `extra-action` carries a
+                         user the header does not have. The caption stays reachable
+                         as the tooltip and the accessible name. -->
+                    <th
+                        v-for="col in extraColumns"
+                        :key="col.key"
+                        class="px-3 py-2"
+                        :title="col.head.length && col.label ? $t(col.label) : null"
+                        :aria-label="col.head.length && col.label ? $t(col.label) : null"
+                    >
+                        <div v-if="col.head.length" class="flex items-center gap-1.5 normal-case">
+                            <span
+                                v-for="(item, i) in col.head"
+                                :key="item.key ?? i"
+                                :title="item.title || null"
+                                :aria-label="item.title || item.text || item.key"
+                                class="inline-flex min-w-6 items-center justify-center rounded-sm px-1 py-0.5 font-mono text-sm leading-none"
+                                :class="tone(item.tone)"
+                            >
+                                <CellIcon v-if="item.icon" :name="item.icon" />
+                                <span v-if="badgeText(item)">{{ badgeText(item) }}</span>
+                            </span>
+                        </div>
+                        <template v-else>{{ $t(col.label) }}</template>
+                    </th>
                     <th class="px-3 py-2 text-right">{{ $t('Actions') }}</th>
                 </tr>
             </thead>
