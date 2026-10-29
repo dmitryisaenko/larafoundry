@@ -59,7 +59,7 @@ A module typically holds: `Models/`, `Http/Controllers/`, `Http/Requests/` (Form
 
 ## Frontend conventions
 
-- **Pages** live in `resources/js/Pages/*.vue` and are **published** into the host (`larafoundry-pages`); the host's `import.meta.glob('./Pages/**/*.vue')` resolves them.
+- **Pages** live in `resources/js/Pages/*.vue` and are **published** into the host (`larafoundry-pages`); the host's `import.meta.glob('./Pages/**/*.vue')` resolves them. Since v0.43.0 a host may instead resolve through `resources/js/pages.js` (`resolvePage`): its own page wins, the core's in `vendor/` is the fallback, so it keeps only overrides. A page is therefore loaded from `vendor/` too — its imports must work from there (the barrel alias, or relative paths inside `resources/js`).
 - **Shared library** (components, layouts, composables, i18n, `createLaraFoundry`, `dashboardWidgets`, `registerDashboardWidget`) is exported from the barrel `resources/js/index.js`. Pages and host code import it as **`@dmitryisaenko/larafoundry`** — a bare specifier the host resolves with a **Vite alias** to `vendor/.../resources/js/index.js`. **There is no `package.json`/npm publish**; do not add `import`s that assume one.
 - `createLaraFoundry(app, pageProps)` installs vue-i18n (global `$t`) and registers shared components. Ziggy + the Inertia plugin stay the host's responsibility.
 - `theme.css` (Tailwind v4 `@theme` tokens) is imported from `vendor/`.

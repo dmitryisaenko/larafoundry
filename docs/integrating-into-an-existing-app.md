@@ -434,8 +434,10 @@ export default defineConfig({
     plugins: [laravel({ input: ['resources/js/app.js'], refresh: true }), vue()],
     resolve: {
         alias: {
+            // ⚠️ Order matters: aliases match by PREFIX, first one wins. The subpath alias must come
+            // before the bare one, or the bare one swallows `@dmitryisaenko/larafoundry/resources/...`.
+            '@dmitryisaenko/larafoundry/resources': '/vendor/dmitryisaenko/larafoundry/resources', // subpath imports (QrScanner, pages.js)
             '@dmitryisaenko/larafoundry': '/vendor/dmitryisaenko/larafoundry/resources/js/index.js',
-            '@dmitryisaenko/larafoundry/resources': '/vendor/dmitryisaenko/larafoundry/resources', // subpath imports (QrScanner)
         },
     },
 });
@@ -470,6 +472,26 @@ createInertiaApp({
 ```
 
 > The pages are **published** (copied) into `resources/js/Pages`, so your `import.meta.glob` already sees them — they're not loaded from `vendor/`. Only the **shared library** (the barrel) and **theme.css** are referenced through `vendor/` via the alias. Re-run `vendor:publish --tag=larafoundry-pages` and rebuild after a core upgrade that touches UI.
+
+### 12.0 Pages straight from the core, overrides only (since v0.43.0)
+
+Publishing copies every core page into the host, and each copy goes stale on the next core upgrade unless the publish is re-run. Instead, resolve against your own pages first and fall back to the core's copy in `vendor/`:
+
+```js
+import { resolvePage } from '@dmitryisaenko/larafoundry/resources/js/pages.js';   // needs the subpath alias above
+
+createInertiaApp({
+    resolve: (name) => resolvePage(name, import.meta.glob('./Pages/**/*.vue')),
+    // ...
+});
+```
+
+- **An override is a host file at the same path.** `resources/js/Pages/Profile/ProfileHub.vue` in the host wins over the core's `Pages/Profile/ProfileHub.vue`; delete it and the core's comes back.
+- Keep in `resources/js/Pages` only the pages you changed (and your own). Byte-identical published copies can simply be deleted.
+- A host override that imports a core page *section* by relative path (`./sections/PasswordForm.vue`) must import it from the core once the copy is gone: `@dmitryisaenko/larafoundry/resources/js/Pages/Profile/sections/PasswordForm.vue`.
+- An unknown name throws `Page not found: …`, like `resolvePageComponent`.
+- Tailwind must scan the core's pages: `@source '../../vendor/dmitryisaenko/larafoundry/resources/js/**/*.vue';` in `app.css`.
+- `pages.js` is deliberately **not** in the barrel: its glob emits one lazy chunk per core page, which a host that still publishes must not pay for.
 
 **npm peers:** `@inertiajs/vue3`, `vue`, `vue-i18n`, `ziggy-js`, `@vitejs/plugin-vue`, `laravel-vite-plugin`, `tailwindcss@^4` (+ `@tailwindcss/vite` or the postcss plugin), and `html5-qrcode` **only** if you build the QR scanner page.
 
@@ -557,7 +579,7 @@ Avoid N+1: `extra()` runs per row. If your column reads a relation, eager-load i
 
 - [ ] Frontend is **Inertia + Vue 3** (not Blade/React) — required to consume the pages.
 - [ ] **Vite alias** `@dmitryisaenko/larafoundry` → `vendor/.../resources/js/index.js` (the make-or-break step).
-- [ ] `import.meta.glob('./Pages/**/*.vue')` over the **published** `resources/js/Pages`.
+- [ ] `import.meta.glob('./Pages/**/*.vue')` over the **published** `resources/js/Pages` — or, since v0.43.0, `resolvePage()` from `pages.js`: core pages straight from `vendor/`, host keeps only overrides (§12.0).
 - [ ] `theme.css` imported from `vendor/`.
 - [ ] `<meta name="csrf-token" content="{{ csrf_token() }}">` in your root Blade `<head>` — the native `LogoutForm` reads it, else `POST /logout` 419s (§12.1).
 - [ ] `LARAFOUNDRY_TENANCY_MODE=personal`; domain models `use BelongsToTenant` (auto `user_id` scope); drive your own app shell (§5.6).
