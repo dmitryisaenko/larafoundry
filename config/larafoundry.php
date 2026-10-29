@@ -52,27 +52,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Billing (seam, phase 3.1)
+    | Billing (seam phase 3.1, module v0.45.0)
     |--------------------------------------------------------------------------
-    | The free core ships only the SEAM: contracts + driver manager + null
-    | implementations. Real payments (Cashier Stripe/Paddle, promo, trial UI,
-    | portal, metrics) live in the paid add-on `dmitryisaenko/larafoundry-billing`,
-    | which plugs into these contracts.
+    | The seam (contracts + driver manager + null implementations) and the billing
+    | module on top of it (Cashier Stripe/Paddle, plans, promo, trial, ledger,
+    | affiliates, consoles), configured in `config/larafoundry-billing.php`.
     |
-    | enabled — the master access switch. false (default) = free self-host with no
-    |           restrictions: Company::hasAccess() is always true, gates do not
-    |           block. true (usually together with the add-on) = hasAccess() reads
-    |           the real subscription state from the companies billing columns
-    |           (fail-closed: no valid trial/subscription → no access).
+    | enabled — the master switch. false (default) = no restrictions:
+    |           Company::hasAccess() is always true, gates do not block, and the
+    |           billing module loads no route, menu item, widget, gateway or
+    |           webhook listener (its tables exist regardless). true =
+    |           hasAccess() reads the real subscription state from the billing
+    |           columns (fail-closed: no valid trial/subscription → no access) and
+    |           the module is fully wired.
     |
     | gateway.default — the default payment gateway driver name. The core registers
-    |           only 'null' (accepts nothing). The add-on/host register
-    |           'stripe'/'paddle'/a local PSP via PaymentGatewayManager::extend()
-    |           and point to it here.
+    |           'null' (accepts nothing); the module registers the drivers named in
+    |           `larafoundry-billing.gateways`, a host may add a local PSP via
+    |           PaymentGatewayManager::extend(), and points to one here.
     |
     | region.default_currency — the default currency (ISO 4217) when there is no
-    |           country→currency mapping. Per-country prices/currencies/gateway
-    |           selection are the add-on/host's domain via their RegionContext.
+    |           country→currency mapping (`larafoundry-billing.region`).
     */
     'billing' => [
         'enabled' => env('LARAFOUNDRY_BILLING_ENABLED', false),
@@ -84,26 +84,6 @@ return [
         'region' => [
             'default_currency' => env('LARAFOUNDRY_BILLING_CURRENCY', 'USD'),
         ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Upsell (free-core monetization stubs, phase 4)
-    |--------------------------------------------------------------------------
-    | The free core reserves the Payments / Affiliates / Promo console slots with
-    | inert stub screens (the real features ship in the paid billing add-on, which
-    | overrides these screens entirely). Each stub shows an empty state and, while
-    | billing is not enabled, a call to action pointing at where to obtain the paid
-    | add-on.
-    |
-    | billing_url — where the upsell call to action sends the operator. The paid
-    |               add-on replaces the stub screens, so this only matters for the
-    |               free core.
-    */
-    'upsell' => [
-        // Where the free-core upsell stubs point users to obtain the paid billing add-on.
-        // Overridden by the paid add-on (which replaces these stub screens entirely).
-        'billing_url' => env('LARAFOUNDRY_UPSELL_BILLING_URL', 'https://larafoundry.com'),
     ],
 
     /*

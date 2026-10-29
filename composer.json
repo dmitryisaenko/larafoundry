@@ -19,6 +19,8 @@
         "illuminate/support": "^12.0 || ^13.0",
         "inertiajs/inertia-laravel": "^2.0 || ^3.0",
         "intervention/image": "^3.0",
+        "laravel/cashier": "^16.5.3",
+        "laravel/cashier-paddle": "^2.8",
         "laravel/fortify": "^1.25 || ^2.0",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.0",

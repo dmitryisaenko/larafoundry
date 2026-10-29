@@ -77,9 +77,9 @@ describe('UnknownWidget', () => {
 });
 
 describe('dashboard widget registry', () => {
-    it('ships the four core widgets', () => {
+    it('ships the core widgets, including the billing revenue widget', () => {
         expect(Object.keys(dashboardWidgets)).toEqual(
-            expect.arrayContaining(['UsersWidget', 'CompaniesWidget', 'ActivityWidget', 'UnknownWidget']),
+            expect.arrayContaining(['UsersWidget', 'CompaniesWidget', 'ActivityWidget', 'RevenueWidget', 'UnknownWidget']),
         );
     });
 
@@ -103,12 +103,12 @@ describe('Dashboard page', () => {
 
     it('falls back to UnknownWidget for a component the registry does not know', () => {
         const widgets = [
-            { key: 'billing.revenue', component: 'RevenueWidget', titleKey: 'Revenue', order: 7, data: { mystery: 99 }, meta: {} },
+            { key: 'host.mystery', component: 'MysteryWidget', titleKey: 'Mystery', order: 7, data: { mystery: 99 }, meta: {} },
         ];
         const wrapper = mount(Dashboard, { props: { widgets } });
 
-        // No RevenueWidget registered → the raw data still renders, no crash.
-        expect(wrapper.text()).toContain('Revenue');
+        // No MysteryWidget registered → the raw data still renders, no crash.
+        expect(wrapper.text()).toContain('Mystery');
         expect(wrapper.text()).toContain('99');
     });
 });

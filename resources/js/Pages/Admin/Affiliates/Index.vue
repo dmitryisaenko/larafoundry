@@ -1,42 +1,220 @@
 <script setup>
-import { AdminLayout } from '@dmitryisaenko/larafoundry';
-
 /**
- * Super-admin Affiliates screen (phase 4) — a monetization stub.
+ * Super-admin affiliates console (Ф4.4).
  *
- * The affiliate program ships in the paid billing add-on, not the free core, so
- * this is an empty state that reserves the console slot. While billing is off, an
- * upsell CTA (`upsell_url`) points the operator at where to obtain the paid
- * add-on; when the add-on is installed it overrides this screen. Gated
- * server-side by `larafoundry.admin` + OTP.
+ * A filtered, paginated list of partners with their referral and commission counts. A
+ * super-admin can edit a partner's override rate / status inline, and — in the `admin`
+ * eligibility mode — enrol a new partner for a chosen user. Gated server-side by
+ * `larafoundry.admin`; this page only wires filters and the mutating actions.
  */
-defineProps({
-    billing_enabled: { type: Boolean, default: false },
-    upsell_url: { type: String, default: null },
+import { reactive, ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
+import { AdminLayout, PagePaginator } from '@dmitryisaenko/larafoundry';
+
+const props = defineProps({
+    affiliates: { type: Object, default: () => ({ data: [] }) },
+    pagination: { type: Object, default: () => ({}) },
+    filters: { type: Object, default: () => ({}) },
+    eligibility: { type: String, default: 'auto' },
 });
+
+const form = reactive({
+    status: props.filters.status ?? '',
+    code: props.filters.code ?? '',
+    email: props.filters.email ?? '',
+});
+
+let debounce = null;
+watch(form, () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(go, 350);
+});
+
+function cleaned() {
+    const params = {};
+    for (const [key, value] of Object.entries(form)) {
+        if (value !== '' && value !== null) {
+            params[key] = value;
+        }
+    }
+    return params;
+}
+
+function go() {
+    router.get('/admin/affiliates', cleaned(), { preserveState: true, replace: true });
+}
+
+// Inline edit of one partner's override rate + status.
+const editingId = ref(null);
+const editForm = reactive({ commission_rate_bp: '', status: 'active' });
+
+function startEdit(affiliate) {
+    editingId.value = affiliate.id;
+    editForm.commission_rate_bp = affiliate.commission_rate_bp ?? '';
+    editForm.status = affiliate.status;
+}
+
+function cancelEdit() {
+    editingId.value = null;
+}
+
+function saveEdit(affiliate) {
+    router.put(`/admin/affiliates/${affiliate.id}`, {
+        commission_rate_bp: editForm.commission_rate_bp === '' ? null : Number(editForm.commission_rate_bp),
+        status: editForm.status,
+    }, { preserveScroll: true, onSuccess: () => (editingId.value = null) });
+}
+
+// Enrol form (admin eligibility) with user autocomplete.
+const showEnrol = ref(false);
+const enrol = reactive({ user_id: null, user_label: '', commission_rate_bp: '', status: 'active' });
+const userQuery = ref('');
+const userResults = ref([]);
+let searchDebounce = null;
+
+watch(userQuery, (value) => {
+    clearTimeout(searchDebounce);
+    if (!value || value.length < 2) {
+        userResults.value = [];
+        return;
+    }
+    searchDebounce = setTimeout(async () => {
+        const res = await fetch(`/admin/affiliates/search-users?q=${encodeURIComponent(value)}`, {
+            headers: { Accept: 'application/json' },
+        });
+        userResults.value = res.ok ? (await res.json()).data : [];
+    }, 300);
+});
+
+function pickUser(user) {
+    enrol.user_id = user.id;
+    enrol.user_label = `${user.fullname} <${user.email}>`;
+    userResults.value = [];
+    userQuery.value = '';
+}
+
+function submitEnrol() {
+    router.post('/admin/affiliates', {
+        user_id: enrol.user_id,
+        commission_rate_bp: enrol.commission_rate_bp === '' ? null : Number(enrol.commission_rate_bp),
+        status: enrol.status,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEnrol.value = false;
+            enrol.user_id = null;
+            enrol.user_label = '';
+            enrol.commission_rate_bp = '';
+        },
+    });
+}
+
+function statusLabel(status) {
+    return { active: 'Active', disabled: 'Disabled', pending: 'Pending' }[status] ?? status;
+}
 </script>
 
 <template>
     <AdminLayout :title="$t('Affiliates')">
-        <div class="rounded-sm border border-border bg-surface p-10 text-center">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-6 w-6" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-                </svg>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-xl font-semibold">{{ $t('Affiliates') }}</h1>
+                <button v-if="eligibility === 'admin'" class="btn btn-primary" @click="showEnrol = !showEnrol">
+                    {{ $t('Enrol affiliate') }}
+                </button>
             </div>
-            <h2 class="mt-4 text-base font-semibold text-ink">{{ $t('Affiliates') }}</h2>
-            <p class="mx-auto mt-2 max-w-md text-sm text-ink-soft">
-                {{ $t('The affiliate program is part of the paid billing add-on.') }}
-            </p>
-            <a
-                v-if="!billing_enabled && upsell_url"
-                :href="upsell_url"
-                target="_blank"
-                rel="noopener"
-                class="mt-6 inline-flex items-center rounded-sm bg-brand-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-800"
-            >
-                {{ $t('Get the paid billing add-on') }}
-            </a>
+
+            <div v-if="showEnrol" class="rounded border p-4 space-y-3">
+                <div class="relative">
+                    <label class="block text-sm">{{ $t('Search users by name or email') }}</label>
+                    <input v-model="userQuery" type="text" class="input w-full" />
+                    <div v-if="enrol.user_label" class="text-sm mt-1">{{ enrol.user_label }}</div>
+                    <ul v-if="userResults.length" class="absolute z-10 bg-white border w-full">
+                        <li v-for="u in userResults" :key="u.id" class="px-2 py-1 cursor-pointer hover:bg-gray-100" @click="pickUser(u)">
+                            {{ u.fullname }} &lt;{{ u.email }}&gt;
+                        </li>
+                    </ul>
+                </div>
+                <div class="flex gap-2">
+                    <input v-model="enrol.commission_rate_bp" type="number" min="0" class="input" :placeholder="$t('Override rate, basis points')" />
+                    <select v-model="enrol.status" class="input">
+                        <option value="active">{{ $t('Active') }}</option>
+                        <option value="pending">{{ $t('Pending') }}</option>
+                        <option value="disabled">{{ $t('Disabled') }}</option>
+                    </select>
+                    <button class="btn btn-primary" :disabled="!enrol.user_id" @click="submitEnrol">{{ $t('Create') }}</button>
+                    <button class="btn" @click="showEnrol = false">{{ $t('Cancel') }}</button>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <select v-model="form.status" class="input">
+                    <option value="">{{ $t('Any status') }}</option>
+                    <option value="active">{{ $t('Active') }}</option>
+                    <option value="pending">{{ $t('Pending') }}</option>
+                    <option value="disabled">{{ $t('Disabled') }}</option>
+                </select>
+                <input v-model="form.code" type="text" class="input" :placeholder="$t('Search code')" />
+                <input v-model="form.email" type="text" class="input" :placeholder="$t('Partner email')" />
+            </div>
+
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left">
+                        <th>{{ $t('Code') }}</th>
+                        <th>{{ $t('Partner') }}</th>
+                        <th>{{ $t('Status') }}</th>
+                        <th>{{ $t('Rate') }}</th>
+                        <th>{{ $t('Referrals') }}</th>
+                        <th>{{ $t('Commissions') }}</th>
+                        <th>{{ $t('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="a in affiliates.data" :key="a.id" class="border-t">
+                        <td class="font-mono">{{ a.code }}</td>
+                        <td>{{ a.user_fullname }} <span class="text-gray-500">{{ a.user_email }}</span></td>
+                        <td>
+                            <template v-if="editingId === a.id">
+                                <select v-model="editForm.status" class="input">
+                                    <option value="active">{{ $t('Active') }}</option>
+                                    <option value="pending">{{ $t('Pending') }}</option>
+                                    <option value="disabled">{{ $t('Disabled') }}</option>
+                                </select>
+                            </template>
+                            <template v-else>{{ $t(statusLabel(a.status)) }}</template>
+                        </td>
+                        <td>
+                            <template v-if="editingId === a.id">
+                                <input v-model="editForm.commission_rate_bp" type="number" min="0" class="input w-24" />
+                            </template>
+                            <template v-else>{{ a.commission_rate_bp ?? $t('Default rate') }}</template>
+                        </td>
+                        <td>{{ a.referrals_count }}</td>
+                        <td>{{ a.pending_count }} / {{ a.approved_count }} / {{ a.paid_count }}</td>
+                        <td>
+                            <template v-if="editingId === a.id">
+                                <button class="btn btn-primary" @click="saveEdit(a)">{{ $t('Save changes') }}</button>
+                                <button class="btn" @click="cancelEdit">{{ $t('Cancel') }}</button>
+                            </template>
+                            <template v-else>
+                                <button class="btn" @click="startEdit(a)">{{ $t('Edit') }}</button>
+                            </template>
+                        </td>
+                    </tr>
+                    <tr v-if="!affiliates.data.length">
+                        <td colspan="7" class="py-4 text-center text-gray-500">{{ $t('No affiliates found.') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <PagePaginator :pagination="pagination" />
         </div>
     </AdminLayout>
 </template>
+
+<script>
+function statusLabel(status) {
+    return { active: 'Active', disabled: 'Disabled', pending: 'Pending' }[status] ?? status;
+}
+</script>

@@ -81,9 +81,10 @@ export { default as SubscriptionStatusBadge } from './components/admin/Subscript
 import UsersWidget from './components/admin/dashboard/UsersWidget.vue';
 import CompaniesWidget from './components/admin/dashboard/CompaniesWidget.vue';
 import ActivityWidget from './components/admin/dashboard/ActivityWidget.vue';
+import RevenueWidget from './components/admin/dashboard/RevenueWidget.vue';
 import UnknownWidget from './components/admin/dashboard/UnknownWidget.vue';
 
-export { UsersWidget, CompaniesWidget, ActivityWidget, UnknownWidget };
+export { UsersWidget, CompaniesWidget, ActivityWidget, RevenueWidget, UnknownWidget };
 
 // Media (phase 2.4)
 export { default as UserAvatar } from './components/media/UserAvatar.vue';
@@ -148,24 +149,24 @@ export { default as LayoutSwitcher } from './layouts/LayoutSwitcher.vue';
  * Maps a widget COMPONENT NAME (the string the backend DashboardWidget ships) to
  * its Vue component. The dashboard page resolves each widget through this map, so
  * the seam grows without the page knowing every widget: the core registers its
- * own here, and an add-on (or host) registers more at boot via
- * {@link registerDashboardWidget}. `UnknownWidget` is the fallback the page uses
- * for a name not in the map.
+ * own here (including the billing module's `RevenueWidget`), and a host registers
+ * more at boot via {@link registerDashboardWidget}. `UnknownWidget` is the fallback
+ * the page uses for a name not in the map.
  */
 export const dashboardWidgets = {
     UsersWidget,
     CompaniesWidget,
     ActivityWidget,
+    RevenueWidget,
     UnknownWidget,
 };
 
 /**
  * Register (or override) a dashboard widget component by name.
  *
- * A host imports an add-on's registrar once in its app entry (e.g.
- * `import '@/Pages/Admin/Dashboard/registerBillingWidgets'`), which calls this so
- * the add-on's backend-declared widget has a component to render. Called at boot,
- * before any dashboard render.
+ * A host calls this once in its app entry so its own backend-declared widget has a
+ * component to render (or to replace a core one). Called at boot, before any
+ * dashboard render.
  *
  * @param {string} name  the component name the backend widget uses
  * @param {import('vue').Component} component

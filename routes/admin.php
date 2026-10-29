@@ -3,13 +3,10 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\AdminOtpChallengeController;
-use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\AffiliateController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\CompanyController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\DashboardController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
-use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PaymentController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ProfileController;
-use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\PromoController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\SecurityController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
@@ -176,13 +173,8 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::post('{ticket}/label', [AdminTicketController::class, 'toggleLabel'])->name('label');
             });
 
-            // Monetization stubs (phase 4): Payments over the billing seam, plus
-            // Affiliates and Promo codes. Each reserves its route/menu slot and
-            // shows an empty state with an upsell CTA until the paid billing
-            // add-on is installed (it ships its own richer console for each).
-            Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
-            Route::get('affiliates', [AffiliateController::class, 'index'])->name('affiliates.index');
-            Route::get('promo', [PromoController::class, 'index'])->name('promo.index');
+            // Payments, promo codes, affiliates and payouts are the billing module's
+            // (routes/billing/*.php), loaded only while billing is enabled.
 
             // NOTE: the app-scope Settings screen (admin.settings.*) was removed —
             // its keys (support_email / signups_enabled) are reserved config with

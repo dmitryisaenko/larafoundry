@@ -65,15 +65,14 @@ point at them) and each banner now points forward to its accurate page.
 | Admin: users | 2.3 | [admin-users.md](admin-users.md) |
 | Admin: companies | 3.3 | [admin-companies.md](admin-companies.md) |
 | Files and media | 2.4 | [media.md](media.md) |
-| Billing seam (free) | 3.1 | [billing-seam.md](billing-seam.md) |
-| Monetization upsell stubs | 5.x | [monetization-stubs.md](monetization-stubs.md) |
+| Billing seam | 3.1 | [billing-seam.md](billing-seam.md) |
+| Billing module (gateways, plans, promo, entitlements, ledger, affiliates) | v0.45.0 | [billing.md](billing.md) |
 | SEO kit | 5.x | [seo.md](seo.md) |
 | Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |
 | Vue frontend | packaging | early draft: [modules/vue_frontend.md](modules/vue_frontend.md) |
 
-The paid `larafoundry-billing` add-on documents its own usage (Stripe and Paddle
-setup, entitlements, promo codes) in its own private repository. The public core
-documents only the free billing seam those drivers plug into.
+Until `v0.45.0` the billing module was the separate `larafoundry-billing` add-on;
+[billing.md](billing.md) covers it and how to move off the add-on.
 
 > The `modules/` pages are early planning drafts from before the build and may not
 > match the shipped package. External links point at them, so they stay in place;

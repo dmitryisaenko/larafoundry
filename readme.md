@@ -13,11 +13,25 @@ composer require dmitryisaenko/larafoundry
 ```
 
 > ⚠️ **Status: early but growing. Current release is `v0.33.x`: foundation, authentication (incl. the super-admin OTP gate, session PIN-lock, QR cross-device login and a page/modal presentation switch), multi-tenancy, RBAC, the platform activity log, multilanguage, the navigation engine + operator-console screens (Admin Users + impersonation, Admin Companies + block cascade, the Admin Dashboard), the file / media library, the billing seam, the in-app notification centre with super-admin broadcasts, support tickets, the settings / profile / email-template service modules (incl. a consolidated profile hub with a per-user date format and a searchable company-time-zone dropdown), the legal / GDPR layer (editable legal pages, cookie and Terms consent, personal-data export, grace-period account erasure), optional role-at-invite (assign a teammate's role on the invitation, company-scoped and fail-closed), an extensible admin-access security alert (failed super-admin password/OTP/PIN, mail by default, host-pluggable channels), config-driven OAuth with community-driver auto-registration, AI dev-context shipped inside the package (`AGENTS.md` / `CLAUDE.md`) so a coding agent understands the engine on require, a collapsible "My company" navigation group, a hardened themed confirm dialog, direct employee provisioning (an owner creates and edits a company member, avatar and roles, without an email invite), owner-driven company archiving, a per-user time format, admin base surfaces for hosts (user locale / auth columns, a payments upsell stub, an extensible admin user-column seam), a completed activity-log surface (role CRUD, profile / password, admin-access and file-upload events), a full transactional / marketing email-template CRUD editor, an operator Users-management parity pass (opt-in PII columns, country / sex / age / phone-verified filters, forced verify / unverify, block-with-reason, per-user activity logs, social-link storage), and an email-template preview command (`larafoundry:mail-preview`) with a template x locale i18n-parity test matrix, a monetization upsell-stubs surface (the Payments, Affiliates and Promo operator-console screens reserved as inert upsell placeholders the paid `larafoundry-billing` add-on lands on), an SEO kit (a request-scoped `SeoManager` with server-rendered `<head>` meta through a `@larafoundrySeo` Blade directive and a client `<Seo>` component, a sitemap provider registry with public `sitemap.xml` / `robots.txt` routes, hreflang and a thin config-driven OG-image seam), and a gentle, dismissible onboarding checklist (a provider registry of auto-detected getting-started steps, per-user dismiss, rendering nothing when there is nothing to nudge).**
-> The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host or the paid add-on can inject more widgets without touching the core. It is revenue-agnostic; a revenue widget is the paid `larafoundry-billing` add-on, along with real payments, promo codes, trials and subscription management. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
+> The Admin Dashboard is the operator console's landing screen: free-core widgets for users, companies and recent activity, built on a pluggable widget seam (the exact mirror of the navigation menu seam) so a host can inject more widgets without touching the core. Since `v0.45.x` the billing module (real payments, promo codes, trials, subscription management and a revenue widget) ships in the core too, dormant until billing is switched on. The other domain modules are not in the package yet; they are being extracted phase by phase. Domain permissions, domain events and the host's own menu items are deliberately the host's job, not the core's. Don't `composer require` this expecting a finished SaaS engine. Expect a hardened set of primitives those modules stand on.
 
 ---
 
 ## What's in the package
+
+### `v0.45.x` Billing module in the core
+
+The billing module that used to be the separate private `larafoundry-billing` add-on now ships inside the core: Stripe and Paddle gateways through Laravel Cashier, config-backed plans and per-country routing, promo codes and a no-card free month, plan entitlements, access enforcement, the payment ledger with owner notifications, the payments / promo / affiliate / payout operator console, the revenue dashboard widget and the affiliate program. It replaces the `v0.31.x` upsell stubs.
+
+| Component | What it does |
+|-----------|--------------|
+| One switch | `larafoundry.billing.enabled` (default off). Off, the module loads no route, menu item, widget or webhook listener and turns off Cashier's own `/stripe/*` and `/paddle/webhook` routes; on, it is fully wired. The plan / region / entitlement contracts are chosen per call: the seam's empty defaults while off, the config-backed ones while on. |
+| Tables always | The billing tables (`company_payments`, `promo_codes`, `promo_code_redemptions`, `affiliates`, `referrals`, `affiliate_commissions`, `paddle_*`) and columns are created by `migrate` whatever the switch says, so no code finds a table missing. The migration files keep the add-on's names, so a host that ran them does not run them again. |
+| `Billing\BillingServiceProvider` | Registered by the core provider; no discovery entry. Config `config/larafoundry-billing.php` (keys unchanged), routes in `routes/billing/`, pages under `Billing/`, `Affiliate/`, `Admin/{Payments,PromoCodes,Affiliates,Payouts}`. |
+| `RevenueWidget` built in | Part of the core dashboard widget registry; the host's `registerBillingWidgets` import is no longer needed. |
+| No license check | The add-on's license seam (`LicenseClient`) and the `license` config block are gone. |
+
+> Moving off the add-on: drop it from `composer.json`, replace `Dmitryisaenko\LaraFoundryBilling\` with `Dmitryisaenko\LaraFoundry\Billing\` (the former `LaraFoundryBilling\Billing\*` classes are in `...\Billing\Support\`), translations move from `larafoundry-billing::` to `larafoundry::`. New dependencies: `laravel/cashier` and `laravel/cashier-paddle`. Full reference: [docs/billing.md](docs/billing.md).
 
 ### `v0.33.x` Onboarding checklist
 
@@ -47,14 +61,16 @@ An SEO toolkit for the Inertia SPA, so the core's pages are crawlable and sharea
 
 ### `v0.31.x` Monetization upsell stubs
 
-The free core reserves the Payments, Affiliates and Promo screens in the operator console as inert **upsell placeholders**, so a host has the surface from day one and the paid `larafoundry-billing` add-on has a clean place to land. The real payments, promo-code and affiliate functionality lives in the add-on, not here; the core ships only the reserved slots and the seam the add-on overrides them through. FREE core, so the code is open.
+> Replaced in `v0.45.x`: the billing module now ships in the core, the stub screens, routes, menu items and the `larafoundry.upsell` config are gone.
+
+The free core reserved the Payments, Affiliates and Promo screens in the operator console as inert **upsell placeholders**, so a host has the surface from day one and the paid `larafoundry-billing` add-on has a clean place to land. The real payments, promo-code and affiliate functionality lives in the add-on, not here; the core ships only the reserved slots and the seam the add-on overrides them through. FREE core, so the code is open.
 
 | Component | What it does |
 |-----------|--------------|
 | Three reserved console slots | The existing Payments stub gains an upsell CTA; two new stub screens, Affiliates (`admin.affiliates.index`) and Promo codes (`admin.promo.index`), join it. Each is a stub controller returning an Inertia empty-state page (`billing_enabled` + `upsell_url` props), a route inside the same `larafoundry.admin` + OTP-gated admin group, a nav `MenuItem`, a Vue page (mirroring the Payments stub) and an icon. |
 | Upsell CTA | The CTA renders only when billing is disabled **and** a URL is set, driven by `larafoundry.upsell.billing_url` (env `LARAFOUNDRY_UPSELL_BILLING_URL`, default `https://larafoundry.com`). With the paid add-on installed it stays quiet. |
 
-> No new override toggle was added to the core: the paid add-on re-points the named route and swaps the Inertia page through the **existing** seam (named routes + Vue-page-by-string + rebindable bindings). No migration. Full reference: [docs/monetization-stubs.md](docs/monetization-stubs.md).
+> No new override toggle was added to the core: the paid add-on re-pointed the named route and swapped the Inertia page through the **existing** seam (named routes + Vue-page-by-string + rebindable bindings). No migration.
 
 ### `v0.30.x` Operator Users-management parity
 
@@ -268,7 +284,7 @@ The operator console's landing screen, and the widget **seam** behind it. The da
 | `CoreMetricsWidgetProvider` | Registers the three free widgets (`core.users`, `core.companies`, `core.activity`) on the `admin` level. Behind the `larafoundry.admin` gate, so the widgets carry no per-item policy: the zone gate is the authority, like the admin menu. |
 | Frontend widget registry | `dashboardWidgets` + `registerDashboardWidget(name, component)` exported from the package, plus the `UsersWidget` / `CompaniesWidget` / `ActivityWidget` / `UnknownWidget` Vue components and the `Admin/Dashboard` page. The page resolves each widget's component name through the registry and falls back to `UnknownWidget` (raw data) for a name it does not know, so a missing add-on registrar degrades gracefully instead of crashing the page. |
 
-> Revenue is intentionally **not** here: the dashboard is revenue-agnostic and the revenue widget plugs in through the same seam from the paid `larafoundry-billing` add-on. The metrics are uncached in this release (a single-operator page over O(1) aggregates); the service is isolated so a `Cache::remember` can wrap it later without touching the seam.
+> Revenue is intentionally **not** in this phase: the revenue widget plugs in through the same seam from the billing module (`v0.45.x`, formerly the `larafoundry-billing` add-on), only while billing is on. The metrics are uncached in this release (a single-operator page over O(1) aggregates); the service is isolated so a `Cache::remember` can wrap it later without touching the seam.
 
 ### `v0.10.x` Admin Companies (operator console)
 
@@ -649,13 +665,13 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.1 | [Billing](docs/modules/payments.md) seam (gateway contract + driver manager, subscription columns, real `hasAccess` gate, region context) | ✅ Shipped (`v0.9.x`) |
 | 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
 | 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
-| 3.x | Billing add-on (`larafoundry-billing`: real payments via Stripe / Paddle, plans, promo codes, trials, subscription management, revenue metrics) | 💳 Available (paid add-on, see [larafoundry.com](https://larafoundry.com)) |
+| 3.x | [Billing module](docs/billing.md) (real payments via Stripe / Paddle, plans, promo codes, trials, entitlements, payment ledger, revenue widget, affiliate program; formerly the `larafoundry-billing` add-on) | ✅ In the core (`v0.45.x`) |
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |
 | 5.3 | [Legal / GDPR](docs/legal-gdpr.md) (legal pages editor, cookie / terms consent, data export, grace-period account erasure) | ✅ Shipped (`v0.17.x`) |
 | 5.5 | AI dev-context (`AGENTS.md` / `CLAUDE.md` + [existing-app integration guide](docs/integrating-into-an-existing-app.md)) | ✅ Shipped (`v0.21.x`) |
-| 5.x | [Monetization upsell stubs](docs/monetization-stubs.md) (reserved Payments / Affiliates / Promo console slots the paid add-on lands on) | ✅ Shipped (`v0.31.x`) |
+| 5.x | Monetization upsell stubs (reserved Payments / Affiliates / Promo console slots) | Replaced by the billing module (`v0.45.x`) |
 | 5.x | [SEO kit](docs/seo.md) (server-rendered `<head>` meta, sitemap provider registry + `sitemap.xml` / `robots.txt`, hreflang, thin OG-image seam) | ✅ Shipped (`v0.32.x`) |
 | 5.x | [Onboarding checklist](docs/onboarding.md) (auto-detected getting-started steps, per-user dismiss, provider registry) | ✅ Shipped (`v0.33.x`) |
 | 4.x / 5.x | Feature voting, documentation | 📋 Planned |

@@ -10,7 +10,7 @@ A reusable SaaS/CRM **core** for Laravel, extracted phase-by-phase from a produc
 
 - **Composer name:** `dmitryisaenko/larafoundry` · **type:** `library`
 - **Namespace:** `Dmitryisaenko\LaraFoundry\` → `src/` (PSR-4). Tests: `Dmitryisaenko\LaraFoundry\Tests\` → `tests/`.
-- **Requires:** PHP `^8.2`, Laravel `^12 || ^13`, Inertia `^2 || ^3`, Fortify, Sanctum, Socialite, Ziggy, `intervention/image`, `laravolt/avatar`, `spatie/laravel-activitylog`, `bacon/bacon-qr-code`, `ezyang/htmlpurifier`.
+- **Requires:** PHP `^8.2`, Laravel `^12 || ^13`, Inertia `^2 || ^3`, Fortify, Sanctum, Socialite, Ziggy, `intervention/image`, `laravolt/avatar`, `spatie/laravel-activitylog`, `bacon/bacon-qr-code`, `ezyang/htmlpurifier`, `laravel/cashier` + `laravel/cashier-paddle` (the billing module).
 - **Stack the core ships UI in:** Inertia + Vue 3 + Tailwind 4, vue-i18n, Pest.
 
 ## Golden rules
@@ -31,7 +31,7 @@ src/                 # one folder per domain module (PSR-4 Dmitryisaenko\LaraFou
   Dashboard/  Email/  Http/ (cross-cutting middleware)  Legal/  Media/  Navigation/
   Notifications/  Profile/  Settings/  Tenancy/  Tickets/
   LaraFoundryServiceProvider.php          # the ONE provider (auto-discovered)
-config/              # larafoundry.php + larafoundry-{permissions,activitylog,media,notifications,tickets,email,legal}.php
+config/              # larafoundry.php + larafoundry-{permissions,activitylog,media,notifications,tickets,email,legal,seo,billing}.php
 database/migrations/ # auto-loaded into the host (loadMigrationsFrom) — NOT published
 routes/              # web.php, auth.php, api.php, qr.php, admin.php, tenancy.php, … (auto-loaded)
 lang/                # PHP groups + lang/frontend/{en,uk}.json (the vue-i18n bag)
@@ -51,7 +51,8 @@ A module typically holds: `Models/`, `Http/Controllers/`, `Http/Requests/` (Form
 - **`register()`** — `mergeConfigFrom` every config; bind swappable contracts to defaults; replace Fortify's scaffolded actions with the hardened ones (`CreatesNewUsers`→`CreateNewUser`, etc.); bind the tenant resolver per `tenancy.mode` (the only mode-aware seam: `personal`→`PersonalTenantResolver`, else `SessionTenantResolver`); seed the export/purge/menu/dashboard registries.
 - **`boot()`** — `loadMigrationsFrom`, `loadRoutesFrom` (one file per concern; `tenancy.php`/`authorization.php` only when `mode !== 'personal'`), `loadTranslationsFrom`, `loadViewsFrom`; register middleware aliases (`larafoundry.*`); wire event listeners (failed-login alerts, OTP-flag reset on login/logout, welcome-on-verified, cookie-consent sync); register policies; `registerPublishing()` + `commands()` only `runningInConsole()`.
 - **Publishing tags** (declared in `registerPublishing()`): `larafoundry-config`, `larafoundry-permissions`, `larafoundry-activitylog`, `larafoundry-media`, `larafoundry-notifications-config`, `larafoundry-tickets-config`, `larafoundry-email-config`, `larafoundry-legal-config`, `larafoundry-pages`, `larafoundry-mail-views`, `larafoundry-lang`. (Mind the `-config` suffix on the notifications/tickets/email/legal config tags.)
-- **Commands:** `larafoundry:install`, `larafoundry:permissions:sync`, `larafoundry:prune-sign-in-requests`, `larafoundry:prune-notifications`, `larafoundry:purge-deleted-accounts`.
+- **Commands:** `larafoundry:install`, `larafoundry:permissions:sync`, `larafoundry:prune-sign-in-requests`, `larafoundry:prune-notifications`, `larafoundry:purge-deleted-accounts`, `larafoundry-billing:check-expiring`.
+- **The billing module** (`src/Billing/`, until v0.45.0 the separate `larafoundry-billing` add-on) has its own provider, `Billing\BillingServiceProvider`, which the core provider registers from `registerBilling()`. It adds the publish tags `larafoundry-billing-config`, `larafoundry-billing-pages`, `larafoundry-billing-admin-pages`, `larafoundry-billing-affiliate-pages`, routes in `routes/billing/`, and stays dormant (no route, menu, widget or webhook listener) while `larafoundry.billing.enabled` is off; its tables are created regardless. Its suites live in `tests/Billing/`, each folder bound to its own harness in `tests/Pest.php`. See `docs/billing.md`.
 
 ## Multi-tenancy modes
 

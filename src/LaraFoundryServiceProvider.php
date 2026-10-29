@@ -33,13 +33,17 @@ use Dmitryisaenko\LaraFoundry\Authorization\Gates\RoleGates;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\AssignAuthenticatedRole;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\CloneCompanyRoles;
 use Dmitryisaenko\LaraFoundry\Authorization\Listeners\RevokeAccessOnEmployeeRemoval;
+use Dmitryisaenko\LaraFoundry\Billing\BillingServiceProvider;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\EntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\PlanRepositoryContract;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\RegionContext;
 use Dmitryisaenko\LaraFoundry\Billing\Support\ArrayPlanRepository;
+use Dmitryisaenko\LaraFoundry\Billing\Support\ConfigPlanRepository;
+use Dmitryisaenko\LaraFoundry\Billing\Support\ConfiguredRegionContext;
 use Dmitryisaenko\LaraFoundry\Billing\Support\DefaultRegionContext;
 use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
+use Dmitryisaenko\LaraFoundry\Billing\Support\PlanEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
@@ -321,18 +325,23 @@ class LaraFoundryServiceProvider extends ServiceProvider
     }
 
     /**
-     * Wire the billing seam (phase 3.1).
+     * Wire the billing seam (phase 3.1) and the billing module (v0.45.0).
      *
-     * The FREE core ships only the seam: a gateway manager whose sole driver is
-     * 'null' (takes no money), plus default region / plan / entitlement
-     * implementations that keep the app fully open while billing is off. The paid
-     * `larafoundry-billing` add-on rebinds these contracts and registers real
-     * gateway drivers via PaymentGatewayManager::extend() — so nothing here knows
-     * Stripe/Paddle, and no payment SDK enters the free core's dependencies.
+     * The seam: a gateway manager whose built-in driver is 'null' (takes no money),
+     * plus region / plan / entitlement contracts. Each contract resolves per call:
+     * with `larafoundry.billing.enabled` off, the default implementation that keeps
+     * the app fully open (no plans, the default currency, every feature allowed); on,
+     * the module's config-backed one (plans and per-country routing from
+     * `larafoundry-billing`, entitlements by plan features). Resolving per call, not
+     * at register time, keeps a host or test that flips the switch consistent.
      *
-     * The manager is a singleton so add-on/host-registered drivers and their
-     * resolved instances persist for the request; the contracts are bound (not
-     * singleton) like the other swappable seams so a host override takes cleanly.
+     * The billing module itself (gateways, ledger, promo, affiliates, consoles; until
+     * v0.45.0 the separate `larafoundry-billing` add-on) is a provider of its own,
+     * registered here so it needs no discovery entry and always boots with the core.
+     *
+     * The manager is a singleton so registered drivers and their resolved instances
+     * persist for the request; the contracts are bound (not singleton) like the other
+     * swappable seams so a host override takes cleanly.
      */
     protected function registerBilling(): void
     {
@@ -340,9 +349,15 @@ class LaraFoundryServiceProvider extends ServiceProvider
             return new PaymentGatewayManager($app);
         });
 
-        $this->app->bind(RegionContext::class, DefaultRegionContext::class);
-        $this->app->bind(PlanRepositoryContract::class, ArrayPlanRepository::class);
-        $this->app->bind(EntitlementResolver::class, NullEntitlementResolver::class);
+        $billing = fn (string $off, string $on): \Closure => fn ($app) => $app->make(
+            config('larafoundry.billing.enabled') ? $on : $off,
+        );
+
+        $this->app->bind(RegionContext::class, $billing(DefaultRegionContext::class, ConfiguredRegionContext::class));
+        $this->app->bind(PlanRepositoryContract::class, $billing(ArrayPlanRepository::class, ConfigPlanRepository::class));
+        $this->app->bind(EntitlementResolver::class, $billing(NullEntitlementResolver::class, PlanEntitlementResolver::class));
+
+        $this->app->register(BillingServiceProvider::class);
     }
 
     /**

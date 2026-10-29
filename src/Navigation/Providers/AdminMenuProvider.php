@@ -15,8 +15,8 @@ use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNoti
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
  * Activity Log (phase 2.1), Broadcasts (phase 4.1), Support tickets
  * (phase 4.2), the Email templates editor (phase 5.1), the Legal pages editor
- * (phase 5.3) and the monetization stubs Payments, Affiliates and Promo codes
- * (phase 4 — inert upsell slots reserved for the paid billing add-on). The
+ * (phase 5.3). Payments, Promo codes, Affiliates and Payouts are added by the
+ * billing module's own menu providers, only while billing is enabled. The
  * app-scope Settings screen is intentionally NOT surfaced — its two keys
  * (support_email / signups_enabled) are reserved config with no consumer yet.
  * The whole zone already sits behind the
@@ -91,27 +91,6 @@ class AdminMenuProvider implements MenuProviderInterface
                 icon: 'legal',
                 order: 33,
                 activePatterns: ['admin.legal-pages.*'],
-            ),
-            new MenuItem(
-                labelKey: 'Payments',
-                route: 'admin.payments.index',
-                icon: 'billing',
-                order: 34,
-                activePatterns: ['admin.payments.*'],
-            ),
-            new MenuItem(
-                labelKey: 'Affiliates',
-                route: 'admin.affiliates.index',
-                icon: 'affiliate',
-                order: 36,
-                activePatterns: ['admin.affiliates.*'],
-            ),
-            new MenuItem(
-                labelKey: 'Promo codes',
-                route: 'admin.promo.index',
-                icon: 'promo',
-                order: 37,
-                activePatterns: ['admin.promo.*'],
             ),
         ]));
     }
