@@ -30,6 +30,11 @@ class NotificationService
      * switch, so it sends only when both this flag and config opt in. Default
      * false — domain pushes stay in-app unless the host asks for email.
      *
+     * `$subject` (v0.44.0) is the host record the notification is about (an
+     * order, a finished job) - optional, stored as an indexed reference so the
+     * host can find a record's notifications ({@see Notification::scopeAbout()})
+     * and draw them with the record's current state.
+     *
      * @param  iterable<Model|int|string>  $users  user models or ids
      * @param  array<string, mixed>  $params  translation placeholders
      * @param  array<string, mixed>  $data  UI payload (internal-link actions, context)
@@ -42,6 +47,7 @@ class NotificationService
         array $params = [],
         array $data = [],
         bool $mail = false,
+        ?Model $subject = null,
     ): Notification {
         $notification = Notification::create([
             'code' => $code,
@@ -52,6 +58,8 @@ class NotificationService
             'body_key' => $bodyKey,
             'params' => $params,
             'data' => $data,
+            'subject_type' => $subject?->getMorphClass(),
+            'subject_id' => $subject?->getKey(),
         ]);
 
         $ids = Collection::make($users)

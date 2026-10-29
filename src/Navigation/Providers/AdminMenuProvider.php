@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Navigation\Providers;
 
 use Dmitryisaenko\LaraFoundry\Navigation\Contracts\MenuProviderInterface;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuItem;
+use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
 
 /**
  * Core menu for the super-admin operator console.
@@ -32,7 +33,7 @@ class AdminMenuProvider implements MenuProviderInterface
             return [];
         }
 
-        return [
+        return array_values(array_filter([
             new MenuItem(
                 labelKey: 'Dashboard',
                 route: 'admin.dashboard.index',
@@ -61,13 +62,15 @@ class AdminMenuProvider implements MenuProviderInterface
                 order: 20,
                 activePatterns: ['admin.activity-log.*'],
             ),
-            new MenuItem(
+            // Off with `larafoundry-notifications.broadcasts.enabled` (v0.44.0) - the
+            // routes stay registered and answer 404, so Route::has() alone would keep it.
+            BroadcastNotificationController::enabled() ? new MenuItem(
                 labelKey: 'Broadcasts',
                 route: 'admin.notifications.index',
                 icon: 'broadcast',
                 order: 25,
                 activePatterns: ['admin.notifications.*'],
-            ),
+            ) : null,
             new MenuItem(
                 labelKey: 'Support',
                 route: 'admin.tickets.index',
@@ -110,7 +113,7 @@ class AdminMenuProvider implements MenuProviderInterface
                 order: 37,
                 activePatterns: ['admin.promo.*'],
             ),
-        ];
+        ]));
     }
 
     public function supports(string $level): bool

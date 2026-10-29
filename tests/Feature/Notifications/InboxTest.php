@@ -117,3 +117,40 @@ it('marks all the user notifications read at once', function () {
 
     expect($me->unreadAppNotificationsCount())->toBe(0);
 });
+
+it('forgets one notification for that user only', function () {
+    $me = nxUser('me@x.test');
+    $other = nxUser('other@x.test');
+    $shared = nxNotify($me, 'shared');
+    $shared->users()->attach($other->id);
+    $mine = nxNotify($me, 'mine');
+
+    expect($me->forgetAppNotification($shared->id))->toBeTrue()
+        ->and($me->appNotifications()->pluck('larafoundry_notifications.id')->all())->toBe([$mine->id])
+        ->and($other->appNotifications()->count())->toBe(1)
+        ->and($me->forgetAppNotification($shared->id))->toBeFalse();
+});
+
+it('forgets every notification of that user only', function () {
+    $me = nxUser('me@x.test');
+    $other = nxUser('other@x.test');
+    nxNotify($me, 'a');
+    nxNotify($me, 'b');
+    nxNotify($other, 'c');
+
+    expect($me->forgetAllAppNotifications())->toBe(2)
+        ->and($me->appNotifications()->count())->toBe(0)
+        ->and($other->appNotifications()->count())->toBe(1);
+});
+
+it('lets the prune sweep a notification its last recipient forgot', function () {
+    $me = nxUser('me@x.test');
+    $gone = nxNotify($me, 'gone');
+    $kept = nxNotify($me, 'kept');
+
+    $me->forgetAppNotification($gone->id);
+    $this->artisan('larafoundry:notifications-prune')->assertSuccessful();
+
+    expect(Notification::find($gone->id))->toBeNull()
+        ->and(Notification::find($kept->id))->not->toBeNull();
+});

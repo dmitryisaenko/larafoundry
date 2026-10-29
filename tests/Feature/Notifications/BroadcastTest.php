@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Notifications\Jobs\SendBroadcastNotificationJob;
 use Dmitryisaenko\LaraFoundry\Notifications\Models\Notification;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
@@ -141,4 +142,34 @@ it('deletes a broadcast', function () {
         ->assertRedirect('/admin/notifications');
 
     expect(Notification::find($draft->id))->toBeNull();
+});
+
+it('answers 404 on every broadcast screen when broadcasts are switched off', function () {
+    config(['larafoundry-notifications.broadcasts.enabled' => false]);
+    $draft = bcDraft();
+    $admin = bcAdmin();
+
+    $this->actingAs($admin)->get('/admin/notifications')->assertNotFound();
+    $this->actingAs($admin)->get('/admin/notifications/create')->assertNotFound();
+    $this->actingAs($admin)->get("/admin/notifications/{$draft->id}/edit")->assertNotFound();
+    $this->actingAs($admin)
+        ->post('/admin/notifications', ['code' => 'info', 'title_translations' => ['en' => 'Hello']])
+        ->assertNotFound();
+    $this->actingAs($admin)->post("/admin/notifications/{$draft->id}/send")->assertNotFound();
+    $this->actingAs($admin)->delete("/admin/notifications/{$draft->id}")->assertNotFound();
+
+    expect(Notification::admin()->count())->toBe(1)
+        ->and($draft->fresh()->status)->toBe('draft');
+});
+
+it('drops only the Broadcasts entry from the admin menu when switched off', function () {
+    $labels = fn () => array_map(fn ($item) => $item->labelKey, (new AdminMenuProvider)->getMenuItems('admin'));
+
+    expect($labels())->toContain('Broadcasts');
+
+    config(['larafoundry-notifications.broadcasts.enabled' => false]);
+
+    expect($labels())->not->toContain('Broadcasts')
+        ->and($labels())->toContain('Support')
+        ->and(array_is_list((new AdminMenuProvider)->getMenuItems('admin')))->toBeTrue();
 });

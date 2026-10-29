@@ -42,4 +42,27 @@ trait HasNotifications
     {
         return $this->appNotifications()->wherePivot('read_at', null)->count();
     }
+
+    /**
+     * Remove one notification from THIS user's inbox (v0.44.0). Only the user's
+     * own recipient row goes: the other recipients of a broadcast keep theirs,
+     * and a notification left with no recipient at all is swept by
+     * `larafoundry:notifications-prune`.
+     *
+     * @return bool whether the user had that notification
+     */
+    public function forgetAppNotification(int $notificationId): bool
+    {
+        return $this->appNotifications()->detach($notificationId) > 0;
+    }
+
+    /**
+     * Empty THIS user's inbox (v0.44.0) - same rules as forgetAppNotification().
+     *
+     * @return int how many notifications were removed
+     */
+    public function forgetAllAppNotifications(): int
+    {
+        return $this->appNotifications()->detach();
+    }
 }

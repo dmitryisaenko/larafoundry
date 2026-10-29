@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin;
 
+use Closure;
 use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Requests\Admin\StoreBroadcastNotificationRequest;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Resources\Admin\AdminBroadcastResource;
@@ -28,6 +29,27 @@ use Inertia\Response;
 class BroadcastNotificationController extends Controller
 {
     use HasPagination;
+
+    /**
+     * The whole editor answers 404 while `larafoundry-notifications.broadcasts.enabled`
+     * is off (v0.44.0) - read per request, so a cached route table still obeys it.
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, Closure $next) {
+            abort_unless(static::enabled(), 404);
+
+            return $next($request);
+        });
+    }
+
+    /**
+     * Whether the broadcast screens are switched on.
+     */
+    public static function enabled(): bool
+    {
+        return (bool) config('larafoundry-notifications.broadcasts.enabled', true);
+    }
 
     /**
      * The paginated broadcast list with delivery counters.

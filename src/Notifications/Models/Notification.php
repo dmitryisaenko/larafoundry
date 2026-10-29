@@ -10,6 +10,7 @@ use Dmitryisaenko\LaraFoundry\Notifications\Support\NotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -36,6 +37,8 @@ use Illuminate\Support\Carbon;
  * @property array<string, string>|null $body_translations
  * @property array<string, mixed>|null $recipient_filters
  * @property array<string, mixed>|null $data
+ * @property string|null $subject_type
+ * @property int|null $subject_id
  * @property Carbon|null $visible_from
  * @property Carbon|null $visible_until
  * @property Carbon|null $created_at
@@ -58,6 +61,8 @@ class Notification extends Model
         'body_translations',
         'recipient_filters',
         'data',
+        'subject_type',
+        'subject_id',
         'visible_from',
         'visible_until',
     ];
@@ -92,6 +97,28 @@ class Notification extends Model
             'notification_id',
             'user_id',
         )->withPivot('read_at')->withTimestamps();
+    }
+
+    /**
+     * The host record this notification is about (an order, a finished job), or
+     * null. Optional - set through {@see NotificationService::system()}'s
+     * `$subject`; broadcasts never have one.
+     *
+     * @return MorphTo<Model, $this>
+     */
+    public function subject(): MorphTo
+    {
+        return $this->morphTo();
+    }
+
+    /**
+     * Only the notifications about one record.
+     */
+    public function scopeAbout(Builder $query, Model $subject): Builder
+    {
+        return $query
+            ->where('subject_type', $subject->getMorphClass())
+            ->where('subject_id', $subject->getKey());
     }
 
     /**

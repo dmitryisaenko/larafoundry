@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Broadcast screens (v0.44.0)
+    |--------------------------------------------------------------------------
+    | The super-admin broadcast editor (`/admin/notifications`) and its
+    | "Broadcasts" menu entry. A host that manages announcements from a console of
+    | its own switches this off: every broadcast route then answers 404 and the
+    | menu entry is gone. The recipient's inbox (`/notifications`, the bell) and
+    | NotificationService::system() are NOT affected - they stay on.
+    */
+    'broadcasts' => [
+        'enabled' => env('LARAFOUNDRY_BROADCASTS_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Retention
     |--------------------------------------------------------------------------
     | `notifications:prune` deletes READ pivot rows older than

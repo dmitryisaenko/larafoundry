@@ -71,6 +71,7 @@ return [
     'per_page' => env('LARAFOUNDRY_NOTIFICATIONS_PER_PAGE', 15),
     'pullout_limit' => 5,
     'broadcast' => ['batch_size' => 1000],
+    'broadcasts' => ['enabled' => env('LARAFOUNDRY_BROADCASTS_ENABLED', true)],
     'retention' => ['enabled' => true, 'read_lifetime_days' => 30],
     'channels' => ['database', 'mail'],
 ];
@@ -82,6 +83,7 @@ return [
 | `per_page` | `15` | Page size of the full inbox. |
 | `pullout_limit` | `5` | How many recent items the bell dropdown shows. |
 | `broadcast.batch_size` | `1000` | A broadcast attaches its audience asynchronously in chunks of this size, so a large user base never blocks the request or runs one giant insert. |
+| `broadcasts.enabled` | `true` | Since v0.44.0. The super-admin broadcast editor and its "Broadcasts" menu entry. Off = every `/admin/notifications` route answers 404 and the entry leaves the menu; for a host that manages announcements from a console of its own. The inbox, the bell and `system()` stay on. |
 | `retention.read_lifetime_days` | `30` | `larafoundry:notifications-prune` deletes read pivot rows older than this, then any notification left with no recipients. Set `retention.enabled` to `false` to keep everything. |
 | `channels` | database, mail | The delivery channels v1 ships. A webhook channel and per-user channel preferences are deferred; this key is the seam they will plug into. |
 
@@ -112,6 +114,19 @@ app(NotificationService::class)->system(
 `data.actions` render as internal links in the inbox (see
 [Security notes](#security-notes)). `params` fills the `:placeholders` in the
 translation keys.
+
+**What the notification is about (since v0.44.0).** Pass `subject:` - any Eloquent
+model - and the notification keeps an indexed reference to it. The host then finds
+every notification of one record and can draw it with that record's current state
+(a title renamed since):
+
+```php
+$service->system(users: [$order->user], code: 'success', titleKey: 'Your order :ref shipped',
+    params: ['ref' => $order->reference], subject: $order);
+
+Notification::query()->about($order)->get();   // the notices of this order
+$notification->subject;                          // the order itself (morphTo)
+```
 
 ### The bell and the inbox
 
@@ -147,7 +162,7 @@ $schedule->command('larafoundry:notifications-prune')->daily();
 
 | Method | Signature | Purpose |
 |--------|-----------|---------|
-| `system()` | `system(iterable $users, string $code, string $titleKey, ?string $bodyKey = null, array $params = [], array $data = []): Notification` | Create one system notification and attach the given users (models or ids, deduped). |
+| `system()` | `system(iterable $users, string $code, string $titleKey, ?string $bodyKey = null, array $params = [], array $data = [], bool $mail = false, ?Model $subject = null): Notification` | Create one system notification and attach the given users (models or ids, deduped). `$subject` (v0.44.0) is the record it is about. |
 
 ### `HasNotifications` (on the `User` model)
 
@@ -155,11 +170,14 @@ $schedule->command('larafoundry:notifications-prune')->daily();
 |--------|---------|---------|
 | `appNotifications()` | `BelongsToMany` | The user's notifications, newest first, with `read_at` on the pivot. |
 | `unreadAppNotificationsCount()` | `int` | How many are still unread. |
+| `forgetAppNotification(int $id)` | `bool` | v0.44.0. Remove one notification from THIS user's inbox only (other recipients keep theirs); `false` if the user did not have it. |
+| `forgetAllAppNotifications()` | `int` | v0.44.0. Empty this user's inbox. A notification left with no recipient is swept by the prune command. |
 
 ### `Notification` model
 
 Scopes `admin()`, `system()`, `sent()`, `visible()` (inside the visibility
-window); `localizedTitle(?$locale)` / `localizedBody(?$locale)` (system reads the
+window), `about($model)` (v0.44.0, the notifications of one record); the
+`subject()` morph relation (v0.44.0); `localizedTitle(?$locale)` / `localizedBody(?$locale)` (system reads the
 translation key, an admin broadcast reads the per-locale translations with an
 English fallback); `isVisible()`, `isDraft()`, `isAdmin()`; the `users()`
 relation (the recipient pivot, carrying `read_at`).
