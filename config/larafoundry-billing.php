@@ -118,6 +118,21 @@ return [
     ],
 
     /*
+    | Which installation this is (v0.47.0), for several sites that share one
+    | gateway account: every site's notification address receives every payment
+    | of the account. `name` is stamped on the payments this site opens and a
+    | notification naming another site is left alone (Billing\Support\PaymentOrigin).
+    | Unset - one site, nothing stamped, every payment ours. `unmarked` names the
+    | site an UNSTAMPED payment belongs to (a host that took payments before it had
+    | a mark); unset, an unstamped payment is nobody's once `name` is set.
+    | Read with billing off too: credit purchases work without the billing switch.
+    */
+    'install' => [
+        'name' => env('LARAFOUNDRY_INSTALL'),
+        'unmarked' => env('LARAFOUNDRY_INSTALL_UNMARKED'),
+    ],
+
+    /*
     | Plan definitions (B2). The source sits behind the core's
     | PlanRepositoryContract (rebound to ConfigPlanRepository), so call sites never
     | know config answered. 'source' is a documented marker only — B2 ships the

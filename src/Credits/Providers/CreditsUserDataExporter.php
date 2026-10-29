@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Credits\Providers;
 
+use Dmitryisaenko\LaraFoundry\Credits\Models\CreditPurchase;
 use Dmitryisaenko\LaraFoundry\Credits\Models\CreditTransaction;
 use Dmitryisaenko\LaraFoundry\Credits\Models\CreditWallet;
 use Dmitryisaenko\LaraFoundry\Profile\Contracts\ExportsUserDataProvider;
@@ -11,7 +12,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Exports the user's own credit wallet and its movements (v0.46.0).
+ * Exports the user's own credit wallet and its movements (v0.46.0), and the
+ * user's credit purchases (v0.47.0).
  *
  * Only a wallet the USER owns - in `personal` tenancy, where the user is the
  * payer. A `teams` wallet belongs to the company and is not one member's
@@ -37,13 +39,32 @@ class CreditsUserDataExporter implements ExportsUserDataProvider
             ->where('owner_id', $user->getKey())
             ->first();
 
-        if ($wallet === null) {
+        $purchases = CreditPurchase::query()
+            ->where('owner_type', $user->getMorphClass())
+            ->where('owner_id', $user->getKey())
+            ->orderBy('id')
+            ->get()
+            ->map(fn (CreditPurchase $row) => [
+                'credits' => $row->credits,
+                'credits_reversed' => $row->credits_reversed,
+                'amount_cents' => $row->amount_cents,
+                'currency' => $row->currency,
+                'gateway' => $row->gateway,
+                'status' => $row->status,
+                'meta' => $row->meta,
+                'paid_at' => $row->paid_at?->toIso8601String(),
+                'refunded_at' => $row->refunded_at?->toIso8601String(),
+            ])
+            ->all();
+
+        if ($wallet === null && $purchases === []) {
             return [];
         }
 
         return [
-            'balance' => $wallet->balance,
-            'movements' => $wallet->transactions()
+            'purchases' => $purchases,
+            'balance' => $wallet?->balance ?? 0,
+            'movements' => $wallet === null ? [] : $wallet->transactions()
                 ->orderBy('id')
                 ->get()
                 ->map(fn (CreditTransaction $row) => [

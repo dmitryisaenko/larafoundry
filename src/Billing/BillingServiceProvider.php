@@ -27,6 +27,7 @@ use Dmitryisaenko\LaraFoundry\Billing\Navigation\AffiliateAdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Billing\Navigation\AffiliateUserMenuProvider;
 use Dmitryisaenko\LaraFoundry\Billing\Navigation\BillingAdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
+use Dmitryisaenko\LaraFoundry\Credits\Listeners\HandlePaddleCreditNotification;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
 use Dmitryisaenko\LaraFoundry\LaraFoundryServiceProvider;
 use Dmitryisaenko\LaraFoundry\Navigation\Support\MenuBuilder;
@@ -679,6 +680,10 @@ class BillingServiceProvider extends ServiceProvider
         }
 
         Event::listen(PaddleWebhookReceived::class, MirrorPaddleSubscriptionState::class);
+
+        // Credit purchases ride the same verified route (v0.47.0); a host with its
+        // own notification address calls PaddleCreditPurchases::handle() instead.
+        Event::listen(PaddleWebhookReceived::class, HandlePaddleCreditNotification::class);
     }
 
     /**

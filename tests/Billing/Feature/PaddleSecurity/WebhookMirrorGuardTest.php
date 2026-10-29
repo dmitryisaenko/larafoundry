@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Billing\Listeners\MirrorPaddleSubscriptionState;
+use Dmitryisaenko\LaraFoundry\Credits\Listeners\HandlePaddleCreditNotification;
 use Illuminate\Support\Facades\Event;
 use Laravel\Paddle\Events\WebhookReceived;
 
@@ -20,4 +21,11 @@ it('does not bind the paddle mirror listener when no signing secret is set', fun
     $listeners = Event::getRawListeners()[WebhookReceived::class] ?? [];
 
     expect($listeners)->not->toContain(MirrorPaddleSubscriptionState::class);
+});
+
+it('does not feed credit purchases from the paddle webhook when no signing secret is set', function () {
+    // Credit purchases move money (v0.47.0): the same fail-closed rule as the mirror.
+    $listeners = Event::getRawListeners()[WebhookReceived::class] ?? [];
+
+    expect($listeners)->not->toContain(HandlePaddleCreditNotification::class);
 });

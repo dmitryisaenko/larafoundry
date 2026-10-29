@@ -105,9 +105,33 @@ return [
     |           ledger row (`value_cents`), so a later price change never rewrites
     |           the value of past movements. A host with an admin-editable price
     |           rebinds the CreditUnitValue contract instead.
+    |
+    | purchases — buying credits with a one-off payment (v0.47.0), read by the
+    |           default CreditPriceList (a host with admin-set prices binds its
+    |           own). `bundles` are fixed packs, `[['credits' => 5000,
+    |           'price_cents' => 969], ...]`; `custom.min` is the smallest
+    |           purchase, bundles included; `custom.max` the largest custom
+    |           amount (0 = custom amounts off); `custom.cents_per_credit` the
+    |           custom price per credit (null = the credit's value above).
+    |           `paddle.product_id` is the ONE Paddle catalog product every
+    |           credit transaction is priced against inline. Nothing is on sale
+    |           by default.
     */
     'credits' => [
         'unit_cents' => env('LARAFOUNDRY_CREDITS_UNIT_CENTS', 1),
+
+        'purchases' => [
+            'currency' => env('LARAFOUNDRY_CREDITS_CURRENCY', 'USD'),
+            'bundles' => [],
+            'custom' => [
+                'min' => 1,
+                'max' => 0,
+                'cents_per_credit' => null,
+            ],
+            'paddle' => [
+                'product_id' => env('LARAFOUNDRY_CREDITS_PADDLE_PRODUCT_ID'),
+            ],
+        ],
     ],
 
     /*

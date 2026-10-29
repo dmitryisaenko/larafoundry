@@ -82,6 +82,39 @@ PADDLE_PRICE_PRO_MONTHLY=pri_...
 
 The module keys `larafoundry-billing.{stripe,paddle}.webhook.secret` are bridged into Cashier's own keys when those are empty, so the route's signature check and the mirror read the same secret. Cashier-Paddle's own route registration stays off: it prefixes its webhook with the `cashier.path` key it shares with Cashier-Stripe (which sets it to `stripe`), so it would take over `/stripe/webhook`. The module declares the Paddle webhook itself at `/paddle/webhook` (route name `larafoundry-billing.paddle.webhook`, Cashier-Paddle's own controller); point the Paddle dashboard there. Note that both Cashier packages read the plain `PADDLE_*` / `STRIPE_*` env names: a host that already uses them for its own payment code shares them with the module once billing is on.
 
+## One gateway account, several sites
+
+Several installations of one code (each with its own database) may share one
+gateway account. A gateway does not sort its notifications by site, so every
+site's notification address receives every payment, and user ids of different
+databases run level. `Billing\Support\PaymentOrigin` keeps them apart:
+
+```dotenv
+LARAFOUNDRY_INSTALL=lorevid             # stamped on payments this site opens
+LARAFOUNDRY_INSTALL_UNMARKED=comentor   # whose an UNSTAMPED payment is (optional)
+```
+
+`PaymentOrigin::stamp($data)` writes `install` into the gateway's free-form data
+(Paddle `custom_data`, Stripe `metadata`), `PaymentOrigin::isOurs($data)` answers
+for a notification. Unset - one site, nothing stamped, every payment ours. Read
+with billing off too (credit purchases use it).
+
+## Who may pay in a sandbox
+
+`Billing\Contracts\SandboxTesters` - while a gateway runs in its sandbox, only the
+people it lets through may open a checkout (a sandbox payment takes no real
+money, so a customer must not reach one on a live site). The default,
+`NoSandboxTesters`, lets nobody through; bind your own:
+
+```php
+$this->app->bind(SandboxTesters::class, fn () => new class implements SandboxTesters {
+    public function allows(?Authenticatable $user): bool
+    {
+        return (bool) $user?->can_test_payments;
+    }
+});
+```
+
 ## Plans, region, entitlements
 
 Plans are config (`plans.definitions`): a display name, entitlement `features`, display `prices` per currency and period in minor units, and gateway price ids. `region.currencies` maps a country to a currency; the country is read server-side from the payer, never from the client.

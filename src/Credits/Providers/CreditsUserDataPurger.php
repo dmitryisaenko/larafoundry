@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Credits\Providers;
 
+use Dmitryisaenko\LaraFoundry\Credits\Models\CreditPurchase;
 use Dmitryisaenko\LaraFoundry\Credits\Models\CreditWallet;
 use Dmitryisaenko\LaraFoundry\Profile\Contracts\PurgesUserData;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -34,6 +35,17 @@ class CreditsUserDataPurger implements PurgesUserData
             ->first();
 
         $wallet?->transactions()->update(['note' => null, 'meta' => null]);
+
+        // Purchases likewise: the money rows stay, the host's data on them goes -
+        // also on the ones the user made for a company (`teams`), since that data
+        // may be about the person who pressed buy.
+        CreditPurchase::query()
+            ->where(fn ($query) => $query
+                ->where(fn ($owned) => $owned
+                    ->where('owner_type', $user->getMorphClass())
+                    ->where('owner_id', $user->getKey()))
+                ->orWhere('user_id', $user->getKey()))
+            ->update(['note' => null, 'meta' => null]);
     }
 
     public function key(): string

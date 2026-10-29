@@ -68,6 +68,7 @@ point at them) and each banner now points forward to its accurate page.
 | Billing seam | 3.1 | [billing-seam.md](billing-seam.md) |
 | Billing module (gateways, plans, promo, entitlements, ledger, affiliates) | v0.45.0 | [billing.md](billing.md) |
 | Credits (wallet, holds for work, ledger, configurable currency name) | v0.46.0 | [credits.md](credits.md) |
+| Buying credits (one-off purchases, Paddle, refunds, sandbox guards) | v0.47.0 | [credits.md](credits.md#buying-credits-v0470) |
 | SEO kit | 5.x | [seo.md](seo.md) |
 | Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |
 | Vue frontend | packaging | early draft: [modules/vue_frontend.md](modules/vue_frontend.md) |

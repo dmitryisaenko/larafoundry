@@ -37,19 +37,24 @@ use Dmitryisaenko\LaraFoundry\Billing\BillingServiceProvider;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\EntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\PlanRepositoryContract;
 use Dmitryisaenko\LaraFoundry\Billing\Contracts\RegionContext;
+use Dmitryisaenko\LaraFoundry\Billing\Contracts\SandboxTesters;
 use Dmitryisaenko\LaraFoundry\Billing\Support\ArrayPlanRepository;
 use Dmitryisaenko\LaraFoundry\Billing\Support\ConfigPlanRepository;
 use Dmitryisaenko\LaraFoundry\Billing\Support\ConfiguredRegionContext;
 use Dmitryisaenko\LaraFoundry\Billing\Support\DefaultRegionContext;
+use Dmitryisaenko\LaraFoundry\Billing\Support\NoSandboxTesters;
 use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PlanEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\VerifyCreditsCommand;
+use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPriceList;
 use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditUnitValue;
 use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataExporter;
 use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataPurger;
+use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditPriceList;
 use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditUnitValue;
+use Dmitryisaenko\LaraFoundry\Credits\Support\CreditPurchaseService;
 use Dmitryisaenko\LaraFoundry\Credits\Support\CreditService;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
@@ -338,11 +343,17 @@ class LaraFoundryServiceProvider extends ServiceProvider
      * Both are rebindable - a host whose credit price is an admin setting binds
      * its own CreditUnitValue. The module has no route, page or switch; its tables
      * exist regardless and it does nothing until host code calls the service.
+     *
+     * Purchases (v0.47.0): the price list and who may pay through a sandbox are
+     * rebindable the same way (CreditPriceList, SandboxTesters).
      */
     protected function registerCredits(): void
     {
         $this->app->bind(CreditUnitValue::class, ConfigCreditUnitValue::class);
         $this->app->singleton(CreditService::class);
+        $this->app->bind(CreditPriceList::class, ConfigCreditPriceList::class);
+        $this->app->bind(SandboxTesters::class, NoSandboxTesters::class);
+        $this->app->singleton(CreditPurchaseService::class);
     }
 
     /**
