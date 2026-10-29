@@ -27,7 +27,7 @@ it('streams the user\'s data as a JSON attachment', function () {
         ->and($payload['meta']['user_id'])->toBe($user->getKey())
         ->and($payload['meta']['format'])->toBe('larafoundry.user-data-export.v1')
         ->and($payload['data']['profile']['email'])->toBe('ada@x.test')
-        ->and($payload['data'])->toHaveKeys(['profile', 'sessions', 'ui_settings', 'consent', 'tickets', 'notifications'])
+        ->and($payload['data'])->toHaveKeys(['profile', 'sessions', 'ui_settings', 'consent', 'tickets', 'notifications', 'credits'])
         ->and($payload['data']['profile'])->not->toHaveKey('password');
 });
 

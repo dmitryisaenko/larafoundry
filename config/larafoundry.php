@@ -88,6 +88,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Credits (v0.46.0)
+    |--------------------------------------------------------------------------
+    | An internal currency the payer holds and the host's features spend: a wallet
+    | per payer (the user in `personal` mode, the company in `teams`), holds for
+    | work in progress and a ledger of every movement. See `docs/credits.md`.
+    |
+    | There is no switch: the module ships no route, page or menu item, so it does
+    | nothing until host code calls CreditService. Its tables exist regardless.
+    |
+    | The currency's NAME is not here - it lives in the translations
+    | (`larafoundry::credits.name`, every plural form), and a host renames it by
+    | overriding `lang/vendor/larafoundry/{locale}/credits.php`.
+    |
+    | unit_cents — what one credit is worth in cents. Snapshotted onto every
+    |           ledger row (`value_cents`), so a later price change never rewrites
+    |           the value of past movements. A host with an admin-editable price
+    |           rebinds the CreditUnitValue contract instead.
+    */
+    'credits' => [
+        'unit_cents' => env('LARAFOUNDRY_CREDITS_UNIT_CENTS', 1),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Locale
     |--------------------------------------------------------------------------
     | ONE source of truth: locale = an ISO 639-1 code ('en', 'uk', 'de'). This code

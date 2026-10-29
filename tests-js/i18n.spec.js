@@ -15,7 +15,7 @@ vi.mock('@inertiajs/vue3', () => ({
     },
 }));
 
-import { installI18n } from '../resources/js/i18n/index.js';
+import { eastSlavicPlural, installI18n } from '../resources/js/i18n/index.js';
 
 // A minimal Vue app stub: installI18n only calls app.use() and writes to
 // config.globalProperties — i18n.global works standalone for the assertions.
@@ -69,6 +69,30 @@ describe('installI18n locale bridge', () => {
 
         expect(i18n.global.locale.value).toBe('en');
         expect(i18n.global.t('Hello')).toBe('Hello (edited)');
+    });
+
+    it('picks the East Slavic plural form for a three-form message', () => {
+        const key = '{n} credit | {n} credits';
+        const i18n = installI18n(makeApp(), {
+            locale: 'uk',
+            translations: { [key]: '{n} кредит | {n} кредити | {n} кредитів' },
+        });
+
+        const cases = { 1: 'кредит', 2: 'кредити', 4: 'кредити', 5: 'кредитів', 11: 'кредитів', 12: 'кредитів', 14: 'кредитів', 21: 'кредит', 22: 'кредити', 25: 'кредитів', 111: 'кредитів', 0: 'кредитів' };
+
+        for (const [n, word] of Object.entries(cases)) {
+            expect(i18n.global.t(key, Number(n))).toBe(`${n} ${word}`);
+        }
+    });
+
+    it('keeps one/other for English and for a two-form message', () => {
+        const key = '{n} credit | {n} credits';
+        const i18n = installI18n(makeApp(), { locale: 'en', translations: { [key]: key } });
+
+        expect(i18n.global.t(key, 1)).toBe('1 credit');
+        expect(i18n.global.t(key, 5)).toBe('5 credits');
+        expect(eastSlavicPlural(1, 2)).toBe(0);
+        expect(eastSlavicPlural(3, 2)).toBe(1);
     });
 
     it('ignores a navigation that carries no locale prop', () => {

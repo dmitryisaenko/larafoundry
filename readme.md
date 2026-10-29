@@ -19,6 +19,19 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.46.x` Credits
+
+An internal currency the payer holds and the host's features spend. The core keeps the wallet, holds credits for work in progress and writes a ledger of every movement; the host decides what things cost. No route, page or switch: it does nothing until host code calls it.
+
+| Component | What it does |
+|-----------|--------------|
+| `CreditService` | The one door to every balance change: `credit`, `debit` (refuses to overspend), `debitAvailable`, `adjust`, and `hold` → `charge` → `release` for work that runs a while. Each locks the wallet, moves the balance and writes the ledger row in one transaction, so balance == SUM(ledger) by construction. Zero amounts write nothing. |
+| Who pays | The user in `personal` tenancy, the active company in `teams` (the billing module's rule). |
+| Ledger | `kind` (what moved) + the host's `reason` (why), balance and cost, the value in cents at the time, what the movement concerns, the host's own `meta`. `larafoundry:credits-verify` checks it. |
+| Currency name | In the translations with every plural form (`en`, `uk`); a host renames it with `lang/vendor/larafoundry/{locale}/credits.php`. vue-i18n now pluralises `uk` / `ru` / `be` correctly. |
+
+Full reference: [docs/credits.md](docs/credits.md).
+
 ### `v0.45.x` Billing module in the core
 
 The billing module that used to be the separate private `larafoundry-billing` add-on now ships inside the core: Stripe and Paddle gateways through Laravel Cashier, config-backed plans and per-country routing, promo codes and a no-card free month, plan entitlements, access enforcement, the payment ledger with owner notifications, the payments / promo / affiliate / payout operator console, the revenue dashboard widget and the affiliate program. It replaces the `v0.31.x` upsell stubs.
@@ -666,6 +679,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.3 | [Admin companies](docs/modules/admin_companies.md) console (company list + filters, read-only subscription status, super-admin block cascade) | ✅ Shipped (`v0.10.x`) |
 | 3.4 | Admin dashboard (operator-console landing screen, pluggable widget seam, free user / company / activity widgets) | ✅ Shipped (`v0.11.x`) |
 | 3.x | [Billing module](docs/billing.md) (real payments via Stripe / Paddle, plans, promo codes, trials, entitlements, payment ledger, revenue widget, affiliate program; formerly the `larafoundry-billing` add-on) | ✅ In the core (`v0.45.x`) |
+| 3.x | [Credits](docs/credits.md) (wallet per payer, holds for work in progress, ledger, configurable currency name) | ✅ Shipped (`v0.46.x`) |
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |

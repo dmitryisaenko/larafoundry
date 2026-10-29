@@ -45,6 +45,12 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PlanEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
+use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\VerifyCreditsCommand;
+use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditUnitValue;
+use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataExporter;
+use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataPurger;
+use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditUnitValue;
+use Dmitryisaenko\LaraFoundry\Credits\Support\CreditService;
 use Dmitryisaenko\LaraFoundry\Dashboard\Providers\CoreMetricsWidgetProvider;
 use Dmitryisaenko\LaraFoundry\Dashboard\Support\DashboardBuilder;
 use Dmitryisaenko\LaraFoundry\Email\Console\Commands\PreviewEmailTemplatesCommand;
@@ -181,6 +187,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerDashboard();
         $this->registerMedia();
         $this->registerBilling();
+        $this->registerCredits();
         $this->registerNotifications();
         $this->registerProfile();
         $this->registerSettings();
@@ -322,6 +329,20 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function registerNotifications(): void
     {
         $this->app->singleton(NotificationService::class);
+    }
+
+    /**
+     * Wire the credits module (v0.46.0): the one service every balance change
+     * goes through, and the value of a credit it snapshots onto the ledger.
+     *
+     * Both are rebindable - a host whose credit price is an admin setting binds
+     * its own CreditUnitValue. The module has no route, page or switch; its tables
+     * exist regardless and it does nothing until host code calls the service.
+     */
+    protected function registerCredits(): void
+    {
+        $this->app->bind(CreditUnitValue::class, ConfigCreditUnitValue::class);
+        $this->app->singleton(CreditService::class);
     }
 
     /**
@@ -518,6 +539,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootMedia();
         $this->bootTickets();
         $this->bootNotifications();
+        $this->bootCredits();
         $this->bootEmail();
         $this->bootLegal();
 
@@ -532,6 +554,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 PruneNotificationsCommand::class,
                 PurgeDeletedAccountsCommand::class,
                 PreviewEmailTemplatesCommand::class,
+                VerifyCreditsCommand::class,
             ]);
         }
     }
@@ -654,6 +677,20 @@ class LaraFoundryServiceProvider extends ServiceProvider
             ->addProvider($this->app->make(NotificationsUserDataPurger::class));
 
         $this->registerLifecycleNotifications();
+    }
+
+    /**
+     * Boot the credits module (v0.46.0): its section of the personal-data export
+     * (the user's own wallet in `personal` tenancy) and its mirror on erasure,
+     * which clears the ledger's free text and keeps the money rows.
+     */
+    protected function bootCredits(): void
+    {
+        $this->app->make(UserDataExportRegistry::class)
+            ->addProvider($this->app->make(CreditsUserDataExporter::class));
+
+        $this->app->make(UserDataPurgeRegistry::class)
+            ->addProvider($this->app->make(CreditsUserDataPurger::class));
     }
 
     /**

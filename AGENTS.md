@@ -28,7 +28,7 @@ A reusable SaaS/CRM **core** for Laravel, extracted phase-by-phase from a produc
 ```
 src/                 # one folder per domain module (PSR-4 Dmitryisaenko\LaraFoundry\)
   ActivityLog/  Auth/ (+ Auth/Qr/)  Authorization/  Billing/  Console/  Contracts/
-  Dashboard/  Email/  Http/ (cross-cutting middleware)  Legal/  Media/  Navigation/
+  Credits/  Dashboard/  Email/  Http/ (cross-cutting middleware)  Legal/  Media/  Navigation/
   Notifications/  Profile/  Settings/  Tenancy/  Tickets/
   LaraFoundryServiceProvider.php          # the ONE provider (auto-discovered)
 config/              # larafoundry.php + larafoundry-{permissions,activitylog,media,notifications,tickets,email,legal,seo,billing}.php
@@ -51,7 +51,8 @@ A module typically holds: `Models/`, `Http/Controllers/`, `Http/Requests/` (Form
 - **`register()`** — `mergeConfigFrom` every config; bind swappable contracts to defaults; replace Fortify's scaffolded actions with the hardened ones (`CreatesNewUsers`→`CreateNewUser`, etc.); bind the tenant resolver per `tenancy.mode` (the only mode-aware seam: `personal`→`PersonalTenantResolver`, else `SessionTenantResolver`); seed the export/purge/menu/dashboard registries.
 - **`boot()`** — `loadMigrationsFrom`, `loadRoutesFrom` (one file per concern; `tenancy.php`/`authorization.php` only when `mode !== 'personal'`), `loadTranslationsFrom`, `loadViewsFrom`; register middleware aliases (`larafoundry.*`); wire event listeners (failed-login alerts, OTP-flag reset on login/logout, welcome-on-verified, cookie-consent sync); register policies; `registerPublishing()` + `commands()` only `runningInConsole()`.
 - **Publishing tags** (declared in `registerPublishing()`): `larafoundry-config`, `larafoundry-permissions`, `larafoundry-activitylog`, `larafoundry-media`, `larafoundry-notifications-config`, `larafoundry-tickets-config`, `larafoundry-email-config`, `larafoundry-legal-config`, `larafoundry-pages`, `larafoundry-mail-views`, `larafoundry-lang`. (Mind the `-config` suffix on the notifications/tickets/email/legal config tags.)
-- **Commands:** `larafoundry:install`, `larafoundry:permissions:sync`, `larafoundry:prune-sign-in-requests`, `larafoundry:prune-notifications`, `larafoundry:purge-deleted-accounts`, `larafoundry-billing:check-expiring`.
+- **Commands:** `larafoundry:install`, `larafoundry:permissions:sync`, `larafoundry:prune-sign-in-requests`, `larafoundry:prune-notifications`, `larafoundry:purge-deleted-accounts`, `larafoundry:credits-verify`, `larafoundry-billing:check-expiring`.
+- **The credits module** (`src/Credits/`, v0.46.0): one service, `Credits\Support\CreditService`, through which every balance change goes (wallet row locked, balance moved and ledger row written in one transaction). No route, page or switch; tables always. The currency's name lives only in `lang/*/credits.php` - never spell it in code. See `docs/credits.md`.
 - **The billing module** (`src/Billing/`, until v0.45.0 the separate `larafoundry-billing` add-on) has its own provider, `Billing\BillingServiceProvider`, which the core provider registers from `registerBilling()`. It adds the publish tags `larafoundry-billing-config`, `larafoundry-billing-pages`, `larafoundry-billing-admin-pages`, `larafoundry-billing-affiliate-pages`, routes in `routes/billing/`, and stays dormant (no route, menu, widget or webhook listener) while `larafoundry.billing.enabled` is off; its tables are created regardless. Its suites live in `tests/Billing/`, each folder bound to its own harness in `tests/Pest.php`. See `docs/billing.md`.
 
 ## Multi-tenancy modes

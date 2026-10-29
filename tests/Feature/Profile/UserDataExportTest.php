@@ -31,9 +31,9 @@ it('wires every core and module section onto the registry', function () {
 
     $export = app(UserDataExportRegistry::class)->collect($user);
 
-    // The four core sections (registerProfile) plus the two module sections
-    // (bootTickets / bootNotifications), filed in priority order.
+    // The four core sections (registerProfile) plus the three module sections
+    // (bootTickets / bootNotifications / bootCredits), filed in priority order.
     expect(array_keys($export))->toBe([
-        'profile', 'sessions', 'ui_settings', 'consent', 'tickets', 'notifications',
+        'profile', 'sessions', 'ui_settings', 'consent', 'tickets', 'notifications', 'credits',
     ]);
 });

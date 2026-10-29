@@ -23,11 +23,60 @@ export function createAppI18n(pageProps = {}) {
         messages: {
             [locale]: messages,
         },
+        pluralRules: pluralRules(),
         // Translation keys are full English phrases; a missing key should fall
         // back to the key itself silently rather than warn on every render.
         missingWarn: false,
         fallbackWarn: false,
     });
+}
+
+/**
+ * Pick the plural form for East Slavic languages: 1 кредит, 2 кредити, 5 кредитів
+ * (and 21 / 22 / 25 the same way, 11-14 always the third form).
+ *
+ * vue-i18n's built-in rule only knows one/other, so a three-form message such as
+ * `'{n} кредит | {n} кредити | {n} кредитів'` would pick the wrong form for every
+ * number past 1. A message with only two forms (an untranslated English one)
+ * keeps the one/other choice.
+ *
+ * @param {number} choice
+ * @param {number} choicesLength
+ * @returns {number}
+ */
+export function eastSlavicPlural(choice, choicesLength) {
+    const n = Math.abs(choice);
+
+    if (choicesLength < 3) {
+        return n === 1 ? 0 : 1;
+    }
+
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+        return 0;
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return 1;
+    }
+
+    return 2;
+}
+
+/**
+ * The plural rules vue-i18n gets per locale (v0.46.0, for the credits name and any
+ * other counted text). English needs none - its default one/other is right.
+ *
+ * @returns {Record<string, (choice: number, choicesLength: number) => number>}
+ */
+function pluralRules() {
+    return {
+        uk: eastSlavicPlural,
+        ru: eastSlavicPlural,
+        be: eastSlavicPlural,
+    };
 }
 
 /**
