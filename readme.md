@@ -32,6 +32,8 @@ A one-off payment for a number of credits, at a price the server sets. No page o
 
 Full reference: [docs/credits.md](docs/credits.md#buying-credits-v0470).
 
+`v0.47.1`: `CreditService::hold()` inserts the hold first and reads it only on a conflict. Looking it up first with a locking read took a gap lock on MySQL for every new hold, and two payers starting work at the same instant deadlocked. A zero hold is never refused, whatever the balance: it sets nothing aside, and refusing it failed every job of a payer already below zero. And a page polling by itself (the bell asking for its count) no longer counts as the person being active: a screen left open never reached the PIN idle lock. A host lists its own pollers under `larafoundry.pin.passive_routes`.
+
 ### `v0.46.x` Credits
 
 An internal currency the payer holds and the host's features spend. The core keeps the wallet, holds credits for work in progress and writes a ledger of every movement; the host decides what things cost. No route, page or switch: it does nothing until host code calls it.

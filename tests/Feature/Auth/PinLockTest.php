@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Auth\Http\Controllers\PinController;
 use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\CheckPinLock;
+use Dmitryisaenko\LaraFoundry\Auth\Http\Middleware\TrackSessionActivity;
 use Dmitryisaenko\LaraFoundry\Auth\Models\UserSession;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Auth;
@@ -108,6 +110,31 @@ it('does not lock a session that is still within the idle window', function () {
     pinSession($user, 'sess-d', ['last_activity' => now()->subSeconds(60)]);
 
     expect(runPinLock(pinRequest($user, 'sess-d'))->getContent())->toBe('passed');
+});
+
+it('does not count a page polling by itself as activity, so the idle lock still comes', function () {
+    config()->set('larafoundry.pin.passive_routes', ['host.notices.count']);
+    $user = pinUser();
+    $idleSince = now()->subSeconds(2000)->startOfSecond();
+    $session = pinSession($user, 'sess-poll', ['last_activity' => $idleSince]);
+
+    $track = function (string $routeName) use ($user): void {
+        $request = pinRequest($user, 'sess-poll');
+        $request->setRouteResolver(fn () => (new Route('GET', '/x', []))->name($routeName));
+        app(TrackSessionActivity::class)->handle($request, fn () => response('ok'));
+    };
+
+    // The core's bell and a host's own poller, a minute apart for half an hour - none of it the person.
+    $track('notifications.unread-count');
+    $track('host.notices.count');
+
+    expect($session->fresh()->last_activity->equalTo($idleSince))->toBeTrue()
+        ->and(runPinLock(pinRequest($user, 'sess-poll'))->isRedirect())->toBeTrue();
+
+    // A page the person opens is activity.
+    $session->forceFill(['pin_locked' => false, 'last_activity' => $idleSince])->save();
+    $track('dashboard');
+    expect($session->fresh()->last_activity->greaterThan($idleSince))->toBeTrue();
 });
 
 it('redirects an already-locked session to PIN entry', function () {

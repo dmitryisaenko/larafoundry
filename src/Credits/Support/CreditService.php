@@ -104,7 +104,7 @@ class CreditService
      * nothing is then set aside, and the work's further charges come from the
      * balance. A caller that re-runs a finished work checks `isClosed()`. A zero
      * amount still creates the hold (the work is then paid from the balance as it
-     * is charged) but writes no row.
+     * is charged) but writes no row, and is never refused, whatever the balance.
      *
      * `$allowNegative` lets the balance go below zero - for an operator whose
      * work must never be refused. Everyone else gets InsufficientCreditsException
@@ -127,47 +127,50 @@ class CreditService
 
         $wallet = $this->wallet($owner);
 
-        try {
-            return DB::transaction(function () use ($wallet, $amount, $subject, $reason, $note, $meta, $allowNegative) {
-                $locked = $this->lockWallet($wallet->id);
+        return DB::transaction(function () use ($wallet, $amount, $subject, $reason, $note, $meta, $allowNegative) {
+            $locked = $this->lockWallet($wallet->id);
 
-                // Checked under the wallet lock: a second hold for the same work
-                // that raced the first waits here and finds it - with a LOCKING
-                // read, because a plain one inside a caller's REPEATABLE READ
-                // transaction would see the caller's old snapshot without it.
-                $existing = $this->holdQuery($subject)->lockForUpdate()->first();
-
-                if ($existing !== null) {
-                    return $this->sameWallet($existing, $locked);
-                }
-
-                if (! $allowNegative && $locked->balance < $amount) {
-                    throw new InsufficientCreditsException($locked->balance, $amount);
-                }
-
-                $hold = CreditHold::query()->create([
+            // ⚠️⚠️ INSERT FIRST, READ ONLY ON A CONFLICT (v0.47.1). Looking the hold up
+            // first with a locking read - as v0.46.0 did - takes a GAP lock on MySQL's
+            // REPEATABLE READ when the hold is not there yet, which is every first
+            // hold. New work gets ever-higher keys, so every new hold falls into the
+            // same last gap: two payers starting work at the same instant both took
+            // that gap lock, then both waited on the other's to insert - a deadlock,
+            // and one of the two starts failed. (The purchases of v0.47.0 were fixed
+            // the same way.) The insert is a savepoint, so a lost race leaves the
+            // caller's transaction usable.
+            try {
+                $hold = DB::transaction(fn () => CreditHold::query()->create([
                     'wallet_id' => $locked->id,
                     'subject_type' => $subject->getMorphClass(),
                     'subject_id' => $subject->getKey(),
                     'amount' => $amount,
                     'remaining' => $amount,
                     'spent' => 0,
-                ]);
+                ]));
+            } catch (UniqueConstraintViolationException) {
+                // The work is held already (a repeat, or a race this one lost - also
+                // through another wallet). A LOCKING read of a row that exists locks
+                // that row alone, and sees it even inside a caller's old snapshot.
+                $existing = $this->holdQuery($subject)->lockForUpdate()->first()
+                    ?? throw new LogicException('Credit hold vanished after a conflict.');
 
-                if ($amount > 0) {
-                    $this->record($locked, CreditTransaction::KIND_HOLD, -$amount, 0, $hold, $reason, $note, $meta);
+                return $this->sameWallet($existing, $locked);
+            }
+
+            // A zero hold sets nothing aside, so there is nothing to refuse - even to a
+            // payer already below zero (an operator's ordinary state).
+            if ($amount > 0) {
+                // Not enough: the exception rolls the new hold back with everything else.
+                if (! $allowNegative && $locked->balance < $amount) {
+                    throw new InsufficientCreditsException($locked->balance, $amount);
                 }
 
-                return $hold;
-            });
-        } catch (UniqueConstraintViolationException) {
-            // The same work held through ANOTHER wallet at the same instant: the
-            // first hold won, and this one moved nothing.
-            $existing = $this->holdQuery($subject)->lockForUpdate()->first()
-                ?? throw new LogicException('Credit hold vanished after a conflict.');
+                $this->record($locked, CreditTransaction::KIND_HOLD, -$amount, 0, $hold, $reason, $note, $meta);
+            }
 
-            return $this->sameWallet($existing, $wallet);
-        }
+            return $hold;
+        });
     }
 
     /**

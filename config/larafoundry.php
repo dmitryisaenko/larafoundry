@@ -312,6 +312,10 @@ return [
         'idle_timeout' => 1800,
         'max_attempts' => 5,
         'lockout_minutes' => 15,
+        // Route names (patterns allowed) a page calls by itself - a poll - which
+        // must not count as the person being active, or the idle lock never comes.
+        // The core's own bell poll is always among them; list the host's here.
+        'passive_routes' => [],
     ],
 
     /*

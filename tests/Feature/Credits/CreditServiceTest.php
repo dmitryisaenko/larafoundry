@@ -184,6 +184,22 @@ it('refuses a hold the balance cannot cover, moving nothing', function () {
         ->and(CreditHold::query()->count())->toBe(0);
 });
 
+it('refuses a hold inside the caller\'s transaction without spoiling it', function () {
+    $user = crUser();
+    credits()->credit($user, 50, 'purchase');
+
+    // The hold is inserted first (v0.47.1); refusing it rolls back to the savepoint only.
+    DB::transaction(function () use ($user) {
+        expect(fn () => credits()->hold($user, 51, crWork('work@x.test')))
+            ->toThrow(InsufficientCreditsException::class);
+
+        credits()->credit($user, 5, 'gift');
+    });
+
+    expect(credits()->balance($user))->toBe(55)
+        ->and(CreditHold::query()->count())->toBe(0);
+});
+
 it('refuses to hold one work through two payers', function () {
     $a = crUser('a@x.test');
     $b = crUser('b@x.test');
@@ -278,6 +294,17 @@ it('returns a released hold for a repeated hold of the same work, setting nothin
     expect($again->id)->toBe($hold->id)
         ->and($again->isClosed())->toBeTrue()
         ->and(credits()->balance($user))->toBe(100);
+});
+
+it('creates a zero hold for a payer already below zero', function () {
+    $user = crUser();
+    credits()->hold($user, 10, crWork('w1@x.test'), allowNegative: true);
+
+    $hold = credits()->hold($user, 0, crWork('w2@x.test'));
+
+    expect($hold->exists)->toBeTrue()
+        ->and($hold->remaining)->toBe(0)
+        ->and(credits()->balance($user))->toBe(-10);
 });
 
 it('holds past zero only when asked to', function () {

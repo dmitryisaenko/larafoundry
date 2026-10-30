@@ -41,6 +41,12 @@ class TrackSessionActivity
      */
     public const METHOD_HINT = 'larafoundry.login_method';
 
+    /**
+     * Requests a page makes by itself, not the person: the bell's poll for its
+     * count. A host adds its own pollers under `larafoundry.pin.passive_routes`.
+     */
+    public const PASSIVE_ROUTES = ['notifications.unread-count'];
+
     public function __construct(
         protected DeviceFingerprintResolver $devices,
     ) {}
@@ -56,11 +62,13 @@ class TrackSessionActivity
 
         // The PIN routes must not refresh last_activity: entering (or being
         // bounced to) the PIN screen is not activity, or the idle timer that
-        // CheckPinLock reads would never elapse.
+        // CheckPinLock reads would never elapse. Nor must a page polling by
+        // itself (v0.47.1): a bell asking for its count once a minute kept a
+        // session left open on a screen active for ever, never locked.
         if ($user !== null
             && method_exists($user, 'recordSessionActivity')
             && $request->hasSession()
-            && ! Str::is('pin.*', (string) $request->route()?->getName())) {
+            && ! $this->isPassive((string) $request->route()?->getName())) {
             $user->recordSessionActivity(
                 sessionId: $request->session()->getId(),
                 device: $this->devices->resolve($request),
@@ -70,6 +78,14 @@ class TrackSessionActivity
         }
 
         return $response;
+    }
+
+    /** Whether a request by this route name is not the person's doing. */
+    protected function isPassive(string $routeName): bool
+    {
+        $patterns = ['pin.*', ...self::PASSIVE_ROUTES, ...(array) config('larafoundry.pin.passive_routes', [])];
+
+        return $routeName !== '' && Str::is($patterns, $routeName);
     }
 
     protected function currentRouteName(Request $request): ?string
