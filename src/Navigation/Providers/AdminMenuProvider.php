@@ -15,7 +15,7 @@ use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNoti
  * the Dashboard (phase 3.4), Users (phase 2.3), Companies (phase 3.3), the
  * Activity Log (phase 2.1), Broadcasts (phase 4.1), Support tickets
  * (phase 4.2), the Email templates editor (phase 5.1), the Legal pages editor
- * (phase 5.3). Payments, Promo codes, Affiliates and Payouts are added by the
+ * (phase 5.3), the Help editor (v0.48.0). Payments, Promo codes, Affiliates and Payouts are added by the
  * billing module's own menu providers, only while billing is enabled. The
  * app-scope Settings screen is intentionally NOT surfaced — its two keys
  * (support_email / signups_enabled) are reserved config with no consumer yet.
@@ -92,6 +92,15 @@ class AdminMenuProvider implements MenuProviderInterface
                 order: 33,
                 activePatterns: ['admin.legal-pages.*'],
             ),
+            // Off with `larafoundry-help.admin.enabled` (v0.48.0) - the routes are
+            // then not registered at all, so the item would point nowhere.
+            config('larafoundry-help.admin.enabled', true) ? new MenuItem(
+                labelKey: 'Help',
+                route: 'admin.help-articles.index',
+                icon: 'help',
+                order: 34,
+                activePatterns: ['admin.help-articles.*'],
+            ) : null,
         ]));
     }
 

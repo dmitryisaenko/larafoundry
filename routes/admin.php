@@ -10,6 +10,7 @@ use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ProfileController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\SecurityController;
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\UserController;
 use Dmitryisaenko\LaraFoundry\Email\Http\Controllers\Admin\EmailTemplateController;
+use Dmitryisaenko\LaraFoundry\Help\Http\Controllers\Admin\HelpController as AdminHelpController;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Controllers\Admin\LegalPageController;
 use Dmitryisaenko\LaraFoundry\Notifications\Http\Controllers\Admin\BroadcastNotificationController;
 use Dmitryisaenko\LaraFoundry\Tickets\Http\Controllers\Admin\TicketController as AdminTicketController;
@@ -221,6 +222,39 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
                 Route::put('{slug}', [LegalPageController::class, 'update'])->name('update');
                 Route::post('{slug}/preview', [LegalPageController::class, 'preview'])->name('preview');
             });
+
+            // Help (v0.48.0): sections, articles, pictures, and - when the host bound a
+            // translator - the translate button. JSON after the first page load. Not
+            // registered while `larafoundry-help.admin.enabled` is off (a host editing
+            // the help from a console of its own). `help-articles`, not `help`: a host's
+            // own `admin/help` must not be shadowed by a core route.
+            if (config('larafoundry-help.admin.enabled', true)) {
+                Route::prefix('help-articles')->name('help-articles.')->group(function () {
+                    Route::get('/', [AdminHelpController::class, 'index'])->name('index');
+                    Route::get('data', [AdminHelpController::class, 'data'])->name('data');
+
+                    Route::post('sections', [AdminHelpController::class, 'storeSection'])->name('sections.store');
+                    Route::post('sections/order', [AdminHelpController::class, 'reorderSections'])->name('sections.order');
+                    Route::patch('sections/{section}', [AdminHelpController::class, 'updateSection'])->name('sections.update');
+                    Route::delete('sections/{section}', [AdminHelpController::class, 'destroySection'])->name('sections.destroy');
+
+                    Route::post('sections/{section}/articles', [AdminHelpController::class, 'storeArticle'])->name('articles.store');
+                    Route::post('sections/{section}/articles/order', [AdminHelpController::class, 'reorderArticles'])->name('articles.order');
+                    Route::patch('articles/{article}', [AdminHelpController::class, 'updateArticle'])->name('articles.update');
+                    Route::delete('articles/{article}', [AdminHelpController::class, 'destroyArticle'])->name('articles.destroy');
+
+                    Route::get('pictures', [AdminHelpController::class, 'pictures'])->name('pictures.index');
+                    Route::post('pictures', [AdminHelpController::class, 'uploadPicture'])
+                        ->middleware('throttle:30,1')
+                        ->name('pictures.store');
+                    Route::patch('pictures/{image}', [AdminHelpController::class, 'updatePicture'])->name('pictures.update');
+                    Route::delete('pictures/{image}', [AdminHelpController::class, 'destroyPicture'])->name('pictures.destroy');
+
+                    Route::post('translate', [AdminHelpController::class, 'translate'])
+                        ->middleware('throttle:30,1')
+                        ->name('translate');
+                });
+            }
 
             Route::post('impersonate/{user}', [ImpersonateController::class, 'take'])
                 ->name('impersonate.take');

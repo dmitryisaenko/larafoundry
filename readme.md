@@ -19,6 +19,19 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.48.x` Help
+
+An in-app help centre: sections (a tab each) of ordered articles (an accordion each), every text in every available locale, edited by the super-admin and read by everyone, guests included.
+
+| Component | What it does |
+|-----------|--------------|
+| `/help` + `Admin/Help/Editor` | The public page (tabs, accordions, a phone's own text below `md`, a note when a text is shown in another language) and the editor at `/admin/help-articles` (sections, articles, ordering, a translation-coverage overview, pictures). Each switchable off - its routes are then not registered, leaving the paths to a host's own screens. |
+| `HelpBook` / `HelpEditor` | The one reader and the one writer, for a host that draws or edits the help on screens of its own. Text is sanitized on write. |
+| Pictures | Records referenced as `[[img:ref|width=400|align=left]]`, resolved when the help is read: one upload replaces a screenshot in every language. Served to guests by name, the name checked before the disk; uploads re-encoded to webp when smaller. |
+| Seams | `HelpTranslator` (not bound - no button until a host binds one; an answer that lost a picture is refused), `HelpTextFiller` (a host's own markers, filled at read time), `HelpPictureOptions`. `larafoundry:help-load-guide` loads a section from one file per article. |
+
+The editor's writing surface is Tiptap, kept out of the barrel: a host that shows the editor installs it. Full reference: [docs/help.md](docs/help.md).
+
 ### `v0.47.x` Buying credits
 
 A one-off payment for a number of credits, at a price the server sets. No page or route: the host draws its buy screen and calls the services. Works with the billing switch off.
@@ -696,6 +709,7 @@ LaraFoundry is extracted phase by phase. Domain modules below are **planned**, b
 | 3.x | [Billing module](docs/billing.md) (real payments via Stripe / Paddle, plans, promo codes, trials, entitlements, payment ledger, revenue widget, affiliate program; formerly the `larafoundry-billing` add-on) | ✅ In the core (`v0.45.x`) |
 | 3.x | [Credits](docs/credits.md) (wallet per payer, holds for work in progress, ledger, configurable currency name) | ✅ Shipped (`v0.46.x`) |
 | 3.x | [Buying credits](docs/credits.md#buying-credits-v0470) (one-off purchases, Paddle, refunds, sandbox guards, several sites on one gateway account) | ✅ Shipped (`v0.47.x`) |
+| 3.x | [Help](docs/help.md) (sections and articles in every locale, editor with pictures and a translation seam, a phone's own text, a guide loaded from files) | ✅ Shipped (`v0.48.x`) |
 | 4.1 | [Notifications](docs/modules/notifications.md) (in-app inbox + bell, super-admin broadcasts, queued fan-out, retention) | ✅ Shipped (`v0.14.x`) |
 | 4.2 | [Tickets](docs/modules/tickets.md) / helpdesk (user inbox + operator console, status workflow, in-app notifications, audit) | ✅ Shipped (`v0.15.x`) |
 | 5.1 | [Settings, profile and email templates](docs/settings-profile-email.md) (key-value settings store, profile hub, super-admin email editor) | ✅ Shipped (`v0.16.x`) |

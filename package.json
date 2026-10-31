@@ -35,10 +35,26 @@
         "@inertiajs/vue3": "^2.0 || ^3.0",
         "vue": "^3.4",
         "vue-i18n": "^11.0",
-        "ziggy-js": "^2.0"
+        "ziggy-js": "^2.0",
+        "@tiptap/vue-3": "^3.0",
+        "@tiptap/starter-kit": "^3.0",
+        "@tiptap/extension-image": "^3.0",
+        "@tiptap/extension-text-align": "^3.0"
     },
     "peerDependenciesMeta": {
         "ziggy-js": {
+            "optional": true
+        },
+        "@tiptap/vue-3": {
+            "optional": true
+        },
+        "@tiptap/starter-kit": {
+            "optional": true
+        },
+        "@tiptap/extension-image": {
+            "optional": true
+        },
+        "@tiptap/extension-text-align": {
             "optional": true
         }
     }

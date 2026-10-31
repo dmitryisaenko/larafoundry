@@ -62,6 +62,15 @@ use Dmitryisaenko\LaraFoundry\Email\Console\Commands\PreviewEmailTemplatesComman
 use Dmitryisaenko\LaraFoundry\Email\Models\EmailTemplate;
 use Dmitryisaenko\LaraFoundry\Email\Policies\EmailTemplatePolicy;
 use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
+use Dmitryisaenko\LaraFoundry\Help\Console\Commands\LoadHelpGuideCommand;
+use Dmitryisaenko\LaraFoundry\Help\Contracts\HelpPictureOptions;
+use Dmitryisaenko\LaraFoundry\Help\Models\HelpSection;
+use Dmitryisaenko\LaraFoundry\Help\Policies\HelpPolicy;
+use Dmitryisaenko\LaraFoundry\Help\Support\ConfigHelpPictureOptions;
+use Dmitryisaenko\LaraFoundry\Help\Support\HelpBook;
+use Dmitryisaenko\LaraFoundry\Help\Support\HelpEditor;
+use Dmitryisaenko\LaraFoundry\Help\Support\HelpPictures;
+use Dmitryisaenko\LaraFoundry\Help\Support\HelpTranslation;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureSuperAdmin;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\RedirectSuperAdminToConsole;
@@ -175,6 +184,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-email.php', 'larafoundry-email');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-legal.php', 'larafoundry-legal');
         $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-seo.php', 'larafoundry-seo');
+        $this->mergeConfigFrom(__DIR__.'/../config/larafoundry-help.php', 'larafoundry-help');
 
         // Default, dependency-free device fingerprinting. A host may rebind this
         // contract to a richer parser.
@@ -198,6 +208,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerSettings();
         $this->registerEmail();
         $this->registerLegal();
+        $this->registerHelp();
         $this->registerSeo();
         $this->registerOnboarding();
     }
@@ -260,6 +271,25 @@ class LaraFoundryServiceProvider extends ServiceProvider
         // consent, shared by the registration hook, the re-accept gate, the
         // consent controller, the login listener and the Inertia share.
         $this->app->singleton(ConsentManager::class);
+    }
+
+    /**
+     * Wire the help (v0.48.0): the reader, the writer and the translate button.
+     *
+     * Singletons, so the host's fillers (`HelpBook::addFiller()`) registered once are
+     * seen by every reader. The picture options are rebindable (a host serving the
+     * pictures from another address, or editing the default width at runtime); the
+     * translator is NOT bound - the core does not translate, and the editor shows no
+     * button until a host binds `Help\Contracts\HelpTranslator`. The editing policy is
+     * registered in {@see bootHelp()}.
+     */
+    protected function registerHelp(): void
+    {
+        $this->app->bind(HelpPictureOptions::class, ConfigHelpPictureOptions::class);
+        $this->app->singleton(HelpPictures::class);
+        $this->app->singleton(HelpBook::class);
+        $this->app->singleton(HelpEditor::class);
+        $this->app->singleton(HelpTranslation::class);
     }
 
     /**
@@ -527,6 +557,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/notifications.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/tickets.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/legal.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/help.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/consent.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/seo.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/onboarding.php');
@@ -553,6 +584,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootCredits();
         $this->bootEmail();
         $this->bootLegal();
+        $this->bootHelp();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -566,6 +598,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 PurgeDeletedAccountsCommand::class,
                 PreviewEmailTemplatesCommand::class,
                 VerifyCreditsCommand::class,
+                LoadHelpGuideCommand::class,
             ]);
         }
     }
@@ -761,6 +794,15 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function bootLegal(): void
     {
         Gate::policy(LegalPage::class, LegalPagePolicy::class);
+    }
+
+    /**
+     * The help editor's identity re-check (super-admin), over the admin zone gate -
+     * the help is HTML shown to every visitor. Reading is open.
+     */
+    protected function bootHelp(): void
+    {
+        Gate::policy(HelpSection::class, HelpPolicy::class);
     }
 
     /**
@@ -1028,6 +1070,10 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/larafoundry-seo.php' => config_path('larafoundry-seo.php'),
         ], 'larafoundry-seo-config');
+
+        $this->publishes([
+            __DIR__.'/../config/larafoundry-help.php' => config_path('larafoundry-help.php'),
+        ], 'larafoundry-help-config');
 
         $this->publishes([
             __DIR__.'/../resources/js/Pages' => resource_path('js/Pages'),
