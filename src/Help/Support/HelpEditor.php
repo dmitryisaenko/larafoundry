@@ -38,6 +38,13 @@ final class HelpEditor
     /** The longest side a picture may have, in pixels: a screenshot of a 4K screen and then some. */
     private const PICTURE_MAX_SIDE = 8000;
 
+    /**
+     * The most pixels a picture may have (review 2026-10-31): the side alone let a
+     * 7999 x 7999 PNG of a few hundred KB through, and decoding it took ~500 MB - out
+     * of memory, which nothing catches. 20 million is a 5K screenshot and then some.
+     */
+    private const PICTURE_MAX_PIXELS = 20_000_000;
+
     /** Accepted picture types, read from the CONTENTS (never the name the browser sent). */
     private const PICTURE_TYPES = [
         'image/jpeg' => 'jpg',
@@ -339,6 +346,12 @@ final class HelpEditor
         if (! is_array($size) || $size[0] > self::PICTURE_MAX_SIDE || $size[1] > self::PICTURE_MAX_SIDE) {
             throw ValidationException::withMessages([
                 'image' => __('larafoundry::help.picture_size', ['max' => self::PICTURE_MAX_SIDE]),
+            ]);
+        }
+
+        if ($size[0] * $size[1] > self::PICTURE_MAX_PIXELS) {
+            throw ValidationException::withMessages([
+                'image' => __('larafoundry::help.picture_pixels', ['max' => self::PICTURE_MAX_PIXELS / 1_000_000]),
             ]);
         }
 

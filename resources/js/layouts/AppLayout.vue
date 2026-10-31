@@ -23,16 +23,26 @@ import NotificationBell from '../components/notifications/NotificationBell.vue';
 import SupportLink from '../components/tickets/SupportLink.vue';
 import ImpersonationBanner from '../components/admin/ImpersonationBanner.vue';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import SetupWizardDialog from '../components/setup/SetupWizardDialog.vue';
+import { appShell } from './appShell.js';
 
 const page = usePage();
 
 const navigation = computed(() => page.props.navigation ?? []);
 const companies = computed(() => page.props.companies ?? []);
 const activeCompany = computed(() => page.props.activeCompany ?? null);
+// The first-login wizard's steps over this page, or false (v0.49.0, Setup\Support\SetupWizard).
+const setupSteps = computed(() => (Array.isArray(page.props.setup_wizard) ? page.props.setup_wizard : []));
+// A host's own shell, when it registered one (registerAppShell) - it then draws the frame.
+const hostShell = appShell.component;
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-surface-muted text-ink">
+    <component :is="hostShell" v-if="hostShell">
+        <slot />
+    </component>
+
+    <div v-else class="flex min-h-screen flex-col bg-surface-muted text-ink">
         <Seo />
         <ImpersonationBanner />
         <AppFlashMessage />
@@ -65,5 +75,7 @@ const activeCompany = computed(() => page.props.activeCompany ?? null);
 
         <!-- App-wide confirm dialog (singleton, driven by the confirm() API). -->
         <ConfirmDialog />
+
+        <SetupWizardDialog v-if="setupSteps.length" :steps="setupSteps" />
     </div>
 </template>

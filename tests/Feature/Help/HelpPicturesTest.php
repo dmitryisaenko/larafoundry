@@ -134,6 +134,24 @@ it('refuses a picture too large to open, before decoding it', function () {
     expect(HelpImage::query()->count())->toBe(0);
 });
 
+it('refuses a picture with too many pixels even when each side fits (review 2026-10-31)', function () {
+    // 5000 x 4001 = just over 20 million: both sides under 8000, decoding it would not be.
+    $image = imagecreate(5000, 4001);
+    imagecolorallocate($image, 255, 255, 255);
+
+    ob_start();
+    imagepng($image);
+    $path = tempnam(sys_get_temp_dir(), 'help').'.png';
+    file_put_contents($path, (string) ob_get_clean());
+
+    $this->actingAs(helpPictureAdmin())
+        ->post('/admin/help-articles/pictures', ['image' => new UploadedFile($path, 'big.png', 'image/png', null, true)], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.image.0', __('larafoundry::help.picture_pixels', ['max' => 20]));
+
+    expect(HelpImage::query()->count())->toBe(0);
+});
+
 it('renames a picture and deletes its file with it', function () {
     $admin = helpPictureAdmin();
 

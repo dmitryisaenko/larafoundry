@@ -9,10 +9,12 @@
  * of the backend props; every section owns its own form and endpoint.
  */
 import { computed, ref } from 'vue';
-import { AppLayout } from '@dmitryisaenko/larafoundry';
+import { router } from '@inertiajs/vue3';
+import { AppLayout, setupWizardCall } from '@dmitryisaenko/larafoundry';
 import ProfileForm from './sections/ProfileForm.vue';
 import AvatarManager from './sections/AvatarManager.vue';
 import PasswordForm from './sections/PasswordForm.vue';
+import SetPasswordForm from './sections/SetPasswordForm.vue';
 import SessionsManager from './sections/SessionsManager.vue';
 import Appearance from './sections/Appearance.vue';
 import DangerZone from './sections/DangerZone.vue';
@@ -33,7 +35,35 @@ const props = defineProps({
     // User-scope generic settings (e.g. email_notifications), folded into the
     // Preferences tab so there is no separate account-settings page.
     accountSettings: { type: Object, default: () => ({ schema: [], values: {} }) },
+    // The app's name while the setup wizard has steps to go through again here, else null (v0.49.0).
+    setupWizard: { type: String, default: null },
+    // The two-factor pointer, off for a host that does not offer it (v0.49.0).
+    twoFactorNote: { type: Boolean, default: true },
 });
+
+/*
+ * "Go through the setup again" (v0.49.0): the server clears the marks and sets
+ * the session's one, then only the wizard's prop is read again - it goes from
+ * false to true and the layout mounts a fresh dialog over this page.
+ */
+const setupBusy = ref(false);
+const setupError = ref('');
+
+async function setupAgain() {
+    setupBusy.value = true;
+    setupError.value = '';
+
+    try {
+        await setupWizardCall('again');
+        router.reload({ only: ['setup_wizard'] });
+    } catch (status) {
+        setupError.value = status === 419
+            ? 'Your session has expired. Reload the page.'
+            : 'Could not open the setup. Try again.';
+    } finally {
+        setupBusy.value = false;
+    }
+}
 
 // Core controllers hand Inertia a JsonResource (ProfileResource); inertia-laravel
 // resolves it wrapped in `data`, so normalise once here to a flat profile object
@@ -82,8 +112,10 @@ const activeTab = ref('profile');
 
                 <div v-else-if="activeTab === 'security'" class="flex flex-col gap-8">
                     <PasswordForm v-if="profileData.has_password" />
+                    <!-- An account created through OAuth has no password to change (v0.49.0). -->
+                    <SetPasswordForm v-else />
                     <PinManager v-if="pin.enabled" :has-pin="pin.has_pin" :length="pin.length" />
-                    <section>
+                    <section v-if="twoFactorNote">
                         <h2 class="text-base font-semibold text-ink">{{ $t('Two-factor authentication') }}</h2>
                         <p class="text-sm text-ink-soft">
                             {{ $t('Add a second step at sign-in with an authenticator app.') }}
@@ -95,6 +127,23 @@ const activeTab = ref('profile');
 
                 <div v-else-if="activeTab === 'appearance'" class="flex flex-col gap-8">
                     <Appearance :settings="uiSettings" :schema="uiSettingsSchema" />
+
+                    <section v-if="setupWizard" class="flex max-w-xl flex-col gap-3">
+                        <header>
+                            <h2 class="text-base font-semibold text-ink">{{ $t('Setting up {name}', { name: setupWizard }) }}</h2>
+                            <p class="text-sm text-ink-soft">{{ $t('All the main settings, one step at a time.') }}</p>
+                        </header>
+                        <div>
+                            <button
+                                type="button"
+                                class="rounded-sm border border-border px-3 py-1.5 text-sm text-ink transition hover:bg-surface-subtle disabled:opacity-50"
+                                :disabled="setupBusy"
+                                data-setup-again
+                                @click="setupAgain"
+                            >{{ $t('Go through the setup again') }}</button>
+                            <p v-if="setupError" class="mt-2 text-sm text-danger" role="alert">{{ $t(setupError) }}</p>
+                        </div>
+                    </section>
 
                     <!-- Folded-in account settings (the old /settings page): the
                          user-scope generic preferences. Hidden when nothing is

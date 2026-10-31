@@ -19,6 +19,19 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.49.x` Setup wizard
+
+A step-by-step dialog over the user's own shell after every login, until they press "Done" or "Don't show again"; "Skip" closes it until the next login.
+
+| Component | What it does |
+|-----------|--------------|
+| `SetupWizard` | The one rule: which steps are asked and when. Four core steps (theme, interface language, name and photo, date format) in the `common` part; a host adds steps to it or parts of its own, asks a part only on some requests, drops a step, hides the wizard on a request of its own. A part is finished as a whole (`users.setup_done`), so a step added later is asked only of people who have not finished it. |
+| Endpoints | `GET setup-wizard/state` (the user's own values) and `POST setup-wizard/later`, `done`, `again`. Every step writes through the endpoint that already keeps its setting. |
+| `<SetupWizardDialog>` | Mounted by `AppLayout` while the shared `setup_wizard` prop lists steps. A host draws a step of its own with `registerSetupStep()`, or its own dialog over the same prop (the core's stays shut over a step it cannot draw). The profile hub offers "Go through the setup again". |
+
+Switchable off (`larafoundry.setup_wizard.enabled`): no routes, no login mark, the prop stays false. Full reference: [docs/setup-wizard.md](docs/setup-wizard.md).
+
+Also in `v0.49.0`, so a host keeps no copy of the profile hub: a first password for an OAuth account (`POST /profile/set-password`), `larafoundry.profile.hub` (preferences not offered on the user's hub, the two-factor note), and `registerAppShell()` - a host's own signed-in shell around every core page drawn in `AppLayout`. See [docs/settings-profile-email.md](docs/settings-profile-email.md#the-profile-hub).
 ### `v0.48.x` Help
 
 An in-app help centre: sections (a tab each) of ordered articles (an accordion each), every text in every available locale, edited by the super-admin and read by everyone, guests included.

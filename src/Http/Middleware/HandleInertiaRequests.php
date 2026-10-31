@@ -6,6 +6,7 @@ namespace Dmitryisaenko\LaraFoundry\Http\Middleware;
 
 use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UiSettings;
+use Dmitryisaenko\LaraFoundry\Setup\Support\SetupWizard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
@@ -73,6 +74,10 @@ class HandleInertiaRequests extends Middleware
             'auth_oauth' => fn () => $this->oauthSettings(),
             'auth_magic_link' => fn () => $this->magicLinkSettings(),
             'consent' => fn () => $this->consentState($request),
+            // The setup wizard (v0.49.0): the steps it opens with over this page, or
+            // false. The core's AppLayout mounts it on a list; a host shell may draw
+            // its own dialog from the same prop.
+            'setup_wizard' => fn () => app(SetupWizard::class)->offer($request),
         ];
     }
 

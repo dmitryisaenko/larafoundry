@@ -15,6 +15,10 @@ return [
 
     'updated' => 'Your profile has been updated.',
 
+    'password' => [
+        'set' => 'Your password has been set.',
+    ],
+
     'email' => [
         'changed' => 'Your email address was changed. Check your inbox to verify the new address — other devices have been signed out.',
     ],

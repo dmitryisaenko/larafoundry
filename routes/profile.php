@@ -6,6 +6,7 @@ use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\AccountController;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\AvatarController;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\DataExportController;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\ProfileController;
+use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\SetPasswordController;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Controllers\UiSettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,10 @@ Route::middleware(['web', 'auth'])
         Route::delete('avatar', [AvatarController::class, 'destroy'])->name('avatar.destroy');
 
         Route::put('ui-settings', [UiSettingsController::class, 'update'])->name('ui-settings.update');
+
+        // A first password for an account created through OAuth (v0.49.0) - refused
+        // to an account that already has one.
+        Route::post('set-password', [SetPasswordController::class, 'store'])->name('set-password');
 
         // GDPR data portability (phase 5.3): a synchronous JSON download of the
         // user's own data. Rate-limited (default 3/day) against repeated dumps.

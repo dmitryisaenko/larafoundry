@@ -597,6 +597,16 @@ return [
             'youtube',
         ],
 
+        // The self-service profile hub (v0.49.0). `hidden_ui_settings` - registered
+        // preferences NOT offered on the user's own hub, because the host's shell
+        // does not read them (the operator hub still offers every key). The
+        // two-factor note is a pointer only (enrolment lives outside the hub); a
+        // host that does not offer two-factor to its users turns it off.
+        'hub' => [
+            'hidden_ui_settings' => [],
+            'two_factor_note' => true,
+        ],
+
         'ui_settings' => [
             'theme' => [
                 'type' => 'string',
@@ -657,6 +667,22 @@ return [
         'data_export' => [
             'throttle' => '3,1440',
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | First-login setup wizard (v0.49.0)
+    |--------------------------------------------------------------------------
+    | A step-by-step dialog over the user's own shell after every login, until
+    | they press "Done" or "Don't show again" ("Skip" closes it until the next
+    | login). The core asks four steps - theme, interface language, name and
+    | photo, date format; a host adds its own through `Setup\Support\SetupWizard`
+    | (see docs/setup-wizard.md). Unlike the onboarding checklist this one does
+    | come up by itself, so it can be switched off: then its routes are not
+    | registered, nothing is marked at login and the shared prop stays false.
+    */
+    'setup_wizard' => [
+        'enabled' => env('LARAFOUNDRY_SETUP_WIZARD_ENABLED', true),
     ],
 
     /*

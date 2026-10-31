@@ -72,6 +72,7 @@ point at them) and each banner now points forward to its accurate page.
 | Help (sections, articles, pictures, editor, translation seam, guide from files) | v0.48.0 | [help.md](help.md) |
 | SEO kit | 5.x | [seo.md](seo.md) |
 | Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |
+| First-login setup wizard (steps by part, skip until next login, host steps and parts) | v0.49.0 | [setup-wizard.md](setup-wizard.md) |
 | Vue frontend | packaging | early draft: [modules/vue_frontend.md](modules/vue_frontend.md) |
 
 Until `v0.45.0` the billing module was the separate `larafoundry-billing` add-on;

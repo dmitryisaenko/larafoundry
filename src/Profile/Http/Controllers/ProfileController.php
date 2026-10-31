@@ -8,6 +8,7 @@ use Dmitryisaenko\LaraFoundry\Profile\Actions\DeleteUserAccount;
 use Dmitryisaenko\LaraFoundry\Profile\Http\Resources\ProfileResource;
 use Dmitryisaenko\LaraFoundry\Profile\Support\UiSettings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
+use Dmitryisaenko\LaraFoundry\Setup\Support\SetupWizard;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
@@ -81,7 +82,10 @@ class ProfileController extends Controller
             'profile' => new ProfileResource($user),
             'sessions' => $sessions,
             'uiSettings' => UiSettings::resolved($user),
-            'uiSettingsSchema' => UiSettings::schema(),
+            // Minus the preferences the host's shell does not read (v0.49.0) - the
+            // operator hub keeps offering every key.
+            'uiSettingsSchema' => $this->hubUiSettingsSchema(),
+            'twoFactorNote' => (bool) config('larafoundry.profile.hub.two_factor_note', true),
             // The danger zone hides the delete control when the user owns a
             // company (the server still enforces it — this is only UX).
             'canDeleteAccount' => $this->canDeleteAccount($user),
@@ -97,7 +101,25 @@ class ProfileController extends Controller
             // Values are limited to the form-visible keys — consent flags
             // (form=false, written by the phase-5.3 flow) are never shipped here.
             'accountSettings' => $this->accountSettings(),
+            // "Go through the setup again" (v0.49.0): the app's name for the section's
+            // heading while the wizard has anything to open here, else null.
+            'setupWizard' => app(SetupWizard::class)->canReopen($request) ? (string) config('app.name') : null,
         ]);
+    }
+
+    /**
+     * The ui_settings schema minus `larafoundry.profile.hub.hidden_ui_settings`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function hubUiSettingsSchema(): array
+    {
+        $hidden = (array) config('larafoundry.profile.hub.hidden_ui_settings', []);
+
+        return array_values(array_filter(
+            UiSettings::schema(),
+            static fn (array $item): bool => ! in_array($item['key'] ?? null, $hidden, true),
+        ));
     }
 
     /**

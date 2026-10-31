@@ -154,6 +154,35 @@ The self-service screens are already wired: a user edits their own settings at `
 
 Account deletion and a data export are wired as seams here, ready for the GDPR phase: a host (or a core module) contributes to the export by registering an `ExportsUserDataProvider`, and the delete action already refuses to remove a user who still owns a company.
 
+**Since `v0.49.0`:**
+
+- **A first password.** An account created through OAuth has no password to change, so the Security tab offers "Set a password" instead (`POST /profile/set-password`). The endpoint refuses an account that already has a password - that is the change flow, which checks the current one - and an operator signed in as the user (`Admin\Support\ActingAsSomeoneElse`: the core's impersonation and any way a host registers with `addCheck()`), who would otherwise leave with a password of their own to that account.
+- **What the hub offers** (`config/larafoundry.php`):
+
+  ```php
+  'profile' => [
+      'hub' => [
+          // registered preferences NOT offered on the user's own hub, because the
+          // host's shell does not read them (the operator hub still offers them)
+          'hidden_ui_settings' => ['sidebar_collapsed', 'table_density'],
+          // the two-factor pointer on the Security tab
+          'two_factor_note' => false,
+      ],
+  ],
+  ```
+
+- **"Go through the setup again"** on the Preferences tab, while the [setup wizard](setup-wizard.md) has steps to ask here; titled with `config('app.name')`.
+- **The host's own shell.** A host with a signed-in shell of its own registers it once at boot, and every core page drawn in `AppLayout` (this hub, account settings, billing) wears it - no copy of a core page only to change its frame:
+
+  ```js
+  import { registerAppShell } from '@dmitryisaenko/larafoundry';
+  import CabinetLayout from './Layouts/CabinetLayout.vue';
+
+  registerAppShell(CabinetLayout);
+  ```
+
+  The host's shell then owns everything `AppLayout` would mount: the setup wizard's dialog, the confirm dialog behind `confirm()`, the flash messages, the impersonation banner and the SEO head - mount whichever of them the host's pages use.
+
 ### Editing email templates
 
 In the operator console, "Email templates" lists the four core emails. The super-admin edits the subject and HTML body per locale, previews the result (rendered server-side and shown in a sandboxed iframe), and can send a throttled test to themselves. Saving validates that every `{{variable}}` used is declared for that template (an undeclared variable is a 422), sanitizes the HTML, and stores the override.
@@ -182,6 +211,7 @@ GET    /profile                  profile.index            the tabbed hub
 POST   /profile/avatar           profile.avatar.update
 DELETE /profile/avatar           profile.avatar.destroy
 PUT    /profile/ui-settings      profile.ui-settings.update
+POST   /profile/set-password     profile.set-password     a first password (v0.49.0; refused once one exists)
 DELETE /profile/account          profile.account.destroy
 GET    /settings                 settings.account
 PUT    /settings/account         settings.account.update

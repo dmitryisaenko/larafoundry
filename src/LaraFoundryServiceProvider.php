@@ -10,6 +10,7 @@ use Dmitryisaenko\LaraFoundry\ActivityLog\Http\Middleware\LogActivity;
 use Dmitryisaenko\LaraFoundry\ActivityLog\Listeners\LogRegisteredEvents;
 use Dmitryisaenko\LaraFoundry\ActivityLog\Models\Activity as ActivityModel;
 use Dmitryisaenko\LaraFoundry\ActivityLog\Policies\ActivityLogPolicy;
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\ResetUserPassword;
 use Dmitryisaenko\LaraFoundry\Auth\Actions\UpdateUserPassword;
@@ -110,6 +111,7 @@ use Dmitryisaenko\LaraFoundry\Seo\Support\SeoManager;
 use Dmitryisaenko\LaraFoundry\Seo\Support\SitemapBuilder;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Settings\Support\SettingsRepository;
+use Dmitryisaenko\LaraFoundry\Setup\Support\SetupWizard;
 use Dmitryisaenko\LaraFoundry\Tenancy\Contracts\TenantResolver;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyArchived;
 use Dmitryisaenko\LaraFoundry\Tenancy\Events\CompanyCreated;
@@ -211,6 +213,8 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->registerHelp();
         $this->registerSeo();
         $this->registerOnboarding();
+        $this->app->singleton(SetupWizard::class);
+        $this->app->singleton(ActingAsSomeoneElse::class);
     }
 
     /**
@@ -561,6 +565,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/consent.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/seo.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/onboarding.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/setup.php');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'larafoundry');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'larafoundry');
 
@@ -585,6 +590,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
         $this->bootEmail();
         $this->bootLegal();
         $this->bootHelp();
+        $this->bootSetupWizard();
 
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
@@ -803,6 +809,16 @@ class LaraFoundryServiceProvider extends ServiceProvider
     protected function bootHelp(): void
     {
         Gate::policy(HelpSection::class, HelpPolicy::class);
+    }
+
+    /**
+     * The setup wizard (v0.49.0): every kind of login marks the session, so the
+     * wizard opens over the first page the user sees. The rule itself - including
+     * the on/off switch - is {@see SetupWizard::markLogin()}.
+     */
+    protected function bootSetupWizard(): void
+    {
+        Event::listen(Login::class, fn (Login $event) => $this->app->make(SetupWizard::class)->markLogin($event));
     }
 
     /**

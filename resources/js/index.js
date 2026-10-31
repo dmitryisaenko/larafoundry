@@ -125,6 +125,13 @@ export { default as Seo } from './components/Seo.vue';
 // checklist is dismissed, complete or absent, so it is always safe to include.
 export { default as OnboardingChecklist } from './components/OnboardingChecklist.vue';
 
+// Setup wizard (v0.49.0) - AppLayout mounts the dialog itself while the shared
+// `setup_wizard` prop lists steps. A host adds a step's screen with
+// registerSetupStep(); a host shell of its own may mount the dialog, or draw its
+// own over the same prop and endpoints (setupWizardCall).
+export { default as SetupWizardDialog } from './components/setup/SetupWizardDialog.vue';
+export { setupSteps, registerSetupStep, setupWizardCall } from './components/setup/setupWizard.js';
+
 // Form UI-kit
 export { default as InputField } from './components/ui/InputField.vue';
 export { default as TextareaField } from './components/ui/TextareaField.vue';
@@ -142,6 +149,8 @@ export { default as AppBaseLayout } from './layouts/AppBaseLayout.vue';
 export { default as AppLayout } from './layouts/AppLayout.vue';
 export { default as AdminLayout } from './layouts/AdminLayout.vue';
 export { default as LayoutSwitcher } from './layouts/LayoutSwitcher.vue';
+// A host's own signed-in shell for every core page drawn in AppLayout (v0.49.0).
+export { registerAppShell } from './layouts/appShell.js';
 
 /**
  * Pluggable dashboard widget registry (phase 3.4).

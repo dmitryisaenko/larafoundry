@@ -84,8 +84,10 @@ final class HelpBook
         $mobile = HelpText::lineIn($article->mobile_body_translations, $locale);
         // A phone text found only in a substitute language loses to the reader's own
         // full text: the phone then shows that, rather than a stranger's language.
+        // Unless there is no full text at all (review 2026-10-31): then the substitute
+        // phone text is all the article has.
         $hasMobile = HelpText::hasText($mobile['text'])
-            && ($mobile['locale'] === $locale || $body['locale'] !== $locale);
+            && ($mobile['locale'] === $locale || $body['locale'] !== $locale || ! HelpText::hasText($body['text']));
 
         return [
             'heading' => HelpText::line($article->heading_translations, $locale),

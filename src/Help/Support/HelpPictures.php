@@ -83,7 +83,9 @@ final class HelpPictures
         // A marker alone in its paragraph (how the editor inserts one) takes the
         // paragraph with it: a figure may not sit in a `<p>`, and the browser would
         // close it early and leave an empty paragraph above and below the picture.
-        $body = (string) preg_replace('/<p>\s*('.substr(self::MARKER, 1, -2).')\s*<\/p>/i', '$1', $body);
+        // Any paragraph, an aligned one included (`<p style="text-align:center;">`,
+        // review 2026-10-31) - the picture's own alignment is in its marker.
+        $body = (string) preg_replace('/<p(?:\s[^>]*)?>\s*('.substr(self::MARKER, 1, -2).')\s*<\/p>/i', '$1', $body);
         $parts = preg_split('/(<[^>]*>)/', $body, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$body];
 
         foreach ($parts as $at => $part) {

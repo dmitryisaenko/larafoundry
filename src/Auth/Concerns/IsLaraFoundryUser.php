@@ -94,6 +94,8 @@ trait IsLaraFoundryUser
             'last_login_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'ui_settings' => 'array',
+            // The setup wizard's finished parts (v0.49.0, Setup\Support\SetupWizard).
+            'setup_done' => 'array',
             'is_admin' => 'boolean',
         ];
     }

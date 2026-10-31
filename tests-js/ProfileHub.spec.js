@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { mount, enableAutoUnmount } from '@vue/test-utils';
+import { mount, enableAutoUnmount, flushPromises } from '@vue/test-utils';
 
 enableAutoUnmount(afterEach);
 
@@ -15,7 +15,7 @@ vi.mock('@inertiajs/vue3', () => ({
         delete: vi.fn(),
         reset: vi.fn(),
     }),
-    router: { put: vi.fn(), post: vi.fn(), delete: vi.fn() },
+    router: { put: vi.fn(), post: vi.fn(), delete: vi.fn(), reload: vi.fn() },
     usePage: () => ({ props: {} }),
 }));
 
@@ -28,12 +28,17 @@ vi.mock('@dmitryisaenko/larafoundry', () => ({
     DateField: { name: 'DateField', template: '<input type="date" />' },
     ImageUpload: { name: 'ImageUpload', template: '<div />' },
     UserAvatar: { name: 'UserAvatar', template: '<span />' },
+    setupWizardCall: vi.fn(async () => ({ ok: true })),
 }));
 
 import ProfileHub from '../resources/js/Pages/Profile/ProfileHub.vue';
 import ProfileForm from '../resources/js/Pages/Profile/sections/ProfileForm.vue';
 import SessionsManager from '../resources/js/Pages/Profile/sections/SessionsManager.vue';
 import DangerZone from '../resources/js/Pages/Profile/sections/DangerZone.vue';
+import PasswordForm from '../resources/js/Pages/Profile/sections/PasswordForm.vue';
+import SetPasswordForm from '../resources/js/Pages/Profile/sections/SetPasswordForm.vue';
+import { router } from '@inertiajs/vue3';
+import { setupWizardCall } from '@dmitryisaenko/larafoundry';
 
 function mountHub(props = {}) {
     return mount(ProfileHub, {
@@ -76,5 +81,37 @@ describe('ProfileHub', () => {
         const danger = wrapper.findComponent(DangerZone);
         expect(danger.exists()).toBe(true);
         expect(danger.props('canDelete')).toBe(false);
+    });
+
+    it('offers the setup again only when there is one, and opens it through the wizard endpoint', async () => {
+        const off = mountHub();
+        await off.findAll('nav button')[4].trigger('click');
+        expect(off.find('[data-setup-again]').exists()).toBe(false);
+
+        const wrapper = mountHub({ setupWizard: 'Acme' });
+        await wrapper.findAll('nav button')[4].trigger('click');
+        await wrapper.find('[data-setup-again]').trigger('click');
+        await flushPromises();
+
+        expect(setupWizardCall).toHaveBeenCalledWith('again');
+        expect(router.reload).toHaveBeenCalledWith({ only: ['setup_wizard'] });
+    });
+
+    it('offers a first password to an account without one, and the change form otherwise', async () => {
+        const oauth = mountHub({ profile: { name: 'A', email: 'a@x.test', has_password: false, avatar_url: '' } });
+        await oauth.findAll('nav button')[2].trigger('click');
+        expect(oauth.findComponent(SetPasswordForm).exists()).toBe(true);
+        expect(oauth.findComponent(PasswordForm).exists()).toBe(false);
+
+        const local = mountHub();
+        await local.findAll('nav button')[2].trigger('click');
+        expect(local.findComponent(PasswordForm).exists()).toBe(true);
+        expect(local.findComponent(SetPasswordForm).exists()).toBe(false);
+    });
+
+    it('drops the two-factor note when the host turns it off', async () => {
+        const wrapper = mountHub({ twoFactorNote: false });
+        await wrapper.findAll('nav button')[2].trigger('click');
+        expect(wrapper.text()).not.toContain('Two-factor authentication');
     });
 });

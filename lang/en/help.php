@@ -16,6 +16,7 @@ return [
     'picture_type' => 'A picture must be a jpeg, png, webp or gif.',
 
     'picture_size' => 'A picture can be at most :max pixels on its longest side.',
+    'picture_pixels' => 'A picture can have at most :max million pixels.',
 
     'lost_pictures' => 'The translation lost these picture markers: :markers. Translate again or put them back by hand.',
 

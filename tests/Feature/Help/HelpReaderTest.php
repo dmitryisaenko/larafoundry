@@ -167,6 +167,30 @@ it('resolves picture markers when the help is read', function () {
         ->and($body)->not->toContain('<p></p>');
 });
 
+it('takes an aligned paragraph holding only a marker with it too (review 2026-10-31)', function () {
+    HelpImage::query()->create(['ref' => 'shot', 'file' => 'f.webp', 'caption_translations' => []]);
+
+    $section = helpSection('start', ['en' => 'Start']);
+    helpArticle($section, ['en' => 'H'], ['en' => '<p style="text-align:center;">[[img:shot]]</p>']);
+
+    $body = app(HelpBook::class)->pages('en')['start']['items'][0]['body'];
+
+    expect($body)->toStartWith('<figure class="help-pic"')
+        ->and($body)->not->toContain('<p');
+});
+
+it('shows a phone-only article in its substitute language when there is no full text anywhere (review 2026-10-31)', function () {
+    config()->set('larafoundry-help.source_locale', 'en');
+
+    $section = helpSection('start', ['en' => 'Start', 'uk' => 'Старт']);
+    helpArticle($section, ['en' => 'A'], ['en' => ''], mobile: ['en' => '<p>phone</p>']);
+
+    $item = app(HelpBook::class)->pages('uk')['start']['items'][0];
+
+    expect($item['body_mobile'])->toBe('<p>phone</p>')
+        ->and($item['body_mobile_locale'])->toBe('en');
+});
+
 it('leaves a marker inside an attribute alone', function () {
     HelpImage::query()->create(['ref' => 'shot', 'file' => 'f.webp', 'caption_translations' => []]);
 
