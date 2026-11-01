@@ -93,6 +93,20 @@ it('redirects an unverified super-admin to the OTP challenge', function () {
         ->and($response->headers->get('Location'))->toContain('/admin/otp');
 });
 
+it('remembers a page to return to after the challenge, but not a form it stopped', function () {
+    [$admin] = otpAdmin();
+
+    $page = otpRequest($admin);
+    runOtpGate($page);
+    expect($page->session()->get('url.intended'))->toBe($page->fullUrl());
+
+    $form = otpRequest($admin);
+    $form->setMethod('POST');
+    $response = runOtpGate($form);
+    expect($response->isRedirect())->toBeTrue()
+        ->and($form->session()->has('url.intended'))->toBeFalse();
+});
+
 it('sends a super-admin without 2FA to the configured setup route', function () {
     Route::get('/setup-2fa', fn () => 'setup')->name('test.2fa.setup');
     Route::getRoutes()->refreshNameLookups();

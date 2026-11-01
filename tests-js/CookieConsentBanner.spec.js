@@ -21,6 +21,13 @@ function withConsent(cookie) {
 }
 
 describe('CookieConsentBanner', () => {
+    it('links the policy with a plain anchor, which a host template can answer', () => {
+        const wrapper = withConsent({ enabled: true, decided: false });
+
+        expect(wrapper.findComponent({ name: 'Link' }).exists()).toBe(false);
+        expect(wrapper.find('a[href="/legal/cookies"]').exists()).toBe(true);
+    });
+
     it('stays hidden when the feature is disabled', () => {
         const wrapper = withConsent({ enabled: false, decided: false });
 

@@ -159,6 +159,8 @@ The template receives `$locale` and `$page`:
 | `published_at` | When the current version went live, as `Y-m-d`, or null. |
 | `body_locale` | Null when the body is in `$locale`; else the locale of the substitute shown instead, so the page can say so. |
 
+`?lang=` chooses the document, not the app's language, so write the template's own labels as `__('Version :n', ['n' => $page['version']], $locale)`, or they stay in the session's language.
+
 An unpublished or unregistered page still answers 404 before the template is reached. Link to such a page with a plain `<a>`, not an Inertia `<Link>`: an Inertia visit cannot open a non-Inertia response. The core's own links (`Legal/Accept`, `Auth/Register`, the cookie banner) are plain since v0.50.0.
 
 ### Editing from a console of your own (v0.50.0)
@@ -171,11 +173,13 @@ Note that a registry entry's `body_html` fills any locale the stored page lacks.
 
 ### The Terms gate
 
-Bumping the published Terms version turns the `larafoundry.terms` middleware on for every signed-in user: on their next request they are redirected to a re-accept screen, where they read the updated Terms and accept (or log out). Accepting records the version against their account and lets them continue where they were headed. Someone with no accepted version at all (signed up through OAuth, or before the Terms were published) gets the same screen, worded as a first acceptance rather than a change (`first_time`).
+Bumping the published Terms version turns the `larafoundry.terms` middleware on for every signed-in user: on their next request they are redirected to a re-accept screen, where they read the updated Terms and accept (or log out). Accepting records the version against their account and lets them continue where they were headed (a full browser visit, so that page may be a Blade one; a form they were sending is not resent, they land on `/` or the last page the gate remembered). The screen sends the version it showed: if the Terms were bumped while it stood open, nothing is recorded and the screen comes back. Someone with no accepted version at all (signed up through OAuth, or before the Terms were published) gets the same screen, worded as a first acceptance rather than a change (`first_time`).
 
 The gate is fail-open. With no published Terms page (the default on a fresh install) it enforces nothing, so it never traps a user behind a page that does not exist. It also exempts the super-admin and lets guests through, and it answers a JSON/XHR client with a 403 instead of an HTML redirect.
 
-An operator signed in as the user (`Admin\Support\ActingAsSomeoneElse`: the core's impersonation and any way a host registers with `addCheck()`) passes the gate and never sees the screen, and `POST /terms/accept` refuses them with a 403 (v0.50.0): an acceptance recorded that way would stand as the user's own agreement.
+An operator signed in as the user (`Admin\Support\ActingAsSomeoneElse`: the core's impersonation and any way a host registers with `addCheck()`) passes the gate and never sees the screen, and `POST /terms/accept` refuses them with a 403 (v0.50.0): an acceptance recorded that way would stand as the user's own agreement. Their cookie choice is not written to the user's settings either, on the banner or from their browser's cookie at sign-in. For that last one a host's own way of signing in as someone has to set its session mark before `Auth::login()`.
+
+The gate covers what its middleware is on, the web group: `/api/*` with a token does not meet it. It also leaves the PIN screen open (`pin.*`), since the PIN lock itself sends every other address, the accept screen included, to it.
 
 ### Cookie consent
 

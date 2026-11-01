@@ -14,6 +14,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Cookie;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Records consent decisions (phase 5.3 part B): the cookie banner and the Terms
@@ -43,8 +44,9 @@ class ConsentController extends Controller
         $decision = (string) $request->validated()['decision'];
         $accepted = $decision === 'accept';
 
+        // An operator signed in as the user decides for their own browser only.
         $user = $request->user();
-        if ($user !== null) {
+        if ($user !== null && ! $this->actingAsSomeoneElse->active($request)) {
             $this->consent->recordCookieConsentForUser($user, $accepted);
         }
 
@@ -82,13 +84,31 @@ class ConsentController extends Controller
      * Record the current Terms version as accepted and continue to where the user
      * was headed before the gate intercepted them. Refused to an operator signed in
      * as the user: it would stand as the user's own agreement.
+     *
+     * The screen sends the version it showed: a Terms bumped while it stood open is
+     * not what was read, so it goes back to the screen instead of being recorded.
+     *
+     * A full browser visit, not an Inertia one: where the user was headed may be a
+     * page Inertia cannot open (a host's Blade template), which it would show in a
+     * modal over the screen.
      */
-    public function acceptTerms(Request $request): RedirectResponse
+    public function acceptTerms(Request $request): SymfonyResponse
     {
         abort_if($this->actingAsSomeoneElse->active($request), 403);
 
+        if ($request->filled('version') && $request->integer('version') !== $this->consent->currentTermsVersion()) {
+            return redirect()->route('larafoundry.consent.terms.show');
+        }
+
         $this->consent->recordTermsAcceptance($request->user());
 
-        return redirect()->intended('/')->with('status', __('larafoundry::legal.terms.accepted'));
+        $request->session()->flash('status', __('larafoundry::legal.terms.accepted'));
+
+        $redirect = redirect()->intended('/');
+
+        // What Inertia::location() answers, without depending on the request macro.
+        return $request->headers->has('X-Inertia')
+            ? response('', 409, ['X-Inertia-Location' => $redirect->getTargetUrl()])
+            : $redirect;
     }
 }

@@ -283,3 +283,78 @@ it('neither stops an operator signed in as the user at the gate nor shows them t
         ->get('/terms/accept')
         ->assertRedirect();
 });
+
+// --- Review of v0.50.0 ------------------------------------------------------
+
+it('leaves the pin screen open for a stale user, or the two gates would redirect each other forever', function () {
+    publishTerms();
+    Route::middleware(['web', 'larafoundry.terms'])->get('/__pin', fn () => 'pin')->name('pin.enter.test');
+
+    $this->actingAs(consentUser())->get('/__pin')->assertOk()->assertSee('pin');
+});
+
+it('remembers a page to return to, but not a form it stopped', function () {
+    publishTerms();
+    gateRoute();
+    Route::middleware(['web', 'larafoundry.terms'])->post('/__save', fn () => 'saved');
+    $user = consentUser();
+
+    $this->actingAs($user)->post('/__save')->assertRedirect(route('larafoundry.consent.terms.show'));
+    expect(session()->has('url.intended'))->toBeFalse();
+
+    $this->actingAs($user)->get('/__terms-gate')->assertRedirect(route('larafoundry.consent.terms.show'));
+    expect(session('url.intended'))->toBe(url('/__terms-gate'));
+});
+
+it('continues with a full browser visit after an acceptance, so a blade page can be the place', function () {
+    publishTerms();
+    $user = consentUser();
+
+    $this->actingAs($user)
+        ->withSession(['url.intended' => url('/docs/whatever')])
+        ->withHeader('X-Inertia', 'true')
+        ->post('/terms/accept')
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', url('/docs/whatever'))
+        ->assertSessionHas('status');
+
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBe('1');
+});
+
+it('records the version the screen showed and sends back one that is no longer current', function () {
+    publishTerms();
+    $user = consentUser();
+
+    $this->actingAs($user)->post('/terms/accept', ['version' => 7])
+        ->assertRedirect(route('larafoundry.consent.terms.show'));
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBeNull();
+
+    $this->actingAs($user)->post('/terms/accept', ['version' => 1])->assertRedirect();
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBe('1');
+});
+
+it('does not write the cookie choice of an operator signed in as the user', function () {
+    $user = consentUser();
+
+    $this->actingAs($user)
+        ->withSession([ImpersonateController::SESSION_KEY => 99])
+        ->post('/consent/cookies', ['decision' => 'accept'])
+        ->assertRedirect()
+        ->assertCookie('larafoundry_cookie_consent');
+
+    expect(Settings::has('cookie_consent', $user->getKey()))->toBeFalse();
+});
+
+it('does not carry the operator\'s cookie into the account they sign in as', function () {
+    $user = consentUser();
+    $admin = consentUser('boss@x.test', admin: true);
+
+    $this->actingAs($admin)
+        // Encrypted, as a browser holds it: anything else is dropped before the listener.
+        ->withCookie('larafoundry_cookie_consent', 'accept')
+        ->post('/admin/impersonate/'.$user->getKey())
+        ->assertRedirect();
+
+    expect(auth()->id())->toBe($user->getKey())
+        ->and(Settings::has('cookie_consent', $user->getKey()))->toBeFalse();
+});

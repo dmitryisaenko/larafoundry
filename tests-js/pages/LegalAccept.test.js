@@ -1,10 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
-const { post } = vi.hoisted(() => ({ post: vi.fn() }));
+const { post, useForm } = vi.hoisted(() => {
+    const post = vi.fn();
+    return { post, useForm: vi.fn(() => ({ post, processing: false })) };
+});
 
 vi.mock('@inertiajs/vue3', () => ({
-    useForm: () => ({ post, processing: false }),
+    useForm,
 }));
 
 vi.mock('@dmitryisaenko/larafoundry', () => ({
@@ -40,8 +43,10 @@ describe('Legal/Accept page', () => {
         expect(text).toContain('Please review and accept the updated Terms of Service to continue.');
     });
 
-    it('posts the acceptance', async () => {
-        const wrapper = mount(Accept, { props: { terms_url } });
+    it('posts the acceptance with the version it showed', async () => {
+        const wrapper = mount(Accept, { props: { terms_url, version: 3 } });
+
+        expect(useForm).toHaveBeenLastCalledWith({ version: 3 });
 
         await wrapper.find('button[type="button"]').trigger('click');
 

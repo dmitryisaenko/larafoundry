@@ -84,8 +84,11 @@ class EnsureAdminOtpVerified
             abort(403);
         }
 
-        // Remember where they were headed, then send them to the challenge.
-        $request->session()->put('url.intended', $request->fullUrl());
+        // Remember where they were headed, then send them to the challenge. Only a
+        // page can be returned to: a form's address would answer the GET with a 405.
+        if ($request->isMethod('GET')) {
+            $request->session()->put('url.intended', $request->fullUrl());
+        }
 
         return redirect()->route('admin.otp.show');
     }

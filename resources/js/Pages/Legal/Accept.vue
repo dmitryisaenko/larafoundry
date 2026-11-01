@@ -14,13 +14,13 @@
 import { useForm } from '@inertiajs/vue3';
 import { AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
-defineProps({
+const props = defineProps({
     version: { type: [Number, String], default: null },
     terms_url: { type: String, required: true },
     first_time: { type: Boolean, default: false },
 });
 
-const form = useForm({});
+const form = useForm({ version: props.version });
 
 function accept() {
     form.post('/terms/accept', { preserveScroll: true });

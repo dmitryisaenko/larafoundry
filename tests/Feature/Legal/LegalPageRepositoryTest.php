@@ -223,3 +223,15 @@ it('refuses to import an unregistered page', function () {
         'published_at' => null,
     ]);
 })->throws(RuntimeException::class);
+
+it('does not read the map an older version cached without the date', function () {
+    $this->repo->save('terms', ['title' => ['en' => 'T'], 'body_html' => ['en' => '<p>b</p>'], 'is_published' => true]);
+    Cache::flush();
+
+    // What v0.49 left behind, under the key it used.
+    Cache::forever('larafoundry.legal_pages', [
+        'terms' => ['title_translations' => ['en' => 'T'], 'body_html_translations' => ['en' => '<p>b</p>'], 'version' => 1, 'is_published' => true],
+    ]);
+
+    expect($this->repo->publicPage('terms', 'en')['published_at'])->toBe(now()->toDateString());
+});

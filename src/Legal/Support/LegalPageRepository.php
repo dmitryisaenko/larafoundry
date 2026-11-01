@@ -244,6 +244,7 @@ class LegalPageRepository
      * A page already stored here is left alone (the console's edition wins), so a
      * repeated import changes nothing. Returns whether it wrote. Throws on an
      * unregistered slug (fail-closed); the body is purified like any other write.
+     * A published version 0 stays 0 here, and the first save() raises it to 1.
      *
      * @param  array{title: array<string,string>, body_html: array<string,string>, version: int, is_published: bool, published_at: DateTimeInterface|string|null}  $data
      */
@@ -357,6 +358,8 @@ class LegalPageRepository
 
     protected function cacheKey(): string
     {
-        return 'larafoundry.legal_pages';
+        // v2 since v0.50.0: the map gained `published_at`, and a page kept under the
+        // old key would stay dateless until its next save (the entry never expires).
+        return 'larafoundry.legal_pages.v2';
     }
 }

@@ -79,7 +79,11 @@ class EnsureTermsAccepted
             abort(403);
         }
 
-        $request->session()->put('url.intended', $request->fullUrl());
+        // Only a page can be returned to: a form's address would answer the GET that
+        // follows the acceptance with a 405.
+        if ($request->isMethod('GET')) {
+            $request->session()->put('url.intended', $request->fullUrl());
+        }
 
         return redirect()->route('larafoundry.consent.terms.show');
     }
@@ -100,6 +104,9 @@ class EnsureTermsAccepted
             'larafoundry.legal.show',
             'logout',
             'verification.*',
+            // The PIN lock sends everything but these here, the accept screen included:
+            // gating them too is an endless redirect between the two.
+            'pin.*',
         ], (array) config('larafoundry-legal.terms.except_routes', []));
 
         foreach ($routes as $pattern) {

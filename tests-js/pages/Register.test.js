@@ -15,7 +15,7 @@ vi.mock('@inertiajs/vue3', () => {
     });
     return {
         useForm: () => form,
-        usePage: () => ({ props: { flash: {} } }),
+        usePage: () => ({ props: { flash: {}, consent: { terms_required: true } } }),
         router: { visit: vi.fn() },
         Link: {
             name: 'Link',
@@ -28,6 +28,16 @@ vi.mock('@inertiajs/vue3', () => {
 import Register from '../../resources/js/Pages/Auth/Register.vue';
 
 describe('Register page', () => {
+    it('links the documents with plain anchors, which a host template can answer', () => {
+        const wrapper = mount(Register);
+
+        const inertia = wrapper.findAllComponents({ name: 'Link' }).map((link) => link.props('href'));
+        expect(inertia).not.toContain('/legal/terms');
+        expect(inertia).not.toContain('/legal/privacy');
+        expect(wrapper.find('a[href="/legal/terms"]').attributes('rel')).toBe('noopener');
+        expect(wrapper.find('a[href="/legal/privacy"]').attributes('rel')).toBe('noopener');
+    });
+
     it('mounts without errors', () => {
         const wrapper = mount(Register);
         expect(wrapper.exists()).toBe(true);
