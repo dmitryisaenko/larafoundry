@@ -6,13 +6,18 @@
  * Terms version is stale. They can read the updated Terms, then accept to
  * continue to where they were headed — or log out. Posting records the current
  * version against their account.
+ *
+ * The Terms link is a plain anchor in a new tab: a host may show the page with a
+ * Blade template (`larafoundry-legal.public.view`), which an Inertia visit cannot
+ * open, and the reader keeps this screen to come back to.
  */
-import { useForm, Link } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
 defineProps({
     version: { type: [Number, String], default: null },
     terms_url: { type: String, required: true },
+    first_time: { type: Boolean, default: false },
 });
 
 const form = useForm({});
@@ -25,18 +30,20 @@ function accept() {
 <template>
     <AppBaseLayout>
         <div class="mx-auto flex w-full max-w-xl flex-col gap-5 rounded-md border border-border bg-surface p-6">
-            <h1 class="text-2xl font-semibold text-ink">{{ $t('Our terms have changed') }}</h1>
+            <h1 class="text-2xl font-semibold text-ink">{{ first_time ? $t('Please accept our terms') : $t('Our terms have changed') }}</h1>
 
             <p class="text-sm text-ink">
-                {{ $t('Please review and accept the updated Terms of Service to continue.') }}
+                {{ first_time ? $t('Please review and accept the Terms of Service to continue.') : $t('Please review and accept the updated Terms of Service to continue.') }}
             </p>
 
-            <Link
+            <a
                 :href="terms_url"
+                target="_blank"
+                rel="noopener"
                 class="text-sm text-brand-600 underline hover:text-brand-700"
             >
                 {{ $t('Read the Terms of Service') }}
-            </Link>
+            </a>
 
             <div class="flex flex-wrap items-center gap-3">
                 <button

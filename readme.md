@@ -19,6 +19,10 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.50.x` Legal pages for a host with its own look and console
+
+Additions to the [legal pages](docs/legal-gdpr.md) of `v0.17.x`: `larafoundry-legal.public.view` shows `/legal/{slug}` with a host's own Blade template, readable without scripts; `?lang=` asks for a language for one page; `larafoundry-legal.admin.enabled` removes the core's editor and its menu entry; `LegalPageRepository::import()` brings documents in with the version and date they already have. An operator signed in as a user neither meets the Terms gate nor can accept on the user's behalf, and someone accepting for the first time is no longer told the Terms have changed.
+
 ### `v0.49.x` Setup wizard
 
 A step-by-step dialog over the user's own shell after every login, until they press "Done" or "Don't show again"; "Skip" closes it until the next login.

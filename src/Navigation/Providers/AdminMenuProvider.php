@@ -85,13 +85,15 @@ class AdminMenuProvider implements MenuProviderInterface
                 order: 32,
                 activePatterns: ['admin.email-templates.*'],
             ),
-            new MenuItem(
+            // Off with `larafoundry-legal.admin.enabled` (v0.50.0) - the routes are
+            // then not registered at all, so the item would point nowhere.
+            config('larafoundry-legal.admin.enabled', true) ? new MenuItem(
                 labelKey: 'Legal pages',
                 route: 'admin.legal-pages.index',
                 icon: 'legal',
                 order: 33,
                 activePatterns: ['admin.legal-pages.*'],
-            ),
+            ) : null,
             // Off with `larafoundry-help.admin.enabled` (v0.48.0) - the routes are
             // then not registered at all, so the item would point nowhere.
             config('larafoundry-help.admin.enabled', true) ? new MenuItem(

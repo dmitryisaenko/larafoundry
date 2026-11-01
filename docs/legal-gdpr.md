@@ -6,7 +6,7 @@ Phase 5.3 is the legal and GDPR layer most SaaS apps bolt on late. It ships thre
 - **Consent**: a cookie banner (off by default), a registration Terms checkbox, and a re-accept gate that triggers when the published Terms version changes.
 - **GDPR rights**: personal-data export and account erasure, built as two mirrored registries so the right to access and the right to be forgotten plug in the same way.
 
-This is the accurate reference for the shipped package (core `v0.17.x`).
+This is the accurate reference for the shipped package (core `v0.17.x`, with the additions of `v0.50.0` marked where they appear).
 
 ## Contents
 
@@ -93,6 +93,14 @@ php artisan vendor:publish --tag=larafoundry-legal-config
     'lifetime_days' => 365,
 ],
 
+'public' => [
+    'view' => null,                                  // a host's own Blade template for /legal/{slug} (v0.50.0)
+],
+
+'admin' => [
+    'enabled' => env('LARAFOUNDRY_LEGAL_ADMIN_ENABLED', true), // the core's editor and its menu entry (v0.50.0)
+],
+
 'terms' => [
     'enforce' => true,                               // the kill-switch; fail-open until a Terms page is published
     'slug' => 'terms',                               // which legal page drives the gate
@@ -131,11 +139,43 @@ In the operator console, "Legal pages" lists the registered slugs (Terms, Privac
 
 The public pages are open to everyone at `/legal/{slug}` (for example `/legal/terms`). The body is sanitized on save and on render through the same `HtmlSanitizer` the email editor uses, so a stored page cannot smuggle script into a public route.
 
+`?lang=uk` asks for a language for this page only (v0.50.0), so a link opened in another browser, with no session to carry a language, still reads in the language it was offered in. Nothing is remembered, and a language outside `larafoundry.locale.available` is ignored.
+
+### Showing the page with your own template (v0.50.0)
+
+The core's `Legal/Show` is drawn by scripts, unless the host renders Inertia on the server: without them there is no text, and a store's or a payment provider's review process may be reading without them. A host can name a Blade template instead:
+
+```php
+// config/larafoundry-legal.php
+'public' => ['view' => 'document'],
+```
+
+The template receives `$locale` and `$page`:
+
+| Key | What it holds |
+|-----|---------------|
+| `slug`, `title`, `version` | As stored; the title in the asked locale. |
+| `body_html` | Sanitized on render, so `{!! !!}` is safe for it and for nothing else. |
+| `published_at` | When the current version went live, as `Y-m-d`, or null. |
+| `body_locale` | Null when the body is in `$locale`; else the locale of the substitute shown instead, so the page can say so. |
+
+An unpublished or unregistered page still answers 404 before the template is reached. Link to such a page with a plain `<a>`, not an Inertia `<Link>`: an Inertia visit cannot open a non-Inertia response. The core's own links (`Legal/Accept`, `Auth/Register`, the cookie banner) are plain since v0.50.0.
+
+### Editing from a console of your own (v0.50.0)
+
+`larafoundry-legal.admin.enabled = false` removes the core's editor: its routes are not registered at all and its menu entry is gone. Write through `LegalPageRepository`: `find()` and `all()` to read, `save()` to edit, the same as the core's editor does.
+
+Moving documents from a store of your own? `import($slug, [...])` writes a page with the `version` and `published_at` it already has, which `save()` cannot (it decides both itself), so a version people accepted stays accepted. A page already stored is left alone and the call returns false, so a repeated import changes nothing.
+
+Note that a registry entry's `body_html` fills any locale the stored page lacks. For a page that is only ever real text, leave `body_html` out of the entry; a missing locale then falls back to a real one (reported as `body_locale`) rather than to a placeholder.
+
 ### The Terms gate
 
-Bumping the published Terms version turns the `larafoundry.terms` middleware on for every signed-in user: on their next request they are redirected to a re-accept screen, where they read the updated Terms and accept (or log out). Accepting records the version against their account and lets them continue where they were headed.
+Bumping the published Terms version turns the `larafoundry.terms` middleware on for every signed-in user: on their next request they are redirected to a re-accept screen, where they read the updated Terms and accept (or log out). Accepting records the version against their account and lets them continue where they were headed. Someone with no accepted version at all (signed up through OAuth, or before the Terms were published) gets the same screen, worded as a first acceptance rather than a change (`first_time`).
 
 The gate is fail-open. With no published Terms page (the default on a fresh install) it enforces nothing, so it never traps a user behind a page that does not exist. It also exempts the super-admin and lets guests through, and it answers a JSON/XHR client with a 403 instead of an HTML redirect.
+
+An operator signed in as the user (`Admin\Support\ActingAsSomeoneElse`: the core's impersonation and any way a host registers with `addCheck()`) passes the gate and never sees the screen, and `POST /terms/accept` refuses them with a 403 (v0.50.0): an acceptance recorded that way would stand as the user's own agreement.
 
 ### Cookie consent
 
@@ -168,7 +208,7 @@ $this->app->make(UserDataPurgeRegistry::class)->addProvider($this->app->make(Ord
 ### Public, consent and erasure routes
 
 ```
-GET    /legal/{slug}                            larafoundry.legal.show             public, registered + published slug only
+GET    /legal/{slug}?lang=                      larafoundry.legal.show             public, registered + published slug only
 POST   /consent/cookies                         larafoundry.consent.cookies        guest + auth, records a cookie decision
 GET    /terms/accept                            larafoundry.consent.terms.show     the re-accept screen (auth)
 POST   /terms/accept                            larafoundry.consent.terms.accept   records acceptance (auth)
@@ -185,11 +225,11 @@ PUT    /admin/legal-pages/{slug}                 admin.legal-pages.update
 POST   /admin/legal-pages/{slug}/preview         admin.legal-pages.preview
 ```
 
-The host does not define these; it links to them.
+The host does not define these; it links to them. Not registered while `larafoundry-legal.admin.enabled` is off.
 
 ### `larafoundry.terms` middleware
 
-`EnsureTermsAccepted`. Redirects a signed-in user whose accepted Terms version is stale to `larafoundry.consent.terms.show`. Fail-open (no published Terms = no-op), exempts the super-admin and guests, answers XHR/JSON with 403. Extend its bypass list with `terms.except_routes` / `terms.except_prefixes`.
+`EnsureTermsAccepted`. Redirects a signed-in user whose accepted Terms version is stale to `larafoundry.consent.terms.show`. Fail-open (no published Terms = no-op), exempts the super-admin, guests and an operator signed in as the user, answers XHR/JSON with 403. Extend its bypass list with `terms.except_routes` / `terms.except_prefixes`.
 
 ### `larafoundry:purge-deleted-accounts` command
 
@@ -219,7 +259,7 @@ The contracts: `ExportsUserDataProvider` (`exportFor`, `key`, `priority`) and it
 
 ### `LegalPageRepository`
 
-Resolves a legal page from the registry union the database. `save($slug, $attributes)` stores a super-admin override (and bumps the version on publish); `currentVersion($slug)` returns the published version or null. Public rendering and the admin editor both go through it, so the registry stays the single source of truth.
+Resolves a legal page from the registry union the database. `save($slug, $attributes)` stores a super-admin override (and bumps the version on publish); `import($slug, $attributes)` brings in a page with the version and date it already has; `currentVersion($slug)` returns the published version or null. Public rendering and the admin editor both go through it, so the registry stays the single source of truth.
 
 ## Security notes
 
@@ -236,7 +276,7 @@ Resolves a legal page from the registry union the database. `save($slug, $attrib
 
 Legal and consent live in `tests/Feature/Legal/`, export and erasure in `tests/Feature/Profile/` and `tests/Unit/Profile/`. Notable coverage:
 
-- The Terms gate: redirects a stale user, lets an up-to-date one through, is fail-open with no published Terms, exempts the super-admin and guests, 403s an XHR client, and respects the route/prefix bypass list without leaking a shared-prefix path.
+- The Terms gate: redirects a stale user, lets an up-to-date one through, is fail-open with no published Terms, exempts the super-admin, guests and an operator signed in as the user (who cannot accept for them either), 403s an XHR client, and respects the route/prefix bypass list without leaking a shared-prefix path.
 - Consent recording: a guest cookie decision, the authenticated `cookie_consent` setting, the first-login adoption of a guest choice, and the registration Terms requirement (required when published, absent until then).
 - The export registry: each provider's section is collected under its key, with a duplicate-key guard.
 - The purge registry and command: the core purger anonymises identity and wipes every secret, module purgers delete only the user's own data, and the cron anonymises accounts past the grace window, stamps them, is idempotent, and leaves recent and active accounts alone.

@@ -95,9 +95,9 @@ function submit() {
                         >
                         <span>
                             {{ $t('I agree to the') }}
-                            <Link href="/legal/terms" target="_blank" class="text-brand-600 hover:text-brand-700">{{ $t('Terms of Service') }}</Link>
+                            <a href="/legal/terms" target="_blank" rel="noopener" class="text-brand-600 hover:text-brand-700">{{ $t('Terms of Service') }}</a>
                             {{ $t('and') }}
-                            <Link href="/legal/privacy" target="_blank" class="text-brand-600 hover:text-brand-700">{{ $t('Privacy Policy') }}</Link>
+                            <a href="/legal/privacy" target="_blank" rel="noopener" class="text-brand-600 hover:text-brand-700">{{ $t('Privacy Policy') }}</a>
                         </span>
                     </label>
                     <span v-if="form.errors.terms" class="text-xs text-red-600">{{ form.errors.terms }}</span>

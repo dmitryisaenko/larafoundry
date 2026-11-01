@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Legal\Models\LegalPage;
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
+use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 
 uses(RefreshDatabase::class);
 
@@ -155,4 +159,99 @@ it('404s a legal page that is not published', function () {
 
 it('404s an unregistered public legal slug', function () {
     $this->get('/legal/nope')->assertNotFound();
+});
+
+// --- Public page: the language a link asks for (v0.50.0) --------------------
+
+it('shows the language a link asks for, for this page only', function () {
+    app(LegalPageRepository::class)->save('terms', validLegalPayload());
+
+    $this->withHeader('X-Inertia', 'true')
+        ->get('/legal/terms?lang=uk')
+        ->assertOk()
+        ->assertJsonPath('props.page.title', 'Умови використання')
+        ->assertJsonPath('props.page.body_locale', null);
+
+    expect(app()->getLocale())->not->toBe('uk');
+});
+
+it('ignores a language the app does not offer, and one that is not a string', function () {
+    // A German text exists, so only the check against the offered list can refuse it.
+    $payload = validLegalPayload();
+    $payload['title']['de'] = 'Bedingungen';
+    app(LegalPageRepository::class)->save('terms', $payload);
+
+    foreach (['/legal/terms?lang=de', '/legal/terms?lang[]=uk'] as $url) {
+        $this->withHeader('X-Inertia', 'true')
+            ->get($url)
+            ->assertOk()
+            ->assertJsonPath('props.page.title', 'Terms of Service');
+    }
+});
+
+it('says which language it substituted when the page lacks the asked one', function () {
+    // The registry's placeholder would fill the gap otherwise.
+    config()->set('larafoundry-legal.pages.terms.body_html', []);
+
+    app(LegalPageRepository::class)->save('terms', [
+        'title' => ['en' => 'Terms'],
+        'body_html' => ['en' => '<p>english only</p>'],
+        'is_published' => true,
+    ]);
+
+    $this->withHeader('X-Inertia', 'true')
+        ->get('/legal/terms?lang=uk')
+        ->assertJsonPath('props.page.body_html', '<p>english only</p>')
+        ->assertJsonPath('props.page.body_locale', 'en');
+});
+
+// --- Public page: a host's own template (v0.50.0) ---------------------------
+
+it('shows the page with a host template, as plain html a reader needs no scripts for', function () {
+    View::addLocation(__DIR__.'/../../Fixtures/views');
+    config()->set('larafoundry-legal.public.view', 'legal-page');
+    app(LegalPageRepository::class)->save('terms', validLegalPayload());
+
+    $this->get('/legal/terms?lang=uk')
+        ->assertOk()
+        ->assertSee('<html lang="uk">', false)
+        ->assertSee('<h1>Умови використання</h1>', false)
+        ->assertSee('<div><p>Наші умови</p></div>', false)
+        ->assertSee(now()->toDateString().'|', false)
+        ->assertDontSee('data-page', false);
+});
+
+it('still 404s an unpublished page with a host template', function () {
+    View::addLocation(__DIR__.'/../../Fixtures/views');
+    config()->set('larafoundry-legal.public.view', 'legal-page');
+
+    $this->get('/legal/terms')->assertNotFound();
+});
+
+// --- Admin: the editor can be switched off (v0.50.0) ------------------------
+
+it('lists the legal pages in the admin menu only while the editor is on', function () {
+    $menu = fn () => collect(app(AdminMenuProvider::class)->getMenuItems('admin'))
+        ->map(fn ($item) => $item->labelKey)
+        ->all();
+
+    expect($menu())->toContain('Legal pages');
+
+    config()->set('larafoundry-legal.admin.enabled', false);
+
+    expect($menu())->not->toContain('Legal pages');
+});
+
+it('does not register the editor while it is switched off', function () {
+    config()->set('larafoundry-legal.admin.enabled', false);
+
+    $router = new Router(app('events'), app());
+    Route::swap($router);
+
+    require __DIR__.'/../../../routes/admin.php';
+    $router->getRoutes()->refreshNameLookups();
+
+    expect($router->getRoutes()->getByName('admin.legal-pages.index'))->toBeNull()
+        ->and($router->getRoutes()->getByName('admin.legal-pages.update'))->toBeNull()
+        ->and($router->getRoutes()->getByName('admin.help-articles.index'))->not->toBeNull();
 });

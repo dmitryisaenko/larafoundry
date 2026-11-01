@@ -56,7 +56,7 @@ point at them) and each banner now points forward to its accurate page.
 | Notifications | 4.1 | [notifications.md](notifications.md) |
 | Tickets and helpdesk | 4.2 | [tickets.md](tickets.md) |
 | Settings, profile and email templates | 5.1 | [settings-profile-email.md](settings-profile-email.md) |
-| Legal pages and GDPR | 5.3 | [legal-gdpr.md](legal-gdpr.md) |
+| Legal pages and GDPR (own template, own console, import since v0.50.0) | 5.3 | [legal-gdpr.md](legal-gdpr.md) |
 | Authentication and sessions | 1.1 | [authentication.md](authentication.md) |
 | Roles and permissions | 1.3 | [roles-permissions.md](roles-permissions.md) |
 | Activity log | 2.1 | [activity-log.md](activity-log.md) |

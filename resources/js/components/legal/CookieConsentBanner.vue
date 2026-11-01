@@ -13,7 +13,7 @@
  * banner does not return.
  */
 import { computed } from 'vue';
-import { usePage, router, Link } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
 
 const page = usePage();
 
@@ -39,9 +39,9 @@ function decide(decision) {
         <div class="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm text-ink">
                 {{ $t('We use cookies to keep this site working. You can accept all cookies or only the necessary ones.') }}
-                <Link href="/legal/cookies" class="text-brand-600 underline hover:text-brand-700">
+                <a href="/legal/cookies" class="text-brand-600 underline hover:text-brand-700">
                     {{ $t('Cookie Policy') }}
-                </Link>
+                </a>
             </p>
 
             <div class="flex shrink-0 gap-2">

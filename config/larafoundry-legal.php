@@ -35,6 +35,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | The public page (v0.50.0)
+    |--------------------------------------------------------------------------
+    | `view` - a host's own Blade template to show `/legal/{slug}` with, instead of
+    | the core's `Legal/Show` (a page drawn by scripts, in the core's look). For a
+    | host whose documents have to be readable without scripts or a session, by a
+    | store's or a payment provider's review process. It receives `$page` (slug,
+    | title, body_html, version, published_at, body_locale) and `$locale`.
+    */
+    'public' => [
+        'view' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The editor in the core's admin section (v0.50.0)
+    |--------------------------------------------------------------------------
+    | `/admin/legal-pages` and its menu entry. Off - neither is registered; a host
+    | with a console of its own edits through `LegalPageRepository`.
+    */
+    'admin' => [
+        'enabled' => env('LARAFOUNDRY_LEGAL_ADMIN_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cookie consent (phase 5.3 part B)
     |--------------------------------------------------------------------------
     | OFF by default: the core sets only strictly-necessary cookies (session /

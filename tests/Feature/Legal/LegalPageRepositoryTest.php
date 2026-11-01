@@ -162,3 +162,64 @@ it('lists every registered page with its published and customised flags', functi
         ->and($all[0]['customized'])->toBeFalse()
         ->and($all[0]['is_published'])->toBeFalse();
 });
+
+// --- import (v0.50.0) -------------------------------------------------------
+
+it('imports a page with the version and date it has elsewhere, and shows it at once', function () {
+    expect($this->repo->currentVersion('terms'))->toBeNull(); // caches the empty map
+
+    $wrote = $this->repo->import('terms', [
+        'title' => ['en' => 'Terms'],
+        'body_html' => ['en' => '<p>ok</p><script>alert(1)</script>'],
+        'version' => 3,
+        'is_published' => true,
+        'published_at' => '2026-09-20 17:15:14',
+    ]);
+
+    $page = LegalPage::query()->where('slug', 'terms')->first();
+
+    expect($wrote)->toBeTrue()
+        ->and($page->version)->toBe(3)
+        ->and($page->published_at->toDateTimeString())->toBe('2026-09-20 17:15:14')
+        ->and($page->body_html_translations['en'])->not->toContain('<script')
+        ->and($this->repo->currentVersion('terms'))->toBe(3)
+        ->and($this->repo->publicPage('terms', 'en')['published_at'])->toBe('2026-09-20');
+});
+
+it('keeps version 0 on import, which save would have raised', function () {
+    $this->repo->import('terms', [
+        'title' => ['en' => 'T'],
+        'body_html' => ['en' => '<p>b</p>'],
+        'version' => 0,
+        'is_published' => true,
+        'published_at' => now(),
+    ]);
+
+    expect($this->repo->currentVersion('terms'))->toBe(0);
+});
+
+it('leaves a page already stored alone on import', function () {
+    $this->repo->save('terms', ['title' => ['en' => 'Mine'], 'body_html' => ['en' => '<p>mine</p>'], 'is_published' => true]);
+
+    $wrote = $this->repo->import('terms', [
+        'title' => ['en' => 'Other'],
+        'body_html' => ['en' => '<p>other</p>'],
+        'version' => 9,
+        'is_published' => true,
+        'published_at' => now(),
+    ]);
+
+    expect($wrote)->toBeFalse()
+        ->and($this->repo->publicPage('terms', 'en')['title'])->toBe('Mine')
+        ->and($this->repo->currentVersion('terms'))->toBe(1);
+});
+
+it('refuses to import an unregistered page', function () {
+    $this->repo->import('nope', [
+        'title' => [],
+        'body_html' => [],
+        'version' => 1,
+        'is_published' => true,
+        'published_at' => null,
+    ]);
+})->throws(RuntimeException::class);

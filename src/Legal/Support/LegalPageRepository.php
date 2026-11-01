@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Legal\Support;
 
+use DateTimeInterface;
 use Dmitryisaenko\LaraFoundry\Email\Support\EmailTemplateRepository;
 use Dmitryisaenko\LaraFoundry\Email\Support\HtmlSanitizer;
 use Dmitryisaenko\LaraFoundry\Legal\Models\LegalPage;
@@ -124,6 +125,7 @@ class LegalPageRepository
             'body_html' => $this->mergeLocaleMap($definition['body_html'] ?? [], $override['body_html_translations'] ?? []),
             'version' => (int) ($override['version'] ?? 0),
             'is_published' => (bool) ($override['is_published'] ?? false),
+            'published_at' => $override['published_at'] ?? null,
         ];
     }
 
@@ -132,7 +134,10 @@ class LegalPageRepository
      * NULL when the slug is unregistered or has not been published. A placeholder
      * default is never served — a page must be explicitly published first.
      *
-     * @return array{slug: string, title: string, body_html: string, version: int}|null
+     * `published_at` is a date (Y-m-d) or null. `body_locale` is null when the body
+     * is in the asked locale, else the locale of the substitute shown instead.
+     *
+     * @return array{slug: string, title: string, body_html: string, version: int, published_at: ?string, body_locale: ?string}|null
      */
     public function publicPage(string $slug, ?string $locale): ?array
     {
@@ -143,12 +148,15 @@ class LegalPageRepository
         }
 
         $locale ??= $this->defaultLocale();
+        $body = $this->localizedWithLocale($resolved['body_html'], $locale);
 
         return [
             'slug' => $slug,
             'title' => $this->localized($resolved['title'], $locale),
-            'body_html' => $this->sanitizer->clean($this->localized($resolved['body_html'], $locale)),
+            'body_html' => $this->sanitizer->clean($body['text']),
             'version' => $resolved['version'],
+            'published_at' => $resolved['published_at'],
+            'body_locale' => $body['locale'] === $locale ? null : $body['locale'],
         ];
     }
 
@@ -228,6 +236,45 @@ class LegalPageRepository
     }
 
     /**
+     * Bring in a page that already lives somewhere else (a host moving its documents
+     * to the core), keeping the version and the date it has there: an accepted
+     * version stays accepted and a page published in September still says September.
+     * save() cannot do it - it decides both itself.
+     *
+     * A page already stored here is left alone (the console's edition wins), so a
+     * repeated import changes nothing. Returns whether it wrote. Throws on an
+     * unregistered slug (fail-closed); the body is purified like any other write.
+     *
+     * @param  array{title: array<string,string>, body_html: array<string,string>, version: int, is_published: bool, published_at: DateTimeInterface|string|null}  $data
+     */
+    public function import(string $slug, array $data): bool
+    {
+        if (! $this->isRegistered($slug)) {
+            throw new RuntimeException("Cannot import unregistered legal page [{$slug}].");
+        }
+
+        if (LegalPage::query()->where('slug', $slug)->exists()) {
+            return false;
+        }
+
+        LegalPage::query()->create([
+            'slug' => $slug,
+            'title_translations' => $data['title'],
+            'body_html_translations' => array_map(
+                fn ($html) => $this->sanitizer->clean((string) $html),
+                $data['body_html'],
+            ),
+            'version' => $data['version'],
+            'is_published' => $data['is_published'],
+            'published_at' => $data['published_at'],
+        ]);
+
+        $this->forget();
+
+        return true;
+    }
+
+    /**
      * Sanitize a raw html body for the editor's live preview (unsaved input),
      * keeping one server-side sanitizer as the single authority.
      */
@@ -244,19 +291,30 @@ class LegalPageRepository
      */
     public function localized(array $map, string $locale): string
     {
+        return $this->localizedWithLocale($map, $locale)['text'];
+    }
+
+    /**
+     * The same pick, also saying which locale the text came from (null: nothing to pick).
+     *
+     * @param  array<string, string>  $map
+     * @return array{text: string, locale: ?string}
+     */
+    public function localizedWithLocale(array $map, string $locale): array
+    {
         foreach ([$locale, $this->defaultLocale()] as $candidate) {
             if (isset($map[$candidate]) && $map[$candidate] !== '') {
-                return (string) $map[$candidate];
+                return ['text' => (string) $map[$candidate], 'locale' => $candidate];
             }
         }
 
-        foreach ($map as $value) {
+        foreach ($map as $key => $value) {
             if ($value !== '' && $value !== null) {
-                return (string) $value;
+                return ['text' => (string) $value, 'locale' => (string) $key];
             }
         }
 
-        return '';
+        return ['text' => '', 'locale' => null];
     }
 
     /**
@@ -286,6 +344,7 @@ class LegalPageRepository
                     'body_html_translations' => $page->body_html_translations ?? [],
                     'version' => $page->version,
                     'is_published' => $page->is_published,
+                    'published_at' => $page->published_at?->toDateString(),
                 ])
                 ->all();
         });

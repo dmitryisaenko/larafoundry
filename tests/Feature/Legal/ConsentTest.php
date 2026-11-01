@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
@@ -229,4 +232,54 @@ it('still gates a host path that merely shares a prefix with an excluded one', f
     $this->actingAs(consentUser())
         ->get('/public-docs-internal')
         ->assertRedirect(route('larafoundry.consent.terms.show'));
+});
+
+// --- First acceptance, not a changed one (v0.50.0) --------------------------
+
+it('tells a person who accepted nothing yet that it is their first time, and one with an old version that it is not', function () {
+    publishTerms();
+    $user = consentUser();
+
+    $this->actingAs($user)->withHeader('X-Inertia', 'true')->get('/terms/accept')
+        ->assertJsonPath('props.first_time', true);
+
+    Settings::set('terms_accepted_version', '0', $user->getKey());
+
+    $this->actingAs($user)->withHeader('X-Inertia', 'true')->get('/terms/accept')
+        ->assertJsonPath('props.first_time', false);
+});
+
+// --- An operator signed in as the user (v0.50.0) ----------------------------
+
+it('does not take an acceptance from an operator signed in as the user, by any way of signing in', function () {
+    publishTerms();
+    app(ActingAsSomeoneElse::class)->addCheck(fn (Request $request) => $request->session()->has('host.follow'));
+    $user = consentUser();
+
+    foreach ([[ImpersonateController::SESSION_KEY => 99], ['host.follow' => 1]] as $session) {
+        // The first way's mark must not carry the second way through.
+        $this->flushSession();
+
+        $this->actingAs($user)->withSession($session)->post('/terms/accept')->assertForbidden();
+    }
+
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBeNull()
+        ->and(Settings::get('terms_accepted_at', $user->getKey()))->toBeNull();
+});
+
+it('neither stops an operator signed in as the user at the gate nor shows them the screen', function () {
+    publishTerms();
+    gateRoute();
+    $user = consentUser();
+
+    $this->actingAs($user)
+        ->withSession([ImpersonateController::SESSION_KEY => 99])
+        ->get('/__terms-gate')
+        ->assertOk();
+
+    $this->actingAs($user)
+        ->withSession([ImpersonateController::SESSION_KEY => 99])
+        ->withHeader('X-Inertia', 'true')
+        ->get('/terms/accept')
+        ->assertRedirect();
 });

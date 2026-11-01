@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Legal\Http\Middleware;
 
 use Closure;
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Auth\Support\VisitorStatus;
 use Dmitryisaenko\LaraFoundry\Http\Concerns\DetectsHardFailureClients;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\EnsureAdminOtpVerified;
@@ -25,6 +26,8 @@ use Symfony\Component\HttpFoundation\Response;
  *    version is null, so users are never trapped behind a missing page);
  *  - the platform super-admin (exempt from their own terms);
  *  - the user is already up to date;
+ *  - an operator signed in as the user (they may not accept on the user's behalf,
+ *    so stopping them at the screen would only lock them out);
  *  - the request targets a bypass route/prefix (logout, the accept screen, the
  *    cookie endpoint, public legal pages, email verification, plus host-configured
  *    extras) — so the user can always read, accept, verify or leave.
@@ -39,6 +42,7 @@ class EnsureTermsAccepted
     public function __construct(
         protected ConsentManager $consent,
         protected VisitorStatus $visitorStatus,
+        protected ActingAsSomeoneElse $actingAsSomeoneElse,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -60,6 +64,10 @@ class EnsureTermsAccepted
         }
 
         if (! $this->consent->needsTermsAcceptance($user)) {
+            return $next($request);
+        }
+
+        if ($this->actingAsSomeoneElse->active($request)) {
             return $next($request);
         }
 

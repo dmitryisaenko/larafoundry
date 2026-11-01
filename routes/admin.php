@@ -215,13 +215,17 @@ Route::middleware(['web', 'auth', 'verified', 'larafoundry.admin'])
             // The `{slug}` is a registry key (not a model binding) — a page has a
             // DB row only once published, so the controller resolves it from the
             // registry and 404s an unknown slug. The public pages are in
-            // routes/legal.php (open to everyone); this is the operator editor.
-            Route::prefix('legal-pages')->name('legal-pages.')->group(function () {
-                Route::get('/', [LegalPageController::class, 'index'])->name('index');
-                Route::get('{slug}/edit', [LegalPageController::class, 'edit'])->name('edit');
-                Route::put('{slug}', [LegalPageController::class, 'update'])->name('update');
-                Route::post('{slug}/preview', [LegalPageController::class, 'preview'])->name('preview');
-            });
+            // routes/legal.php (open to everyone); this is the operator editor. Not
+            // registered while `larafoundry-legal.admin.enabled` is off (v0.50.0, a
+            // host editing the pages from a console of its own).
+            if (config('larafoundry-legal.admin.enabled', true)) {
+                Route::prefix('legal-pages')->name('legal-pages.')->group(function () {
+                    Route::get('/', [LegalPageController::class, 'index'])->name('index');
+                    Route::get('{slug}/edit', [LegalPageController::class, 'edit'])->name('edit');
+                    Route::put('{slug}', [LegalPageController::class, 'update'])->name('update');
+                    Route::post('{slug}/preview', [LegalPageController::class, 'preview'])->name('preview');
+                });
+            }
 
             // Help (v0.48.0): sections, articles, pictures, and - when the host bound a
             // translator - the translate button. JSON after the first page load. Not

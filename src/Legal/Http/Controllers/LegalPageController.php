@@ -6,6 +6,8 @@ namespace Dmitryisaenko\LaraFoundry\Legal\Http\Controllers;
 
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
 use Dmitryisaenko\LaraFoundry\Seo\Support\SeoManager;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -19,6 +21,11 @@ use Inertia\Response;
  * unregistered slug or an unpublished page 404s, so a shipped placeholder default
  * is never served as if it were real legal text. The body is purified by the
  * repository before it reaches the page, so the Vue page can render it as HTML.
+ *
+ * `?lang=` asks for a language for this page only (v0.50.0): a link opened in
+ * another browser has no session to carry it. Nothing is remembered, and a language
+ * the app does not offer is ignored. A host can show the page with a Blade template
+ * of its own (`larafoundry-legal.public.view`).
  */
 class LegalPageController extends Controller
 {
@@ -26,9 +33,14 @@ class LegalPageController extends Controller
         private readonly LegalPageRepository $pages,
     ) {}
 
-    public function show(string $slug): Response
+    public function show(Request $request, string $slug): Response|View
     {
-        $page = $this->pages->publicPage($slug, app()->getLocale());
+        $asked = $request->query('lang');
+        $locale = is_string($asked) && in_array($asked, $this->pages->availableLocales(), true)
+            ? $asked
+            : app()->getLocale();
+
+        $page = $this->pages->publicPage($slug, $locale);
 
         abort_if($page === null, 404);
 
@@ -39,6 +51,12 @@ class LegalPageController extends Controller
             ->title($page['title'])
             ->description(Str::limit(trim(strip_tags($page['body_html'])), 160) ?: null)
             ->robots('index,follow');
+
+        $view = config('larafoundry-legal.public.view');
+
+        if (is_string($view) && $view !== '') {
+            return view($view, ['page' => $page, 'locale' => $locale]);
+        }
 
         return Inertia::render('Legal/Show', [
             'page' => $page,

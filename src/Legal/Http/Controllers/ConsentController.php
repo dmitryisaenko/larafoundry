@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Legal\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Middleware\EnsureTermsAccepted;
 use Dmitryisaenko\LaraFoundry\Legal\Http\Requests\StoreCookieConsentRequest;
 use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
@@ -28,6 +29,7 @@ class ConsentController extends Controller
 {
     public function __construct(
         private readonly ConsentManager $consent,
+        private readonly ActingAsSomeoneElse $actingAsSomeoneElse,
     ) {}
 
     /**
@@ -57,26 +59,34 @@ class ConsentController extends Controller
 
     /**
      * The Terms re-acceptance screen. If nothing is enforced/published or the user
-     * is already up to date, there is nothing to accept — send them on.
+     * is already up to date, there is nothing to accept — send them on. So too an
+     * operator signed in as the user: the acceptance is the user's own to give.
+     *
+     * `first_time`: a person with no accepted version (signed up by Google, or before
+     * the Terms were published) is not told the Terms have changed.
      */
     public function showTerms(Request $request): Response|RedirectResponse
     {
-        if (! $this->consent->needsTermsAcceptance($request->user())) {
+        if ($this->actingAsSomeoneElse->active($request) || ! $this->consent->needsTermsAcceptance($request->user())) {
             return redirect()->intended('/');
         }
 
         return Inertia::render('Legal/Accept', [
             'version' => $this->consent->currentTermsVersion(),
             'terms_url' => route('larafoundry.legal.show', ['slug' => $this->consent->termsSlug()]),
+            'first_time' => $this->consent->acceptedTermsVersion($request->user()) === null,
         ]);
     }
 
     /**
      * Record the current Terms version as accepted and continue to where the user
-     * was headed before the gate intercepted them.
+     * was headed before the gate intercepted them. Refused to an operator signed in
+     * as the user: it would stand as the user's own agreement.
      */
     public function acceptTerms(Request $request): RedirectResponse
     {
+        abort_if($this->actingAsSomeoneElse->active($request), 403);
+
         $this->consent->recordTermsAcceptance($request->user());
 
         return redirect()->intended('/')->with('status', __('larafoundry::legal.terms.accepted'));
