@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Cache;
  * Renders a valid sitemaps.org urlset from the {@see SitemapBuilder}'s merged
  * entries, with xhtml:link hreflang alternates. 404s when the sitemap is
  * disabled. The rendered XML is cached for the configured TTL, so a crawler hit
- * is one cache read, not a full provider walk.
+ * is one cache read, not a full provider walk. Each canonical base has its own
+ * cached copy: one application may serve several sites, and every <loc> is built
+ * from that base, so a shared copy would hand one site's addresses to another.
  *
  * SECURITY: every URL is scheme-guarded ({@see Url::isHttp()}) before it is
  * written, and every value is XML-escaped, so a stray value can neither inject
@@ -30,9 +32,20 @@ class SitemapController extends Controller
 
         $ttl = (int) config('larafoundry-seo.sitemap.cache_ttl', 3600);
 
-        $xml = Cache::remember('larafoundry.sitemap', $ttl, fn () => $this->render($builder->build()));
+        $xml = Cache::remember($this->cacheKey(), $ttl, fn () => $this->render($builder->build()));
 
         return response($xml, 200)->header('Content-Type', 'application/xml');
+    }
+
+    /**
+     * The cached copy for the current canonical base (the base, never the request
+     * host: a spoofed Host header must not mint cache entries).
+     */
+    protected function cacheKey(): string
+    {
+        $base = config('larafoundry-seo.canonical.base_url') ?: config('app.url');
+
+        return 'larafoundry.sitemap.'.md5(is_string($base) ? $base : '');
     }
 
     /**

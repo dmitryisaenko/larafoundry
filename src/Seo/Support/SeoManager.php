@@ -36,6 +36,14 @@ class SeoManager
 
     protected ?string $ogType = null;
 
+    /**
+     * Explicit hreflang targets, for a host whose language versions live at
+     * their own addresses. Null keeps the default: every locale on one address.
+     *
+     * @var array<string, string>|null
+     */
+    protected ?array $alternates = null;
+
     public function title(?string $title): self
     {
         $this->title = $title;
@@ -84,6 +92,20 @@ class SeoManager
     public function ogType(string $type): self
     {
         $this->ogType = $type;
+
+        return $this;
+    }
+
+    /**
+     * Name the address of each language version of this page, `x-default` included
+     * when there is one. Only the listed versions are emitted, so a language a page
+     * does not exist in is simply left out. Null returns to the default.
+     *
+     * @param  array<string, string>|null  $urls  locale => absolute URL
+     */
+    public function alternates(?array $urls): self
+    {
+        $this->alternates = $urls;
 
         return $this;
     }
@@ -181,8 +203,9 @@ class SeoManager
     }
 
     /**
-     * The hreflang alternates: one per available locale plus x-default, all
-     * pointing at the canonical URL (the core has no per-locale URL segment).
+     * The hreflang alternates: the ones a page named through {@see alternates()},
+     * or else one per available locale plus x-default, all pointing at the
+     * canonical URL (the core itself has no per-locale URL segment).
      * Empty when the feature is disabled.
      *
      * @return array<string, string>
@@ -191,6 +214,10 @@ class SeoManager
     {
         if (! config('larafoundry-seo.hreflang.enabled', true)) {
             return [];
+        }
+
+        if ($this->alternates !== null) {
+            return $this->alternates;
         }
 
         $available = config('larafoundry.locale.available', ['en']);

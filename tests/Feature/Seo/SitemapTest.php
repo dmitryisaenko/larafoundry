@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
+use Dmitryisaenko\LaraFoundry\Seo\Support\SitemapBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 
@@ -70,6 +71,25 @@ it('builds sitemap locs against the configured canonical base, not the request h
 
     expect($body)->toContain('https://canonical.test/legal/terms')
         ->and($body)->not->toContain('spoofed.test');
+});
+
+it('keeps a cached copy per canonical base, so one site never gets another site\'s addresses', function () {
+    config()->set('larafoundry-seo.sitemap.cache_ttl', 3600);
+    publishLegal('terms');
+
+    config()->set('larafoundry-seo.canonical.base_url', 'https://first.test');
+    $first = $this->get('/sitemap.xml')->getContent();
+
+    // The builder's memo lives for one request; two requests share a process only in a test.
+    app(SitemapBuilder::class)->flush();
+
+    config()->set('larafoundry-seo.canonical.base_url', 'https://second.test');
+    $second = $this->get('/sitemap.xml')->getContent();
+
+    expect($first)->toContain('https://first.test/legal/terms')
+        ->and($first)->not->toContain('second.test')
+        ->and($second)->toContain('https://second.test/legal/terms')
+        ->and($second)->not->toContain('first.test');
 });
 
 it('emits hreflang alternates for every available locale', function () {

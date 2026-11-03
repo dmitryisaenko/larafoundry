@@ -82,6 +82,25 @@ The core already sets meta on the screens it owns: the sensitive Fortify screens
 (reset-password, confirm-password, verify-email, two-factor-challenge) are set
 `noindex`, and each published legal page indexes with its real title.
 
+### Language versions at their own addresses
+
+By default every available locale points hreflang at the canonical URL, because the
+core switches language by session and has no per-locale URL segment. A host whose
+language versions live at their own addresses names them with `alternates()`:
+
+```php
+app(SeoManager::class)->alternates([
+    'en' => 'https://example.com/en/tips/5-getting-started',
+    'de' => 'https://example.com/de/tipps/5-erste-schritte',
+    'x-default' => 'https://example.com/en/tips/5-getting-started',
+]);
+```
+
+Only the listed versions are emitted, so leave out a language the page does not exist
+in, and add `x-default` yourself when the page has one. Search engines ignore the tags
+unless each version lists itself and all the others, so give every version the same
+list. Sitemap entries take the same shape in their `alternates` key.
+
 ### The server-rendered head (`@larafoundrySeo`)
 
 `renderHead()` returns the server-rendered `<head>` HTML - title, description,
@@ -104,7 +123,9 @@ drift.
 `routes/seo.php` registers two public, web-only, unauthenticated routes:
 
 - `sitemap.xml` - built by `SitemapBuilder` from every registered
-  `SitemapProviderInterface`. The rendered XML is cached (`sitemap.cache_ttl`).
+  `SitemapProviderInterface`. The rendered XML is cached (`sitemap.cache_ttl`), one
+  copy per `canonical.base_url`, so an application serving several sites keeps their
+  addresses apart.
 - `robots.txt` - the robots file, pointing at the sitemap.
 
 The core ships one provider, `LegalSitemapProvider`, which emits only **published**
