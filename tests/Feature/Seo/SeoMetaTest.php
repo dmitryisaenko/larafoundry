@@ -167,3 +167,43 @@ it('marks the reset-password screen noindex,nofollow', function () {
 
     expect(app(SeoManager::class)->toArray()['robots'])->toBe('noindex,nofollow');
 });
+
+// --- shared links and structured data ----------------------------------------
+
+it('names the language of a shared link and the others the page exists in', function () {
+    $head = app(SeoManager::class)->ogLocale('ru_RU', ['en_US', 'uk_UA'])->renderHead();
+
+    expect($head)->toContain('<meta property="og:locale" content="ru_RU">')
+        ->and($head)->toContain('<meta property="og:locale:alternate" content="en_US">')
+        ->and($head)->toContain('<meta property="og:locale:alternate" content="uk_UA">');
+});
+
+it('says nothing about the language of a shared link until a page names it', function () {
+    expect(app(SeoManager::class)->renderHead())->not->toContain('og:locale');
+});
+
+it('renders each structured data block as readable JSON', function () {
+    $head = app(SeoManager::class)
+        ->jsonLd(['@type' => 'Article', 'headline' => 'Почему', 'url' => 'https://site.test/a'])
+        ->jsonLd(['@type' => 'BreadcrumbList'])
+        ->renderHead();
+
+    expect($head)->toContain('<script type="application/ld+json">{"@type":"Article","headline":"Почему","url":"https://site.test/a"}</script>')
+        ->and($head)->toContain('<script type="application/ld+json">{"@type":"BreadcrumbList"}</script>');
+});
+
+it('never lets a value close the structured data block', function () {
+    $head = app(SeoManager::class)
+        ->jsonLd(['headline' => '</script><script>alert(1)</script>'])
+        ->renderHead();
+
+    expect($head)->not->toContain('<script>alert')
+        ->and(substr_count($head, '</script>'))->toBe(1)
+        ->and($head)->toContain('</script>');
+});
+
+it('keeps structured data out of the prop the client re-emits', function () {
+    $seo = app(SeoManager::class)->jsonLd(['@type' => 'Article'])->toArray();
+
+    expect(json_encode($seo))->not->toContain('Article');
+});

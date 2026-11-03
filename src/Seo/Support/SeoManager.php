@@ -19,8 +19,9 @@ use Dmitryisaenko\LaraFoundry\Seo\Contracts\OgImageResolver;
  * SECURITY: renderHead() escapes EVERY attribute value with e() (htmlspecialchars,
  * ENT_QUOTES), and only ever emits a URL — canonical, og:url, og:image,
  * hreflang — when it passes the http(s) scheme guard ({@see Url::isHttp()}), so a
- * `javascript:`/`data:` value can never reach an href. Bound as a singleton, so
- * the whole request shares one holder.
+ * `javascript:`/`data:` value can never reach an href. Structured data goes through
+ * {@see encodeJsonLd()} and is crawler-only, so it stays out of {@see toArray()}.
+ * Bound as a singleton, so the whole request shares one holder.
  */
 class SeoManager
 {
@@ -43,6 +44,14 @@ class SeoManager
      * @var array<string, string>|null
      */
     protected ?array $alternates = null;
+
+    protected ?string $ogLocale = null;
+
+    /** @var list<string> */
+    protected array $ogLocaleAlternates = [];
+
+    /** @var list<array<string, mixed>> */
+    protected array $structuredData = [];
 
     public function title(?string $title): self
     {
@@ -106,6 +115,32 @@ class SeoManager
     public function alternates(?array $urls): self
     {
         $this->alternates = $urls;
+
+        return $this;
+    }
+
+    /**
+     * The language a shared link is shown in, as `ll_CC` (Open Graph does not take a bare `ru`), and
+     * the other languages this page exists in. Emitted only when a page names them.
+     *
+     * @param  list<string>  $alternates
+     */
+    public function ogLocale(?string $locale, array $alternates = []): self
+    {
+        $this->ogLocale = $locale;
+        $this->ogLocaleAlternates = array_values($alternates);
+
+        return $this;
+    }
+
+    /**
+     * Add one schema.org block (an Article, a BreadcrumbList) to the head; a page may add several.
+     *
+     * @param  array<string, mixed>  $schema
+     */
+    public function jsonLd(array $schema): self
+    {
+        $this->structuredData[] = $schema;
 
         return $this;
     }
@@ -252,6 +287,8 @@ class SeoManager
                 'type' => $this->resolvedOgType(),
                 'image' => $this->resolvedOgImage(),
                 'site_name' => $this->resolvedSiteName(),
+                'locale' => $this->ogLocale,
+                'locale_alternates' => $this->ogLocaleAlternates,
             ],
             'twitter' => [
                 'card' => (string) config('larafoundry-seo.twitter.card', 'summary_large_image'),
@@ -304,6 +341,14 @@ class SeoManager
             $lines[] = $this->meta('og:site_name', $siteName, 'property');
         }
 
+        if ($data['og']['locale'] !== null && $data['og']['locale'] !== '') {
+            $lines[] = $this->meta('og:locale', $data['og']['locale'], 'property');
+
+            foreach ($data['og']['locale_alternates'] as $locale) {
+                $lines[] = $this->meta('og:locale:alternate', $locale, 'property');
+            }
+        }
+
         $lines[] = $this->meta('twitter:card', $data['twitter']['card']);
 
         $twitterSite = $data['twitter']['site'];
@@ -317,6 +362,14 @@ class SeoManager
             }
         }
 
+        foreach ($this->structuredData as $schema) {
+            $json = $this->encodeJsonLd($schema);
+
+            if ($json !== null) {
+                $lines[] = '<script type="application/ld+json">'.$json.'</script>';
+            }
+        }
+
         return implode("\n", $lines);
     }
 
@@ -327,6 +380,23 @@ class SeoManager
     protected function meta(string $name, ?string $content, string $attr = 'name'): string
     {
         return '<meta '.$attr.'="'.e($name).'" content="'.e((string) $content).'">';
+    }
+
+    /**
+     * SECURITY: a script block is not escaped by e(), and the values are often an editor's or a
+     * translator's text. JSON_HEX_TAG turns every `<` and `>` into \u escapes, so a `</script>` inside
+     * a title can never close the block.
+     *
+     * @param  array<string, mixed>  $schema
+     */
+    protected function encodeJsonLd(array $schema): ?string
+    {
+        $json = json_encode(
+            $schema,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+
+        return is_string($json) ? $json : null;
     }
 
     protected function stringOrNull(mixed $value): ?string

@@ -182,6 +182,9 @@ generation** in the core. A host that wants per-page generated cards binds its o
 |--------|---------|---------|
 | `title` / `description` / `canonical` / `robots` / `ogImage` / `ogType` | `self` | Fluent setters; each overrides the config default for the current request. |
 | `noindex()` | `self` | Shorthand that sets `robots` to a `noindex` directive. |
+| `alternates(?array $urls)` | `self` | The address of each language version, for pages with a language in the address. |
+| `ogLocale(?string $locale, array $alternates = [])` | `self` | `og:locale` and `og:locale:alternate`, as `ll_CC`. Emitted only when named. |
+| `jsonLd(array $schema)` | `self` | Add a schema.org block to the head; call once per block. `<` and `>` are escaped, so a value cannot close the script. Crawler-only: not in `toArray()`. |
 | `renderHead()` | `string` | The server-rendered `<head>` HTML (behind `@larafoundrySeo`). Every value escaped, every URL scheme-guarded. |
 | `toArray()` | `array` | The meta as a serialisable array, shipped as the `seo` shared prop for `<Seo>`. |
 
