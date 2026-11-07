@@ -66,8 +66,65 @@ export function eastSlavicPlural(choice, choicesLength) {
 }
 
 /**
+ * Pick the plural form for Polish: 1 kredyt, 2 kredyty, 5 kredytów, 21 kredytów.
+ *
+ * Unlike the East Slavic rule, only 1 itself takes the first form - 21, 31, 101
+ * take the third. 2-4 take the second unless the number ends in 12-14. A message
+ * with only two forms (an untranslated English one) keeps the one/other choice.
+ *
+ * @param {number} choice
+ * @param {number} choicesLength
+ * @returns {number}
+ */
+export function polishPlural(choice, choicesLength) {
+    const n = Math.abs(choice);
+
+    if (choicesLength < 3) {
+        return n === 1 ? 0 : 1;
+    }
+
+    if (n === 1) {
+        return 0;
+    }
+
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return 1;
+    }
+
+    return 2;
+}
+
+/**
+ * Pick the plural form for French and Portuguese, where 0 is singular as well as
+ * 1: "0 crédit", "1 crédit", "2 crédits". vue-i18n's default would say "0 crédits".
+ *
+ * @param {number} choice
+ * @param {number} choicesLength
+ * @returns {number}
+ */
+export function zeroIsOnePlural(choice, choicesLength) {
+    const n = Math.abs(choice);
+
+    // A three-form message ("none | one | many") is vue-i18n's own convention;
+    // answer it as vue-i18n's default would.
+    if (choicesLength > 2) {
+        return n ? Math.min(n, 2) : 0;
+    }
+
+    if (choicesLength < 2) {
+        return 0;
+    }
+
+    return n < 2 ? 0 : 1;
+}
+
+/**
  * The plural rules vue-i18n gets per locale (v0.46.0, for the credits name and any
- * other counted text). English needs none - its default one/other is right.
+ * other counted text). English needs none - its default one/other is right, and
+ * so is it for German, Spanish, Italian and Turkish (v0.54.0).
  *
  * @returns {Record<string, (choice: number, choicesLength: number) => number>}
  */
@@ -76,6 +133,9 @@ function pluralRules() {
         uk: eastSlavicPlural,
         ru: eastSlavicPlural,
         be: eastSlavicPlural,
+        pl: polishPlural,
+        fr: zeroIsOnePlural,
+        pt: zeroIsOnePlural,
     };
 }
 

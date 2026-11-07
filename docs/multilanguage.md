@@ -178,6 +178,22 @@ So a host can override any core string (for example
 strings it does not touch stay in place. The bundled core dictionary is memoized
 per locale per request, since it is immutable for the life of a deploy.
 
+Since v0.54.0 the whole bag of `app.fallback_locale` (normally `en`) lies under
+the active locale's, merged recursively. A string the active locale has not
+translated reads in English instead of reaching the screen as its raw key - which
+matters for dotted keys (`tickets.category.bug`) and for host entries whose
+English differs from the key (`date_format` => `Date format`). A language can
+therefore be switched on before it is fully translated.
+
+### Plural forms
+
+vue-i18n's built-in rule knows only one/other. The core registers its own rule for
+the languages where that is wrong: `uk`, `ru`, `be` (three forms, 21 singular),
+`pl` (three forms, only 1 singular: `1 kredyt`, `2 kredyty`, `5 kredytów`,
+`21 kredytów`) and `fr`, `pt` (0 singular as well as 1). `de`, `es`, `it`, `tr`
+and `en` are right with the default. A message with fewer forms than its language
+has (an untranslated English one) falls back to one/other.
+
 ### Adding a language
 
 1. Add the ISO 639-1 code to `locale.available` (and give it `locale.locales`
@@ -185,7 +201,9 @@ per locale per request, since it is immutable for the life of a deploy.
 2. Ship a `lang/{code}.json` in the host for the frontend strings, and
    `lang/{code}/*.php` group files for backend strings. The core only bundles
    frontend dictionaries for `en` and `uk`; for any other code the host supplies
-   everything.
+   everything, and English shows wherever it has not yet.
+3. If the language counts differently from one/other, give it a rule in
+   `resources/js/i18n/index.js`.
 
 ## API reference
 

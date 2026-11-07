@@ -204,19 +204,45 @@ class HandleInertiaRequests extends Middleware
      * Later layers overwrite earlier ones on key collision, so a host can retune
      * any core string without touching the package.
      *
+     * The whole bag of the fallback locale (`app.fallback_locale`) lies UNDER the
+     * active one (v0.54.0). Most keys are their own English text and read right
+     * untranslated, but not all: a dotted key (`tickets.category.bug`) or a
+     * host entry whose English differs from its key (`date_format` => `Date
+     * format`) would otherwise reach the screen raw in any language that has not
+     * translated it yet - which is every language a host has just added.
+     *
      * @return array<string, mixed>
      */
     protected function translations(): array
     {
         $locale = App::getLocale();
+        $fallback = config('app.fallback_locale');
 
+        $own = $this->dictionary($locale);
+
+        if (! is_string($fallback) || $fallback === '' || $fallback === $locale) {
+            return $own;
+        }
+
+        // Recursive, so a host group (`lang/{locale}/*.php`) the active locale
+        // has only partly translated keeps the fallback's text for the rest.
+        return array_replace_recursive($this->dictionary($fallback), $own);
+    }
+
+    /**
+     * One locale's bag, built from the three layers described on translations().
+     *
+     * @return array<string, mixed>
+     */
+    protected function dictionary(string $locale): array
+    {
         $data = $this->coreFrontendStrings($locale);
 
         $jsonPath = base_path("lang/{$locale}.json");
         if (File::exists($jsonPath)) {
             $json = json_decode((string) File::get($jsonPath), true);
             if (is_array($json)) {
-                $data = [...$data, ...$json];
+                $data = array_replace($data, $json);
             }
         }
 
@@ -224,7 +250,7 @@ class HandleInertiaRequests extends Middleware
         if (File::isDirectory($dir)) {
             foreach (File::files($dir) as $file) {
                 $group = $file->getFilenameWithoutExtension();
-                $data[$group] = Lang::get($group);
+                $data[$group] = Lang::get($group, [], $locale);
             }
         }
 

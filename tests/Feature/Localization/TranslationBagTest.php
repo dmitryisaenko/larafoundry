@@ -72,6 +72,49 @@ it('lets the host override a core string', function () {
     }
 });
 
+it('lays the english bag under a locale that has not translated everything', function () {
+    config()->set('app.fallback_locale', 'en');
+    App::setLocale('de');
+
+    $langDir = base_path('lang');
+    File::ensureDirectoryExists($langDir);
+    File::put($langDir.'/en.json', json_encode(['date_format' => 'Date format', 'Theme' => 'Theme']));
+    File::put($langDir.'/de.json', json_encode(['Theme' => 'Design']));
+
+    try {
+        $bag = inertiaMiddleware()->exposeTranslations();
+
+        // The locale's own word wins.
+        expect($bag['Theme'])->toBe('Design');
+        // A host key whose English differs from the key reads in English, not raw.
+        expect($bag['date_format'])->toBe('Date format');
+        // So does a dotted core key the core ships in English only.
+        expect($bag['tickets.category.bug'])->toBe('Bug report');
+    } finally {
+        File::delete([$langDir.'/en.json', $langDir.'/de.json']);
+    }
+});
+
+it('lets the core strings of the locale win over the english beneath', function () {
+    config()->set('app.fallback_locale', 'en');
+    App::setLocale('uk');
+
+    $bag = inertiaMiddleware()->exposeTranslations();
+
+    // The core's own Ukrainian still wins over the English beneath it.
+    expect($bag['Employees'])->toBe('Співробітники');
+    expect($bag['tickets.category.bug'])->not->toBe('Bug report');
+});
+
+it('builds no second bag for the fallback locale itself', function () {
+    config()->set('app.fallback_locale', 'en');
+    App::setLocale('en');
+
+    $bag = inertiaMiddleware()->exposeTranslations();
+
+    expect($bag['tickets.category.bug'])->toBe('Bug report');
+});
+
 it('builds the available-locales list with display metadata', function () {
     $locales = inertiaMiddleware()->exposeAvailableLocales();
 

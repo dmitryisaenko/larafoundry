@@ -15,7 +15,7 @@ vi.mock('@inertiajs/vue3', () => ({
     },
 }));
 
-import { eastSlavicPlural, installI18n } from '../resources/js/i18n/index.js';
+import { eastSlavicPlural, installI18n, polishPlural, zeroIsOnePlural } from '../resources/js/i18n/index.js';
 
 // A minimal Vue app stub: installI18n only calls app.use() and writes to
 // config.globalProperties — i18n.global works standalone for the assertions.
@@ -93,6 +93,40 @@ describe('installI18n locale bridge', () => {
         expect(i18n.global.t(key, 5)).toBe('5 credits');
         expect(eastSlavicPlural(1, 2)).toBe(0);
         expect(eastSlavicPlural(3, 2)).toBe(1);
+    });
+
+    it('picks the Polish plural form, where 21 is not singular', () => {
+        const key = '{n} credit | {n} credits';
+        const i18n = installI18n(makeApp(), {
+            locale: 'pl',
+            translations: { [key]: '{n} kredyt | {n} kredyty | {n} kredytów' },
+        });
+
+        const cases = { 1: 'kredyt', 2: 'kredyty', 4: 'kredyty', 5: 'kredytów', 12: 'kredytów', 14: 'kredytów', 21: 'kredytów', 22: 'kredyty', 25: 'kredytów', 104: 'kredyty', 112: 'kredytów', 0: 'kredytów' };
+
+        for (const [n, word] of Object.entries(cases)) {
+            expect(i18n.global.t(key, Number(n))).toBe(`${n} ${word}`);
+        }
+
+        expect(polishPlural(21, 2)).toBe(1);
+        expect(polishPlural(1, 2)).toBe(0);
+    });
+
+    it('reads 0 as singular in French and Portuguese', () => {
+        const key = '{n} credit | {n} credits';
+
+        for (const [locale, one, many] of [['fr', 'crédit', 'crédits'], ['pt', 'crédito', 'créditos']]) {
+            const i18n = installI18n(makeApp(), { locale, translations: { [key]: `{n} ${one} | {n} ${many}` } });
+
+            expect(i18n.global.t(key, 0)).toBe(`0 ${one}`);
+            expect(i18n.global.t(key, 1)).toBe(`1 ${one}`);
+            expect(i18n.global.t(key, 2)).toBe(`2 ${many}`);
+        }
+
+        // A three-form message keeps vue-i18n's own none | one | many reading.
+        expect(zeroIsOnePlural(0, 3)).toBe(0);
+        expect(zeroIsOnePlural(1, 3)).toBe(1);
+        expect(zeroIsOnePlural(7, 3)).toBe(2);
     });
 
     it('ignores a navigation that carries no locale prop', () => {
