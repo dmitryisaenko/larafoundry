@@ -120,6 +120,25 @@ The core ships four editable templates. The config registry declares each templa
 ],
 ```
 
+#### A template in a language the core does not ship (`v0.55.0`)
+
+The registry carries `en` and `uk` only. A host adds any other language (or rewords one of those two) without publishing the config, through the ordinary lang-override path — `lang/vendor/larafoundry/{locale}/email_templates.php`, keyed by template code:
+
+```php
+// lang/vendor/larafoundry/de/email_templates.php
+return [
+    'password_reset' => [
+        'subject' => 'Passwort zurücksetzen',
+        'body_html' => '<p>Guten Tag, {{name}},</p><p><a href="{{reset_url}}">Passwort zurücksetzen</a></p>',
+        'body_text' => "Guten Tag, {{name}},\n\nPasswort zurücksetzen: {{reset_url}}",
+    ],
+];
+```
+
+- Only locales in `locale.available` are read, each without fallback: a language with no file of its own gets the default locale's text, never another language's.
+- A field the file leaves out keeps the registry's text; the operator's saved override still wins over both.
+- The variables stay the registry's whitelist — a `{{placeholder}}` the template does not declare is not substituted.
+
 ### Notification mail channel (in `config/larafoundry-notifications.php`)
 
 Phase 5.1 makes the in-app notification channel able to also send email, off by default per notification. The master switch is the `channels` key (it already includes `mail`); a notification only emails when it opts in AND the channel is enabled:

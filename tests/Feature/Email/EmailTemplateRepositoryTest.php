@@ -105,6 +105,56 @@ it('falls back to the default locale when the requested one is missing', functio
     expect($rendered['subject'])->toBe('Welcome Jane');
 });
 
+it('takes a language the registry lacks from the host lang file', function () {
+    config()->set('larafoundry.locale.available', ['en', 'uk', 'de']);
+    app('translator')->addLines([
+        'email_templates.welcome.subject' => 'Willkommen, {{name}}',
+        'email_templates.welcome.body_html' => '<p>Hallo {{name}} von {{app_name}}</p>',
+        'email_templates.welcome.body_text' => 'Hallo {{name}}',
+    ], 'de', 'larafoundry');
+
+    $rendered = $this->repo->render('welcome', 'de', ['name' => 'Jane', 'app_name' => 'Acme']);
+
+    expect($rendered['subject'])->toBe('Willkommen, Jane')
+        ->and($rendered['html'])->toContain('Hallo Jane von Acme')
+        ->and($rendered['text'])->toBe('Hallo Jane')
+        ->and($this->repo->find('welcome')['subject'])->toHaveKeys(['en', 'uk', 'de']);
+});
+
+it('lets the host text replace the registry text of the same language, under a stored override', function () {
+    app('translator')->addLines(['email_templates.welcome.subject' => 'Добрий день, {{name}}'], 'uk', 'larafoundry');
+
+    expect($this->repo->render('welcome', 'uk', ['name' => 'Jane'])['subject'])->toBe('Добрий день, Jane')
+        // Only the subject came from the host: the registry body stays.
+        ->and($this->repo->render('welcome', 'uk', ['name' => 'Jane'])['text'])->toBe('Привіт, Jane');
+
+    EmailTemplate::create([
+        'code' => 'welcome',
+        'subject_translations' => ['uk' => 'Від адміністратора, {{name}}'],
+        'body_html_translations' => [],
+        'body_text_translations' => [],
+        'is_active' => true,
+    ]);
+    Cache::flush();
+
+    expect($this->repo->render('welcome', 'uk', ['name' => 'Jane'])['subject'])->toBe('Від адміністратора, Jane');
+});
+
+it('does not hand one language the host text of another', function () {
+    config()->set('larafoundry.locale.available', ['en', 'uk', 'de', 'fr']);
+    app('translator')->addLines(['email_templates.welcome.subject' => 'Willkommen, {{name}}'], 'de', 'larafoundry');
+
+    // French has no file: it falls back to the default locale (en), never to German.
+    expect($this->repo->render('welcome', 'fr', ['name' => 'Jane'])['subject'])->toBe('Welcome Jane')
+        ->and($this->repo->find('welcome')['subject'])->not->toHaveKey('fr');
+});
+
+it('ignores a host language that the installation does not offer', function () {
+    app('translator')->addLines(['email_templates.welcome.subject' => 'Willkommen, {{name}}'], 'de', 'larafoundry');
+
+    expect($this->repo->find('welcome')['subject'])->not->toHaveKey('de');
+});
+
 it('returns null from render when the template is switched off', function () {
     EmailTemplate::create([
         'code' => 'welcome',

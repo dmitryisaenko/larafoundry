@@ -58,11 +58,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{name}},</p><p>Welcome to {{app_name}}. Your account is ready.</p><p><a href="{{login_url}}">Sign in</a> to get started. If you need help, contact us at <a href="{{support_url}}">support</a>.</p>',
-                'uk' => '<p>Привіт, {{name}}!</p><p>Ласкаво просимо до {{app_name}}. Ваш обліковий запис готовий.</p><p><a href="{{login_url}}">Увійдіть</a>, щоб почати. Якщо потрібна допомога, напишіть у <a href="{{support_url}}">підтримку</a>.</p>',
+                'uk' => '<p>Вітаємо, {{name}}!</p><p>Ласкаво просимо до {{app_name}}. Ваш обліковий запис готовий.</p><p><a href="{{login_url}}">Увійдіть</a>, щоб почати. Якщо потрібна допомога, напишіть у <a href="{{support_url}}">підтримку</a>.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{name}},\n\nWelcome to {{app_name}}. Your account is ready.\n\nSign in: {{login_url}}\nSupport: {{support_url}}",
-                'uk' => "Привіт, {{name}}!\n\nЛаскаво просимо до {{app_name}}. Ваш обліковий запис готовий.\n\nУвійти: {{login_url}}\nПідтримка: {{support_url}}",
+                'uk' => "Вітаємо, {{name}}!\n\nЛаскаво просимо до {{app_name}}. Ваш обліковий запис готовий.\n\nУвійти: {{login_url}}\nПідтримка: {{support_url}}",
             ],
         ],
 
@@ -75,11 +75,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{name}},</p><p>We received a request to reset your password.</p><p><a href="{{reset_url}}">Reset password</a></p><p>If you did not request this, you can safely ignore this email.</p>',
-                'uk' => '<p>Привіт, {{name}}!</p><p>Ми отримали запит на скидання вашого пароля.</p><p><a href="{{reset_url}}">Скинути пароль</a></p><p>Якщо ви цього не робили, просто проігноруйте цей лист.</p>',
+                'uk' => '<p>Вітаємо, {{name}}!</p><p>Ми отримали запит на скидання вашого пароля.</p><p><a href="{{reset_url}}">Скинути пароль</a></p><p>Якщо ви цього не робили, просто проігноруйте цей лист.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{name}},\n\nWe received a request to reset your password.\n\nReset password: {{reset_url}}\n\nIf you did not request this, you can safely ignore this email.",
-                'uk' => "Привіт, {{name}}!\n\nМи отримали запит на скидання вашого пароля.\n\nСкинути пароль: {{reset_url}}\n\nЯкщо ви цього не робили, просто проігноруйте цей лист.",
+                'uk' => "Вітаємо, {{name}}!\n\nМи отримали запит на скидання вашого пароля.\n\nСкинути пароль: {{reset_url}}\n\nЯкщо ви цього не робили, просто проігноруйте цей лист.",
             ],
         ],
 
@@ -92,11 +92,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{name}},</p><p>Please confirm your email address to finish setting up your account.</p><p><a href="{{verification_url}}">Verify email</a></p>',
-                'uk' => '<p>Привіт, {{name}}!</p><p>Будь ласка, підтвердьте свою електронну адресу, щоб завершити налаштування облікового запису.</p><p><a href="{{verification_url}}">Підтвердити пошту</a></p>',
+                'uk' => '<p>Вітаємо, {{name}}!</p><p>Будь ласка, підтвердьте свою електронну адресу, щоб завершити налаштування облікового запису.</p><p><a href="{{verification_url}}">Підтвердити пошту</a></p>',
             ],
             'body_text' => [
                 'en' => "Hi {{name}},\n\nPlease confirm your email address to finish setting up your account.\n\nVerify email: {{verification_url}}",
-                'uk' => "Привіт, {{name}}!\n\nБудь ласка, підтвердьте свою електронну адресу, щоб завершити налаштування облікового запису.\n\nПідтвердити пошту: {{verification_url}}",
+                'uk' => "Вітаємо, {{name}}!\n\nБудь ласка, підтвердьте свою електронну адресу, щоб завершити налаштування облікового запису.\n\nПідтвердити пошту: {{verification_url}}",
             ],
         ],
 
@@ -146,11 +146,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{member_name}},</p><p>You have joined <strong>{{company_name}}</strong>.</p><p>You can now sign in to {{app_name}} and start working with your team.</p>',
-                'uk' => '<p>Привіт, {{member_name}}!</p><p>Ви приєдналися до <strong>{{company_name}}</strong>.</p><p>Тепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.</p>',
+                'uk' => '<p>Вітаємо, {{member_name}}!</p><p>Ви приєдналися до <strong>{{company_name}}</strong>.</p><p>Тепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{member_name}},\n\nYou have joined {{company_name}}.\n\nYou can now sign in to {{app_name}} and start working with your team.",
-                'uk' => "Привіт, {{member_name}}!\n\nВи приєдналися до {{company_name}}.\n\nТепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.",
+                'uk' => "Вітаємо, {{member_name}}!\n\nВи приєдналися до {{company_name}}.\n\nТепер ви можете увійти на {{app_name}} та почати роботу зі своєю командою.",
             ],
         ],
 
@@ -163,11 +163,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{owner_name}},</p><p>{{member_name}} has accepted your invitation and joined <strong>{{company_name}}</strong>.</p><p>They now have access on {{app_name}}.</p>',
-                'uk' => '<p>Привіт, {{owner_name}}!</p><p>{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до <strong>{{company_name}}</strong>.</p><p>Тепер у нього(неї) є доступ на {{app_name}}.</p>',
+                'uk' => '<p>Вітаємо, {{owner_name}}!</p><p>{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до <strong>{{company_name}}</strong>.</p><p>Тепер у нього(неї) є доступ на {{app_name}}.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{owner_name}},\n\n{{member_name}} has accepted your invitation and joined {{company_name}}.\n\nThey now have access on {{app_name}}.",
-                'uk' => "Привіт, {{owner_name}}!\n\n{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до {{company_name}}.\n\nТепер у нього(неї) є доступ на {{app_name}}.",
+                'uk' => "Вітаємо, {{owner_name}}!\n\n{{member_name}} прийняв(-ла) ваше запрошення та приєднався(-лася) до {{company_name}}.\n\nТепер у нього(неї) є доступ на {{app_name}}.",
             ],
         ],
 
@@ -180,11 +180,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{owner_name}},</p><p>The invitation you sent to {{invited_email}} to join <strong>{{company_name}}</strong> was declined.</p><p>You can invite someone else at any time on {{app_name}}.</p>',
-                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Запрошення, яке ви надіслали на {{invited_email}} для приєднання до <strong>{{company_name}}</strong>, було відхилено.</p><p>Ви можете запросити когось іншого будь-коли на {{app_name}}.</p>',
+                'uk' => '<p>Вітаємо, {{owner_name}}!</p><p>Запрошення, яке ви надіслали на {{invited_email}} для приєднання до <strong>{{company_name}}</strong>, було відхилено.</p><p>Ви можете запросити когось іншого будь-коли на {{app_name}}.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{owner_name}},\n\nThe invitation you sent to {{invited_email}} to join {{company_name}} was declined.\n\nYou can invite someone else at any time on {{app_name}}.",
-                'uk' => "Привіт, {{owner_name}}!\n\nЗапрошення, яке ви надіслали на {{invited_email}} для приєднання до {{company_name}}, було відхилено.\n\nВи можете запросити когось іншого будь-коли на {{app_name}}.",
+                'uk' => "Вітаємо, {{owner_name}}!\n\nЗапрошення, яке ви надіслали на {{invited_email}} для приєднання до {{company_name}}, було відхилено.\n\nВи можете запросити когось іншого будь-коли на {{app_name}}.",
             ],
         ],
 
@@ -197,11 +197,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{member_name}},</p><p>Your request to leave <strong>{{company_name}}</strong> has been approved and you have been removed.</p><p>You no longer have access to this company on {{app_name}}.</p>',
-                'uk' => '<p>Привіт, {{member_name}}!</p><p>Ваш запит на вихід із <strong>{{company_name}}</strong> схвалено, і вас видалено.</p><p>Ви більше не маєте доступу до цієї компанії на {{app_name}}.</p>',
+                'uk' => '<p>Вітаємо, {{member_name}}!</p><p>Ваш запит на вихід із <strong>{{company_name}}</strong> схвалено, і вас видалено.</p><p>Ви більше не маєте доступу до цієї компанії на {{app_name}}.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{member_name}},\n\nYour request to leave {{company_name}} has been approved and you have been removed.\n\nYou no longer have access to this company on {{app_name}}.",
-                'uk' => "Привіт, {{member_name}}!\n\nВаш запит на вихід із {{company_name}} схвалено, і вас видалено.\n\nВи більше не маєте доступу до цієї компанії на {{app_name}}.",
+                'uk' => "Вітаємо, {{member_name}}!\n\nВаш запит на вихід із {{company_name}} схвалено, і вас видалено.\n\nВи більше не маєте доступу до цієї компанії на {{app_name}}.",
             ],
         ],
 
@@ -214,11 +214,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{owner_name}},</p><p>Your company <strong>{{company_name}}</strong> has been created on {{app_name}}.</p><p>You can now invite your team and start working.</p>',
-                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> створено на {{app_name}}.</p><p>Тепер ви можете запросити свою команду та почати роботу.</p>',
+                'uk' => '<p>Вітаємо, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> створено на {{app_name}}.</p><p>Тепер ви можете запросити свою команду та почати роботу.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{owner_name}},\n\nYour company {{company_name}} has been created on {{app_name}}.\n\nYou can now invite your team and start working.",
-                'uk' => "Привіт, {{owner_name}}!\n\nВашу компанію {{company_name}} створено на {{app_name}}.\n\nТепер ви можете запросити свою команду та почати роботу.",
+                'uk' => "Вітаємо, {{owner_name}}!\n\nВашу компанію {{company_name}} створено на {{app_name}}.\n\nТепер ви можете запросити свою команду та почати роботу.",
             ],
         ],
 
@@ -231,11 +231,11 @@ return [
             ],
             'body_html' => [
                 'en' => '<p>Hi {{owner_name}},</p><p>Your company <strong>{{company_name}}</strong> has been archived on {{app_name}}.</p><p>Its data is kept and you can restore it at any time.</p>',
-                'uk' => '<p>Привіт, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> архівовано на {{app_name}}.</p><p>Її дані збережено, і ви можете відновити її будь-коли.</p>',
+                'uk' => '<p>Вітаємо, {{owner_name}}!</p><p>Вашу компанію <strong>{{company_name}}</strong> архівовано на {{app_name}}.</p><p>Її дані збережено, і ви можете відновити її будь-коли.</p>',
             ],
             'body_text' => [
                 'en' => "Hi {{owner_name}},\n\nYour company {{company_name}} has been archived on {{app_name}}.\n\nIts data is kept and you can restore it at any time.",
-                'uk' => "Привіт, {{owner_name}}!\n\nВашу компанію {{company_name}} архівовано на {{app_name}}.\n\nЇї дані збережено, і ви можете відновити її будь-коли.",
+                'uk' => "Вітаємо, {{owner_name}}!\n\nВашу компанію {{company_name}} архівовано на {{app_name}}.\n\nЇї дані збережено, і ви можете відновити її будь-коли.",
             ],
         ],
 

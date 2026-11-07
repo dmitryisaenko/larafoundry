@@ -46,18 +46,56 @@ class EmailTemplateRepository
     }
 
     /**
+     * A registry template with the host's translations laid over its texts.
+     *
+     * The registry ships a template's wording in a few locales only (en, uk). A host
+     * adds a language the way it overrides every other core string - a lang file,
+     * `lang/vendor/larafoundry/<locale>/email_templates.php`, keyed by template code:
+     * `['password_reset' => ['subject' => ..., 'body_html' => ..., 'body_text' => ...]]`.
+     * Without this the registry cannot be extended short of publishing and forking
+     * the whole config, and a reader in any other locale gets the English mail.
+     *
+     * The host's text for a locale replaces the registry's text for that locale;
+     * a super-admin's stored override still wins over both (see find()).
+     *
      * @return array<string, mixed>|null
      */
     public function definition(string $code): ?array
     {
         $definition = $this->registry()[$code] ?? null;
 
-        return is_array($definition) ? $definition : null;
+        return is_array($definition) ? $this->withHostTranslations($code, $definition) : null;
     }
 
     public function isRegistered(string $code): bool
     {
-        return $this->definition($code) !== null;
+        return is_array($this->registry()[$code] ?? null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @return array<string, mixed>
+     */
+    protected function withHostTranslations(string $code, array $definition): array
+    {
+        $translator = app('translator');
+
+        foreach ($this->availableLocales() as $locale) {
+            // No fallback: a locale without its own file must not inherit another locale's text here.
+            $lines = $translator->get('larafoundry::email_templates.'.$code, [], $locale, false);
+
+            if (! is_array($lines)) {
+                continue;
+            }
+
+            foreach (['subject', 'body_html', 'body_text'] as $field) {
+                if (is_string($lines[$field] ?? null) && $lines[$field] !== '') {
+                    $definition[$field][$locale] = $lines[$field];
+                }
+            }
+        }
+
+        return $definition;
     }
 
     /**
@@ -71,7 +109,7 @@ class EmailTemplateRepository
     public function variablesFor(string $code): array
     {
         if ($this->isRegistered($code)) {
-            $variables = $this->definition($code)['variables'] ?? [];
+            $variables = $this->registry()[$code]['variables'] ?? [];
 
             return is_array($variables) ? array_values($variables) : [];
         }

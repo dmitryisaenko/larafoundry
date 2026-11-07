@@ -204,6 +204,11 @@ has (an untranslated English one) falls back to one/other.
    everything, and English shows wherever it has not yet.
 3. If the language counts differently from one/other, give it a rule in
    `resources/js/i18n/index.js`.
+4. The transactional mails (verify email, password reset, welcome, sign-in link…)
+   are templates, not lang strings: give them the language in
+   `lang/vendor/larafoundry/{code}/email_templates.php` (since `v0.55.0`, see
+   [settings-profile-email.md](settings-profile-email.md)). Without it a reader in
+   that language gets the English mail.
 
 ## API reference
 
