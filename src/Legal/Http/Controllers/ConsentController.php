@@ -96,11 +96,18 @@ class ConsentController extends Controller
     {
         abort_if($this->actingAsSomeoneElse->active($request), 403);
 
-        if ($request->filled('version') && $request->integer('version') !== $this->consent->currentTermsVersion()) {
+        // ⚠️ The version the screen showed is what gets recorded, not "the current one" read a
+        // second time: a Terms bumped between the check and the write then still counts as unread
+        // and the screen comes back. A screen that sends no version (a host's copy published before
+        // v0.53.0) records the current one, as it always did - requiring it would lock those users
+        // out of the screen for good.
+        $shown = $request->filled('version') ? $request->integer('version') : $this->consent->currentTermsVersion();
+
+        if ($shown !== $this->consent->currentTermsVersion()) {
             return redirect()->route('larafoundry.consent.terms.show');
         }
 
-        $this->consent->recordTermsAcceptance($request->user());
+        $this->consent->recordTermsAcceptance($request->user(), $shown);
 
         $request->session()->flash('status', __('larafoundry::legal.terms.accepted'));
 

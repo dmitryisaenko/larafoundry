@@ -78,12 +78,18 @@ class ConsumeMagicLinkAction
             return $existing;
         }
 
-        return $model::query()->create([
+        $user = $model::query()->create([
             'name' => Str::before($email, '@') ?: $email,
             'email' => $email,
-            'email_verified_at' => now(),
             'locale' => config('larafoundry.locale.default', 'en'),
         ]);
+
+        // ⚠️ Outside create(): a host's $fillable rightly keeps `email_verified_at` out (nobody may
+        // verify themselves through a form), and create() would drop it silently, leaving an
+        // account the link itself has just proven unverified (as CreateEmployeeAction does).
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        return $user;
     }
 
     /**

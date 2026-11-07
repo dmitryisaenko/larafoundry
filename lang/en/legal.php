@@ -17,6 +17,7 @@ return [
 
     'terms' => [
         'must_accept' => 'You must accept the Terms of Service to continue.',
+        'changed' => 'The Terms of Service changed while this page was open. Please read them and tick the box again.',
         'accepted' => 'Thank you. Your acceptance has been recorded.',
     ],
 

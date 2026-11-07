@@ -24,6 +24,8 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     terms: false,
+    // The Terms version this form showed; the server refuses it once a newer one is out.
+    terms_version: page.props?.consent?.terms_version ?? null,
 });
 
 function submit() {

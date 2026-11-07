@@ -58,8 +58,20 @@ class CreateNewUser implements CreatesNewUsers
         // Require explicit acceptance only when there is a published Terms page to
         // accept (phase 5.3 part B, fail-open): a host with no Terms yet is never
         // blocked from registering users.
+        // ⚠️ The version the form showed is the one recorded (as on the re-accept screen): ticked
+        // under an older Terms, the box agreed to something else, so the form asks to read again.
+        // A form that sends no version (a host's copy published before v0.53.0) means the current one.
+        $shown = $consent->currentTermsVersion();
         if ($consent->termsRequired()) {
             $rules['terms'] = ['accepted'];
+            if (filled($input['terms_version'] ?? null)) {
+                $shown = (int) $input['terms_version'];
+                $rules['terms'][] = function (string $attribute, mixed $value, callable $fail) use ($consent, $shown): void {
+                    if ($shown !== $consent->currentTermsVersion()) {
+                        $fail(__('larafoundry::legal.terms.changed'));
+                    }
+                };
+            }
         }
 
         Validator::make($input, $rules, [
@@ -77,7 +89,7 @@ class CreateNewUser implements CreatesNewUsers
         // is not authenticated yet (Fortify logs in after), so the scope is passed
         // explicitly.
         if ($consent->termsRequired()) {
-            $consent->recordTermsAcceptance($user);
+            $consent->recordTermsAcceptance($user, $shown);
         }
 
         return $user;

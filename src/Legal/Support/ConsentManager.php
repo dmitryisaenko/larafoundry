@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Legal\Support;
 
 use Dmitryisaenko\LaraFoundry\ActivityLog\Facades\Activity;
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
@@ -143,7 +144,10 @@ class ConsentManager
     {
         $user = $request->user();
 
-        if ($user !== null) {
+        // ⚠️ An operator signed in as the user decides for their own browser only (the
+        // controller writes them the cookie, never the user's setting), so for them the cookie is
+        // what tells: read as a user's, the banner would come back on every page after "Accept".
+        if ($user !== null && ! app(ActingAsSomeoneElse::class)->active($request)) {
             return $this->hasRecordedCookieConsent($user);
         }
 

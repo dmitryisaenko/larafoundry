@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Records the current URL as the "intended" location for post-login redirects.
  *
- * Only full-page Inertia GET/POST visits are stored — JSON endpoints, polling
+ * Only Inertia GET visits are stored — JSON endpoints, polling
  * routes and similar should never become a redirect target. Host apps list
  * those route names under `larafoundry.inertia.intended_url.except_routes`.
  */
@@ -30,9 +30,19 @@ class StoreIntendedUrl
         return $next($request);
     }
 
+    /**
+     * ⚠️ The core's own lock and gate screens are never a place to come back to: the PIN screen and
+     * the Terms screen send the user ON to the intended URL, so storing their own address would
+     * overwrite where the user was really headed and bring them back to the screen they just left.
+     */
+    private const OWN_SCREENS = ['pin.*', 'larafoundry.consent.*'];
+
     protected function shouldStore(Request $request): bool
     {
-        if (! in_array($request->method(), ['GET', 'POST'], true)) {
+        // ⚠️ GET only (the same rule as EnsureTermsAccepted and EnsureAdminOtpVerified, review
+        // 2026-11-01): a stored POST is answered by a GET after the redirect, which is a 405 on a
+        // form's address.
+        if (! $request->isMethod('GET')) {
             return false;
         }
 
@@ -42,7 +52,7 @@ class StoreIntendedUrl
 
         $routeName = $request->route()?->getName();
 
-        foreach ((array) config('larafoundry.inertia.intended_url.except_routes', []) as $pattern) {
+        foreach ([...self::OWN_SCREENS, ...(array) config('larafoundry.inertia.intended_url.except_routes', [])] as $pattern) {
             if ($routeName !== null && fnmatch($pattern, $routeName)) {
                 return false;
             }

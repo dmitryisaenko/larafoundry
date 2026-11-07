@@ -245,6 +245,9 @@ class LegalPageRepository
      * repeated import changes nothing. Returns whether it wrote. Throws on an
      * unregistered slug (fail-closed); the body is purified like any other write.
      * A published version 0 stays 0 here, and the first save() raises it to 1.
+     * ⚠️ On purpose, though save() never stores a published 0 (review 2026-11-07): a host reads the 0 as
+     * "the untouched first edition" to decide what it may still replace (comentor-back's migrations do).
+     * The Terms are never imported at 0 there, so no acceptance on record as "0" can become current.
      *
      * @param  array{title: array<string,string>, body_html: array<string,string>, version: int, is_published: bool, published_at: DateTimeInterface|string|null}  $data
      */

@@ -100,6 +100,8 @@ class HandleInertiaRequests extends Middleware
                 'decided' => $consent->cookieConsentDecided($request),
             ],
             'terms_required' => $consent->termsRequired(),
+            // What the sign-up form sends back: a Terms bumped while it stood open is not what was ticked.
+            'terms_version' => $consent->currentTermsVersion(),
         ];
     }
 

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
+use Dmitryisaenko\LaraFoundry\Auth\Actions\CreateNewUser;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\HandleInertiaRequests;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\StoreIntendedUrl;
+use Dmitryisaenko\LaraFoundry\Legal\Support\ConsentManager;
 use Dmitryisaenko\LaraFoundry\Legal\Support\LegalPageRepository;
 use Dmitryisaenko\LaraFoundry\Settings\Facades\Settings;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
@@ -12,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
@@ -357,4 +362,86 @@ it('does not carry the operator\'s cookie into the account they sign in as', fun
 
     expect(auth()->id())->toBe($user->getKey())
         ->and(Settings::has('cookie_consent', $user->getKey()))->toBeFalse();
+});
+
+// --- Review 2026-11-07 ------------------------------------------------------
+
+it('records the current version for a screen that sends none, as a copy published before v0.53.0 does', function () {
+    publishTerms();
+    $user = consentUser();
+
+    $this->actingAs($user)->post('/terms/accept')->assertRedirect();
+
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBe('1');
+});
+
+it('refuses a sign-up ticked under an older terms version and records the one it showed', function () {
+    publishTerms();
+    $input = fn (string $email, mixed $version) => [
+        'name' => 'N', 'email' => $email, 'password' => 'secret-pass-123', 'password_confirmation' => 'secret-pass-123',
+        'terms' => true, 'terms_version' => $version,
+    ];
+
+    expect(fn () => (new CreateNewUser)->create($input('old@x.test', 0)))
+        ->toThrow(ValidationException::class, __('larafoundry::legal.terms.changed'));
+    expect(User::where('email', 'old@x.test')->exists())->toBeFalse();
+
+    $user = (new CreateNewUser)->create($input('now@x.test', 1));
+    expect(Settings::get('terms_accepted_version', $user->getKey()))->toBe('1');
+
+    // A form that sends no version (a host's older copy) still signs up, under the current one.
+    $legacy = (new CreateNewUser)->create($input('legacy@x.test', null));
+    expect(Settings::get('terms_accepted_version', $legacy->getKey()))->toBe('1');
+});
+
+it('shares the terms version with every page, the one the sign-up form sends back', function () {
+    publishTerms();
+
+    $request = Request::create('/register');
+    $request->setLaravelSession(app('session.store'));
+    $shared = app(HandleInertiaRequests::class)->share($request);
+
+    expect(($shared['consent'])()['terms_version'])->toBe(1);
+});
+
+it('reads the cookie for an operator signed in as the user, whose choice never reaches the account', function () {
+    $user = consentUser();
+    $request = Request::create('/', 'GET', [], ['larafoundry_cookie_consent' => 'accept']);
+    $request->setLaravelSession(tap(app('session.store'))->put(ImpersonateController::SESSION_KEY, 99));
+    $request->setUserResolver(fn () => $user);
+
+    $consent = app(ConsentManager::class);
+    expect($consent->cookieConsentDecided($request))->toBeTrue();
+
+    // The user themselves, with the same cookie and no setting, has decided nothing yet.
+    $request->session()->forget(ImpersonateController::SESSION_KEY);
+    expect($consent->cookieConsentDecided($request))->toBeFalse();
+});
+
+it('stores an inertia GET as the place to come back to, never a form, the pin screen or the terms screen', function () {
+    // The host's Inertia provider adds this; the package's test app does not load it.
+    if (! Request::hasMacro('inertia')) {
+        Request::macro('inertia', fn () => (bool) $this->header('X-Inertia'));
+    }
+    $store = app('session.store');
+    $visit = function (string $method, string $uri, ?string $name) use ($store) {
+        $store->forget('url.intended');
+        $request = Request::create($uri, $method);
+        $request->headers->set('X-Inertia', 'true');
+        $request->setLaravelSession($store);
+        $route = new Illuminate\Routing\Route([$method], $uri, fn () => '');
+        if ($name !== null) {
+            $route->name($name);
+        }
+        $request->setRouteResolver(fn () => $route->bind($request));
+        app()->instance('request', $request);
+        (new StoreIntendedUrl)->handle($request, fn () => response(''));
+
+        return $store->get('url.intended');
+    };
+
+    expect($visit('GET', '/dashboard', 'dashboard'))->toEndWith('/dashboard')
+        ->and($visit('POST', '/profile', 'profile.update'))->toBeNull()
+        ->and($visit('GET', '/pin', 'pin.show'))->toBeNull()
+        ->and($visit('GET', '/terms/accept', 'larafoundry.consent.terms.show'))->toBeNull();
 });
