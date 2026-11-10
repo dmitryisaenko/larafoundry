@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Dmitryisaenko\LaraFoundry\Help\Contracts\HelpTranslator;
 use Dmitryisaenko\LaraFoundry\Help\Exceptions\HelpTranslationRefused;
 use Dmitryisaenko\LaraFoundry\Help\Models\HelpArticle;
+use Dmitryisaenko\LaraFoundry\Help\Models\HelpImage;
 use Dmitryisaenko\LaraFoundry\Help\Models\HelpSection;
 use Dmitryisaenko\LaraFoundry\Help\Support\HelpEditor;
 use Dmitryisaenko\LaraFoundry\Navigation\Providers\AdminMenuProvider;
@@ -124,6 +125,57 @@ it('keeps the phone text when a save does not carry it', function () {
         ->assertOk();
 
     expect($article->fresh()->mobile_body_translations)->toBe(['uk' => '<p>phone</p>']);
+});
+
+it('keeps the languages this installation does not speak when an article is saved', function () {
+    // A console that speaks en and uk, editing a help a ten-language product reads.
+    $section = helpEditorSection();
+    $article = $section->articles()->create([
+        'heading_translations' => ['uk' => 'H', 'en' => 'H en', 'de' => 'H de'],
+        'body_translations' => ['uk' => '<p>u</p>', 'en' => '<p>e</p>', 'de' => '<p>d</p>'],
+        'mobile_body_translations' => ['uk' => '<p>mu</p>', 'de' => '<p>md</p>'],
+        'position' => 10,
+    ]);
+
+    $this->actingAs(helpEditorUser())
+        ->patchJson("/admin/help-articles/articles/{$article->id}", [
+            'heading' => ['uk' => 'H2', 'en' => 'H2 en'],
+            // A blank in one of the form's own languages still removes it.
+            'body' => ['uk' => '<p>u2</p>', 'en' => '<p></p>'],
+            'body_mobile' => ['uk' => '<p>mu2</p>'],
+        ])
+        ->assertOk();
+
+    $article->refresh();
+
+    expect($article->heading_translations)->toBe(['uk' => 'H2', 'en' => 'H2 en', 'de' => 'H de'])
+        ->and($article->body_translations)->toBe(['uk' => '<p>u2</p>', 'de' => '<p>d</p>'])
+        ->and($article->mobile_body_translations)->toBe(['uk' => '<p>mu2</p>', 'de' => '<p>md</p>']);
+});
+
+it('keeps the languages this installation does not speak in a section and a picture', function () {
+    $section = HelpSection::query()->create([
+        'key' => 'start',
+        'title_translations' => ['uk' => 'Розділ', 'de' => 'Abschnitt'],
+        'blurb_translations' => ['de' => 'Kurz'],
+        'position' => 10,
+    ]);
+    $editor = app(HelpEditor::class);
+
+    $editor->updateSection($section, ['key' => 'start', 'title' => ['uk' => 'Розділ 2']]);
+
+    expect($section->fresh()->title_translations)->toBe(['uk' => 'Розділ 2', 'de' => 'Abschnitt'])
+        ->and($section->fresh()->blurb_translations)->toBe(['de' => 'Kurz']);
+
+    $image = HelpImage::query()->create([
+        'ref' => 'menu',
+        'file' => '0b4f3c1e-2a7d-4e55-9a10-1d2c3b4a5f60.webp',
+        'caption_translations' => ['en' => 'Menu', 'de' => 'Menü'],
+    ]);
+
+    $editor->updatePicture($image, ['ref' => 'menu', 'caption' => ['en' => 'The menu']]);
+
+    expect($image->fresh()->caption_translations)->toBe(['en' => 'The menu', 'de' => 'Menü']);
 });
 
 it('saves an article whose desktop text is still empty', function () {

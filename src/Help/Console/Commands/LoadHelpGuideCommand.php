@@ -28,6 +28,16 @@ use Illuminate\Support\Facades\DB;
  *
  * The same cleaning as the editor (it goes through {@see HelpEditor::clean()});
  * markers stay markers and are resolved when the help is read.
+ *
+ * LANGUAGES. The source language is required. Every other language this installation
+ * speaks is either WHOLE in a file (heading, body, and the phone text when the file has
+ * one) or absent: a half-translated article is a broken file. An absent language is
+ * loaded as absent - its readers get the source text with the help's "not translated"
+ * note - and the run lists what is missing, so a guide can go out in Russian today and
+ * gain its translations later without a new rule. A file is the whole truth for the
+ * languages this installation speaks; languages it does not speak are left as stored,
+ * because another installation reading the same tables may speak them
+ * ({@see HelpEditor::keepUnlisted()}).
  */
 class LoadHelpGuideCommand extends Command
 {
@@ -88,11 +98,15 @@ class LoadHelpGuideCommand extends Command
             foreach ($loaded as $position => $article) {
                 $row = $existing->get($position);
                 $fields = [
-                    'heading_translations' => $editor->clean($article['heading'], html: false),
-                    'body_translations' => $editor->clean($article['body'], html: true),
+                    'heading_translations' => $editor->keepUnlisted($editor->clean($article['heading'], html: false), $row?->heading_translations),
+                    'body_translations' => $editor->keepUnlisted($editor->clean($article['body'], html: true), $row?->body_translations),
                     // Null when the file has none: an article rewritten without a phone
-                    // text must not keep showing the old one.
-                    'mobile_body_translations' => $article['mobile'] === [] ? null : $editor->clean($article['mobile'], html: true),
+                    // text must not keep showing the old one (in this installation's
+                    // languages - see keepUnlisted for the others).
+                    'mobile_body_translations' => $editor->keepUnlisted(
+                        $article['mobile'] === [] ? [] : $editor->clean($article['mobile'], html: true),
+                        $row?->mobile_body_translations,
+                    ) ?: null,
                 ];
 
                 $heading = $fields['heading_translations'][$source] ?? '';
@@ -142,6 +156,20 @@ class LoadHelpGuideCommand extends Command
             ));
         }
 
+        // What readers in each language will get in the source instead, said once per
+        // language rather than once per file: twenty-six lines saying "es" are noise.
+        $missing = [];
+
+        foreach ($loaded as $article) {
+            foreach ($article['missing'] as $locale) {
+                $missing[$locale] = ($missing[$locale] ?? 0) + 1;
+            }
+        }
+
+        foreach ($missing as $locale => $count) {
+            $this->warn(sprintf('  not translated into %s: %d of %d articles (readers get %s with a note)', $locale, $count, count($loaded), $source));
+        }
+
         $this->info(sprintf(
             '%s%d added, %d updated, %d %s.',
             $dry ? '[dry run] ' : '',
@@ -157,7 +185,7 @@ class LoadHelpGuideCommand extends Command
     /**
      * Read and check every file, or name the first bad one.
      *
-     * @return array<int, array{heading: array<string, string>, body: array<string, string>, mobile: array<string, string>}>|null
+     * @return array<int, array{heading: array<string, string>, body: array<string, string>, mobile: array<string, string>, missing: list<string>}>|null
      */
     private function read(string $folder): ?array
     {
@@ -171,6 +199,7 @@ class LoadHelpGuideCommand extends Command
         }
 
         $locales = HelpText::locales();
+        $source = HelpText::sourceLocale();
         $loaded = [];
 
         foreach ($files as $file) {
@@ -198,30 +227,51 @@ class LoadHelpGuideCommand extends Command
                 return null;
             }
 
-            foreach (['heading', 'body'] as $field) {
-                foreach ($locales as $locale) {
-                    $text = $data[$field][$locale] ?? null;
-
-                    if (! is_string($text) || trim($text) === '') {
-                        $this->error("{$name}: '{$field}' has no '{$locale}' text.");
-
-                        return null;
-                    }
-                }
-            }
-
             $mobile = $data['mobile'] ?? [];
 
-            if ($mobile !== [] && (! is_array($mobile) || array_diff($locales, array_keys($mobile)) !== [])) {
-                $this->error("{$name}: 'mobile' must be given in every language or not at all.");
+            if (! is_array($mobile) || ! is_array($data['heading'] ?? null) || ! is_array($data['body'] ?? null)) {
+                $this->error("{$name}: 'heading' and 'body' must be arrays of texts by language, and so must 'mobile' when given.");
 
                 return null;
+            }
+
+            // The fields a language needs to count as translated: the phone text too,
+            // when the file has one - a reader on a phone would otherwise get the
+            // computer's text in their language with nothing saying why.
+            $fields = $mobile === [] ? ['heading', 'body'] : ['heading', 'body', 'mobile'];
+            $has = fn (string $field, string $locale): bool => is_string(($field === 'mobile' ? $mobile : $data[$field])[$locale] ?? null)
+                && trim(($field === 'mobile' ? $mobile : $data[$field])[$locale]) !== '';
+            $absent = [];
+
+            foreach ($locales as $locale) {
+                $given = array_filter($fields, fn (string $field) => $has($field, $locale));
+
+                if (count($given) === count($fields)) {
+                    continue;
+                }
+
+                if ($locale === $source) {
+                    $lacking = implode("', '", array_diff($fields, $given));
+                    $this->error("{$name}: '{$lacking}' has no '{$locale}' text, and {$locale} is the source language.");
+
+                    return null;
+                }
+
+                if ($given !== []) {
+                    $lacking = implode("', '", array_diff($fields, $given));
+                    $this->error("{$name}: '{$locale}' is translated only in part - '{$lacking}' is missing.");
+
+                    return null;
+                }
+
+                $absent[] = $locale;
             }
 
             $loaded[$position] = [
                 'heading' => $data['heading'],
                 'body' => $data['body'],
                 'mobile' => $mobile,
+                'missing' => $absent,
             ];
         }
 

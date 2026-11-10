@@ -229,8 +229,8 @@ final class HelpEditor
     {
         $section->update([
             'key' => $data['key'],
-            'title_translations' => $this->clean((array) ($data['title'] ?? []), html: false),
-            'blurb_translations' => $this->clean((array) ($data['blurb'] ?? []), html: false),
+            'title_translations' => $this->keepUnlisted($this->clean((array) ($data['title'] ?? []), html: false), $section->title_translations),
+            'blurb_translations' => $this->keepUnlisted($this->clean((array) ($data['blurb'] ?? []), html: false), $section->blurb_translations),
             'is_published' => (bool) ($data['is_published'] ?? $section->is_published),
         ]);
 
@@ -287,12 +287,12 @@ final class HelpEditor
     public function updateArticle(HelpArticle $article, array $data): HelpArticle
     {
         $article->update([
-            'heading_translations' => $this->clean((array) ($data['heading'] ?? []), html: false),
-            'body_translations' => $this->clean((array) ($data['body'] ?? []), html: true),
+            'heading_translations' => $this->keepUnlisted($this->clean((array) ($data['heading'] ?? []), html: false), $article->heading_translations),
+            'body_translations' => $this->keepUnlisted($this->clean((array) ($data['body'] ?? []), html: true), $article->body_translations),
             // Kept when the request does not carry the field at all: an editor page
             // loaded before it existed must not wipe a phone text written since.
             'mobile_body_translations' => array_key_exists('body_mobile', $data)
-                ? ($this->clean((array) ($data['body_mobile'] ?? []), html: true) ?: null)
+                ? ($this->keepUnlisted($this->clean((array) ($data['body_mobile'] ?? []), html: true), $article->mobile_body_translations) ?: null)
                 : $article->mobile_body_translations,
             'is_published' => (bool) ($data['is_published'] ?? $article->is_published),
         ]);
@@ -379,7 +379,7 @@ final class HelpEditor
     {
         $image->update([
             'ref' => $data['ref'],
-            'caption_translations' => $this->clean((array) ($data['caption'] ?? []), html: false),
+            'caption_translations' => $this->keepUnlisted($this->clean((array) ($data['caption'] ?? []), html: false), $image->caption_translations),
             'max_width' => $data['max_width'] ?? null,
         ]);
 
@@ -448,6 +448,30 @@ final class HelpEditor
         }
 
         return $out;
+    }
+
+    /**
+     * The cleaned field, plus whatever the stored one holds in languages THIS installation
+     * does not speak.
+     *
+     * ⚠️ Several installations may share one help (a console in three languages editing a
+     * product that reads ten). {@see clean()} keeps only this installation's locales, so a
+     * save from the smaller one would silently drop every other translation - and nobody
+     * but a reader in one of those languages would ever notice. The form can only speak for
+     * the languages it shows; the rest are carried over untouched. A blank in one of ITS
+     * languages still removes that language, as before.
+     *
+     * @param  array<string, string>  $cleaned
+     * @return array<string, string>
+     */
+    public function keepUnlisted(array $cleaned, mixed $stored): array
+    {
+        $others = array_diff_key(
+            array_filter(is_array($stored) ? $stored : [], fn ($v, $k) => is_string($k) && is_string($v) && trim($v) !== '', ARRAY_FILTER_USE_BOTH),
+            array_flip(HelpText::locales()),
+        );
+
+        return $cleaned + $others;
     }
 
     /** A free reference close to the wanted one: three uploads in a row must not collide. */

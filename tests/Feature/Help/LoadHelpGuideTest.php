@@ -81,11 +81,63 @@ it('updates in place on a re-run and prunes only when asked', function () {
 
 it('loads nothing when one file is broken', function () {
     guideFile($this->guide, '01-first.php', guideArticle('Перша'));
-    guideFile($this->guide, '02-second.php', ['heading' => ['uk' => 'Без англійської'], 'body' => ['uk' => '<p>x</p>']]);
+    // English in the heading and not in the body: a half translation, not an absent one.
+    guideFile($this->guide, '02-second.php', ['heading' => ['uk' => 'Друга', 'en' => 'Second'], 'body' => ['uk' => '<p>x</p>']]);
 
-    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])->assertFailed();
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])
+        ->expectsOutputToContain("'en' is translated only in part")
+        ->assertFailed();
 
     expect(HelpArticle::query()->count())->toBe(0);
+});
+
+it('loads an article written only in the source language and says what is missing', function () {
+    guideFile($this->guide, '01-first.php', ['heading' => ['uk' => 'Перша'], 'body' => ['uk' => '<p>x</p>']]);
+    guideFile($this->guide, '02-second.php', guideArticle('Друга'));
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])
+        ->expectsOutputToContain('not translated into en: 1 of 2 articles')
+        ->assertSuccessful();
+
+    expect(HelpArticle::query()->where('position', 10)->first()->body_translations)->toBe(['uk' => '<p>x</p>']);
+});
+
+it('refuses a file without the source language', function () {
+    guideFile($this->guide, '01-first.php', ['heading' => ['en' => 'First'], 'body' => ['en' => '<p>x</p>']]);
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])
+        ->expectsOutputToContain('uk is the source language')
+        ->assertFailed();
+
+    expect(HelpArticle::query()->count())->toBe(0);
+});
+
+it('counts the phone text in a language being whole', function () {
+    guideFile($this->guide, '01-first.php', guideArticle('Перша') + ['mobile' => ['uk' => '<p>m</p>']]);
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])
+        ->expectsOutputToContain("'mobile' is missing")
+        ->assertFailed();
+});
+
+it('leaves the languages this installation does not speak, and drops the ones it does', function () {
+    // A console in two languages loading into tables a ten-language product reads.
+    $this->section->articles()->create([
+        'heading_translations' => ['uk' => 'Стара', 'en' => 'Old', 'de' => 'Alt'],
+        'body_translations' => ['uk' => '<p>u</p>', 'en' => '<p>e</p>', 'de' => '<p>d</p>'],
+        'mobile_body_translations' => ['uk' => '<p>mu</p>', 'de' => '<p>md</p>'],
+        'position' => 10,
+    ]);
+    guideFile($this->guide, '01-first.php', ['heading' => ['uk' => 'Нова'], 'body' => ['uk' => '<p>new</p>']]);
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])->assertSuccessful();
+
+    $row = HelpArticle::query()->firstOrFail();
+
+    expect($row->heading_translations)->toBe(['uk' => 'Нова', 'de' => 'Alt'])
+        ->and($row->body_translations)->toBe(['uk' => '<p>new</p>', 'de' => '<p>d</p>'])
+        // No phone text in the file: gone in the spoken languages, kept in the other one.
+        ->and($row->mobile_body_translations)->toBe(['de' => '<p>md</p>']);
 });
 
 it('refuses a section whose articles share a position', function () {

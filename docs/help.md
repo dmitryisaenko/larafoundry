@@ -157,6 +157,8 @@ php artisan larafoundry:help-load-guide billing --prune   # also delete articles
 
 The number is the article's position (`03-` is 30) and its identity: a re-run updates in place. Without `--prune` nothing is deleted. One broken file loads nothing. The section must exist (create it in the editor).
 
+Languages (v0.56.0): the source language is required; every other language the installation speaks is either whole in a file (heading, body, and the phone text when the file has one) or absent. A half-translated article is a broken file. An absent language is loaded as absent, so its readers get the source text with the "not translated" note, and the run prints how many articles each language is missing. A guide can therefore go out in the source language first and gain its translations file by file. A file is the whole truth only for the languages this installation speaks: languages it does not speak are left as stored (see below).
+
 ## API reference
 
 ### `Help\Support\HelpBook` (singleton)
@@ -196,6 +198,7 @@ GET  /admin/help-articles               admin.help-articles.index   (admin.enabl
 
 ## Security notes
 
+- **A save speaks only for this installation's languages (v0.56.0).** Several installations may read one set of help tables while speaking different languages: a console in three, a product in ten. `clean()` keeps only the installation's own locales, so every update (`updateSection`, `updateArticle`, `updatePicture`, the guide loader) passes its result through `keepUnlisted()`, which carries over whatever the stored field holds in the other languages. A blank in one of the installation's own languages still removes it.
 - **Text is cleaned on write, once.** Every body goes through the `HtmlSanitizer` in `HelpEditor` (and in the guide loader); headings, titles and captions are stripped to plain text. Nothing downstream cleans again, so nothing else may write those columns. The reader renders bodies with `v-html` on that basis; pictures are built server-side with every value escaped.
 - **The editor is super-admin only**, behind the admin zone gate (+ OTP), and every action re-checks identity through `HelpPolicy` (VisitorStatus).
 - **Pictures are served without a session** - the help is read by guests. The name is a uuid the operator never chooses, and it is matched against the exact shape an upload writes **before** the disk is touched, so a path such as `..%2F` never reaches it. The type is read from the file's contents, not from the name the browser sent.
@@ -215,4 +218,4 @@ then reads through `HelpBook::pages()` and writes through `HelpEditor`, validati
 
 ## Testing
 
-`tests/Feature/Help/` covers the reader (published only, order, language fallback and its note, the phone text, fillers, picture markers and their attributes, the page and its switch), the editor (access, cleaning, blank texts, the kept phone text, ordering scoped to a section, cascading delete, translation present only with a translator, refusal of a lost picture), pictures (upload and free references, webp, a non-picture refused by its contents, serving to guests, the name check before the disk, rename and delete with the file) and the guide loader (positions, cleaning, update in place, prune and dry run, all-or-nothing, a doubled position refused). `tests-js/pages/Help.test.js` covers both pages.
+`tests/Feature/Help/` covers the reader (published only, order, language fallback and its note, the phone text, fillers, picture markers and their attributes, the page and its switch), the editor (access, cleaning, blank texts, the kept phone text, ordering scoped to a section, cascading delete, translation present only with a translator, refusal of a lost picture), pictures (upload and free references, webp, a non-picture refused by its contents, serving to guests, the name check before the disk, rename and delete with the file) and the guide loader (positions, cleaning, update in place, prune and dry run, all-or-nothing, a doubled position refused, a source-only article loaded with the missing languages named, a file without the source or with a half translation refused, the phone text counted in a language being whole, languages the installation does not speak left as stored) and languages kept on save (an article, a section, a picture caption). `tests-js/pages/Help.test.js` covers both pages.
