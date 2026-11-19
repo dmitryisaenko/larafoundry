@@ -70,6 +70,7 @@ point at them) and each banner now points forward to its accurate page.
 | Credits (wallet, holds for work, ledger, configurable currency name) | v0.46.0 | [credits.md](credits.md) |
 | Buying credits (one-off purchases, Paddle, refunds, sandbox guards) | v0.47.0 | [credits.md](credits.md#buying-credits-v0470) |
 | Credits by the buyer's country (LiqPay, routes, price lists per currency, `RequestCountry`) | v0.58.0 | [credits.md](credits.md#liqpay-v0580) |
+| Credits through WayForPay | v0.59.0 | [credits.md](credits.md#wayforpay-v0590) |
 | Help (sections, articles, pictures, editor, translation seam, guide from files) | v0.48.0 | [help.md](help.md) |
 | SEO kit | 5.x | [seo.md](seo.md) |
 | Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |

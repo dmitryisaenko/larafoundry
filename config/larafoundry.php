@@ -135,6 +135,12 @@ return [
     |           `sandbox_`, and that prefix IS the sandbox switch. `rro_product_id`
     |           is the product registered in the LiqPay cabinet (RRO → Каса →
     |           Товари) a fiscal receipt names; unset, no receipt data is sent.
+    |
+    |           `wayforpay` (v0.59.0) - the shop's account and secret key, and the
+    |           domain registered with WayForPay (empty = app.url's host).
+    |           `test_merch_n1` (WayForPay's public test shop) is always a test
+    |           one; `sandbox` marks your own shop switched to test mode in its
+    |           cabinet - the gateway cannot see that switch, keep them in step.
     */
     'credits' => [
         'unit_cents' => env('LARAFOUNDRY_CREDITS_UNIT_CENTS', 1),
@@ -159,6 +165,12 @@ return [
                 'public_key' => env('LIQPAY_PUBLIC_KEY'),
                 'private_key' => env('LIQPAY_PRIVATE_KEY'),
                 'rro_product_id' => env('LIQPAY_RRO_PRODUCT_ID'),
+            ],
+            'wayforpay' => [
+                'merchant_account' => env('WAYFORPAY_MERCHANT_ACCOUNT'),
+                'secret_key' => env('WAYFORPAY_SECRET_KEY'),
+                'domain' => env('WAYFORPAY_DOMAIN'),
+                'sandbox' => env('WAYFORPAY_SANDBOX', false),
             ],
         ],
     ],

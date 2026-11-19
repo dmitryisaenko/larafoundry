@@ -214,7 +214,7 @@ use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPurchaseRoutes;
 
 $country = app(RequestCountry::class)->of($request);   // 'UA', or null when unknown
 $route = app(CreditPurchaseRoutes::class)->for($country);
-// -> gateway 'liqpay' | 'paddle', currency 'UAH' | null (the main one), bonusPercent
+// -> gateway 'liqpay' | 'wayforpay' | 'paddle', currency 'UAH' | null (the main one), bonusPercent
 ```
 
 ⚠️ Trust the header only behind that proxy: a site reachable directly takes it
@@ -313,6 +313,76 @@ A notification that never arrived: LiqPay's documentation does not say whether
 it retries. `php artisan larafoundry:credits-liqpay-sync` asks LiqPay about the
 pending LiqPay purchases opened 10 minutes to 2 days ago (`--minutes`, `--days`)
 and credits the paid ones, once like any confirmation. Schedule it in the host.
+
+### WayForPay (v0.59.0)
+
+Another Ukrainian acquirer, the same shape as LiqPay: route a country to
+`'gateway' => 'wayforpay'`.
+
+```php
+use Dmitryisaenko\LaraFoundry\Credits\Gateways\WayForPayCreditPurchases;
+
+$wayforpay = app(WayForPayCreditPurchases::class);
+
+$checkout = $wayforpay->start($user, 5000, $country, ['product' => 'lorevid'],
+    returnUrl: route('billing.return'), serviceUrl: route('wayforpay.notify'),
+    language: app()->getLocale(), email: $user->email);
+// -> url, fields, order_id, credits (bonus included), bonus_credits, price_cents, currency, sandbox
+// The page posts `fields` to `url` in a plain form: WayForPay's own page.
+// A list value (productName, productPrice, productCount) goes as `name[]` inputs, in order.
+
+// The notification address (no CSRF): WayForPay waits for a signed answer.
+return response()->json($wayforpay->respondTo($request));   // verifies, acts, answers `accept`
+```
+
+`start()` checks the route, prices the pack from the route currency's list and
+records a **pending** purchase before the buyer leaves, exactly as LiqPay's does;
+its `meta` section is `wayforpay`, and the confirmation adds the card's issuing
+bank and its country and the way of payment. The checkout asks for `SALE` (money
+taken at once, not held). The order reference is `lf-<installation>-<ulid>`.
+The return address may be called with POST - keep it out of CSRF protection.
+
+`respondTo()` throws `WebhookVerificationException` for a signature that does
+not hold - answer that with an error, never with `accept`. Any other failure
+throws too, so WayForPay repeats the notification (it does for four days until
+it gets the answer). An order with no purchase row here is answered and left
+alone, so WayForPay stops repeating it.
+
+| WayForPay status | What happens |
+|---|---|
+| `Approved` | the pending purchase is credited once - only if at least its price was paid, in its currency |
+| `Refunded`, `Voided` | the credits are taken back, never below zero; a partial refund (`refundAmount` below the price) is logged, nothing moves |
+| `WaitingAuthComplete` | money held on the card, not taken - the shop's settings hold payments: logged, nothing credited |
+| anything else (`Pending`, `InProcessing`, `Declined`, `Expired`) | not a payment: logged |
+| an order with no purchase row here, another shop's `merchantAccount` | left alone |
+
+Statuses are compared without regard to case (the documentation spells
+`InProcessing` both ways).
+
+Signing: lowercase hex HMAC-MD5, keyed with the secret key, of the fields joined
+with `;` in a fixed order per message - the checkout's names all products, then
+all counts, then all prices (not the order the form lists them in). The
+documentation's worked example matches neither of its two published results; the
+scheme was confirmed against WayForPay's public test shop. A notification's
+`amount` is a JSON number, so it is checked as written and with and without two
+decimals - every spelling still needs the key.
+
+Keys: `larafoundry.credits.purchases.wayforpay.merchant_account` / `secret_key` /
+`domain` (env `WAYFORPAY_MERCHANT_ACCOUNT` / `WAYFORPAY_SECRET_KEY` /
+`WAYFORPAY_DOMAIN`; the domain is the one registered with WayForPay, empty = the
+host of `app.url`). There is no separate test address: the public test shop
+`test_merch_n1` (secret `flk3409refn54t54t*FNJRET`) is always a test one, and
+`wayforpay.sandbox` (env `WAYFORPAY_SANDBOX`) marks your own shop switched to
+test mode in its cabinet - the gateway cannot see that switch, so keep the flag
+in step with it. In the sandbox only the people `SandboxTesters` lets through
+may pay.
+
+`php artisan larafoundry:credits-wayforpay-sync` asks WayForPay (`CHECK_STATUS`)
+about the pending WayForPay purchases opened 10 minutes to 2 days ago and
+credits the paid ones - for a site down longer than WayForPay keeps repeating,
+or a notification this side could not verify. WayForPay answers about an order
+it never saw with `Declined` and reason 1127; that is "no such order" and leaves
+the purchase pending. Schedule it in the host.
 
 ### Any other gateway
 

@@ -49,6 +49,7 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PlanEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\SyncLiqPayPurchasesCommand;
+use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\SyncWayForPayPurchasesCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\VerifyCreditsCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPriceList;
 use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPriceLists;
@@ -614,6 +615,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 PreviewEmailTemplatesCommand::class,
                 VerifyCreditsCommand::class,
                 SyncLiqPayPurchasesCommand::class,
+                SyncWayForPayPurchasesCommand::class,
                 LoadHelpGuideCommand::class,
             ]);
         }
