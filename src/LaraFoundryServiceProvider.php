@@ -48,12 +48,17 @@ use Dmitryisaenko\LaraFoundry\Billing\Support\NullEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PaymentGatewayManager;
 use Dmitryisaenko\LaraFoundry\Billing\Support\PlanEntitlementResolver;
 use Dmitryisaenko\LaraFoundry\Console\Commands\InstallCommand;
+use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\SyncLiqPayPurchasesCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Console\Commands\VerifyCreditsCommand;
 use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPriceList;
+use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPriceLists;
+use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPurchaseRoutes;
 use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditUnitValue;
 use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataExporter;
 use Dmitryisaenko\LaraFoundry\Credits\Providers\CreditsUserDataPurger;
 use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditPriceList;
+use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditPriceLists;
+use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditPurchaseRoutes;
 use Dmitryisaenko\LaraFoundry\Credits\Support\ConfigCreditUnitValue;
 use Dmitryisaenko\LaraFoundry\Credits\Support\CreditPurchaseService;
 use Dmitryisaenko\LaraFoundry\Credits\Support\CreditService;
@@ -379,13 +384,17 @@ class LaraFoundryServiceProvider extends ServiceProvider
      * exist regardless and it does nothing until host code calls the service.
      *
      * Purchases (v0.47.0): the price list and who may pay through a sandbox are
-     * rebindable the same way (CreditPriceList, SandboxTesters).
+     * rebindable the same way (CreditPriceList, SandboxTesters). Since v0.58.0 also
+     * the price lists in other currencies (CreditPriceLists) and which gateway a
+     * buyer's country pays through (CreditPurchaseRoutes).
      */
     protected function registerCredits(): void
     {
         $this->app->bind(CreditUnitValue::class, ConfigCreditUnitValue::class);
         $this->app->singleton(CreditService::class);
         $this->app->bind(CreditPriceList::class, ConfigCreditPriceList::class);
+        $this->app->bind(CreditPriceLists::class, ConfigCreditPriceLists::class);
+        $this->app->bind(CreditPurchaseRoutes::class, ConfigCreditPurchaseRoutes::class);
         $this->app->bind(SandboxTesters::class, NoSandboxTesters::class);
         $this->app->singleton(CreditPurchaseService::class);
     }
@@ -604,6 +613,7 @@ class LaraFoundryServiceProvider extends ServiceProvider
                 PurgeDeletedAccountsCommand::class,
                 PreviewEmailTemplatesCommand::class,
                 VerifyCreditsCommand::class,
+                SyncLiqPayPurchasesCommand::class,
                 LoadHelpGuideCommand::class,
             ]);
         }

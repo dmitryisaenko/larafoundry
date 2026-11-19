@@ -202,6 +202,118 @@ Keys: `larafoundry-billing.paddle.api_key` / `client_side_token` /
 `webhook.secret`, falling back to Cashier-Paddle's `PADDLE_*` - shared with a
 host's own Paddle code reading the same env names.
 
+### Which gateway, by country (v0.58.0)
+
+A buyer pays through the gateway their country is routed to. The country is
+where they **connect from**, read from the header the proxy in front of the site
+writes (Cloudflare: `CF-IPCountry`):
+
+```php
+use Dmitryisaenko\LaraFoundry\Support\RequestCountry;
+use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditPurchaseRoutes;
+
+$country = app(RequestCountry::class)->of($request);   // 'UA', or null when unknown
+$route = app(CreditPurchaseRoutes::class)->for($country);
+// -> gateway 'liqpay' | 'paddle', currency 'UAH' | null (the main one), bonusPercent
+```
+
+⚠️ Trust the header only behind that proxy: a site reachable directly takes it
+from whoever sends the request. The header name is
+`larafoundry.request_country.header`; empty turns it off. `XX` and `T1` (Tor)
+are unknown. A VPN shows the VPN's country - fit for choosing what to offer,
+not for proving anything.
+
+The default routes come from config; a host with admin-set routes binds its own
+`CreditPurchaseRoutes`:
+
+```php
+'routes' => [
+    'default' => ['gateway' => 'paddle'],             // everyone else, and an unknown country
+    'countries' => [
+        'UA' => ['gateway' => 'liqpay', 'currency' => 'UAH'],
+        'US' => ['gateway' => 'liqpay', 'bonus_percent' => 5],   // dollars, 5% extra credits
+    ],
+],
+```
+
+A bonus is extra credits on top of the pack, 0-100 percent, rounded down; the
+price stays the pack's. A gateway refuses a checkout for a country routed
+elsewhere - the page is not the only gate.
+
+### Prices in another currency (v0.58.0)
+
+`CreditPriceLists::in($currency)` gives the list for a currency: the bound
+`CreditPriceList` for the main one (and for `null`), and for any other
+`larafoundry.credits.purchases.currencies.<CODE>` - a list of its own, never the
+main one converted:
+
+```php
+'currencies' => [
+    'UAH' => [
+        'bundles' => [['credits' => 5000, 'price_cents' => 39900]],
+        'custom' => ['min' => 2500, 'max' => 0],      // custom amounts need their own cents_per_credit
+    ],
+],
+```
+
+Such a list never falls back to the credit's value (`unit_cents` is in the main
+currency). A host with admin-set prices binds its own `CreditPriceLists`.
+
+### LiqPay (v0.58.0)
+
+```php
+use Dmitryisaenko\LaraFoundry\Credits\Gateways\LiqPayCreditPurchases;
+
+$liqpay = app(LiqPayCreditPurchases::class);
+
+$checkout = $liqpay->start($user, 5000, $country, ['product' => 'lorevid'],
+    resultUrl: route('billing'), serverUrl: route('liqpay.notify'),
+    language: app()->getLocale(), receiptEmail: $user->email);
+// -> url, data, signature, order_id, credits (bonus included), bonus_credits, price_cents, currency, sandbox
+// The page posts `data` and `signature` to `url` in a plain form: LiqPay's own page.
+
+// The notification address (no CSRF):
+$liqpay->handleRequest($request);              // verifies the signature, then acts
+```
+
+`start()` checks the route first (`CreditPurchaseUnavailableException` for a
+country routed elsewhere), prices the pack from the route currency's list, and
+records a **pending** purchase with the credits (bonus included) and the price
+before the buyer leaves. Its `meta` gets a `liqpay` section with the connection
+country, the pack and the bonus; the confirmation adds the card's country
+(`card_country`, numeric ISO 3166-1 - `804` is Ukraine), bank and way of payment.
+The order id is `lf-<installation>-<ulid>`, unique across sites sharing one shop.
+
+| LiqPay status | What happens |
+|---|---|
+| `success`, `wait_compensation` | the pending purchase is credited once - only if at least its price was paid, in its currency |
+| `reversed` | the credits are taken back, never below zero; a partial refund (`refund_amount` below the price) is logged, nothing moves |
+| `wait_accept` | money taken, but the shop is not approved by LiqPay yet and the payment may be cancelled: logged, nothing credited. Approve the shop before going live |
+| anything else | not a payment: logged |
+| an order with no purchase row here, another shop's `public_key` | left alone |
+
+Signing (checked against LiqPay's own worked example): `data` is base64 of the
+JSON, `signature` base64 of the raw `sha3-256(private_key . data . private_key)`,
+`version` 7. A notification is accepted under sha3-256 or sha1 (the docs' older
+code samples) - both need the private key.
+
+Keys: `larafoundry.credits.purchases.liqpay.public_key` / `private_key` (env
+`LIQPAY_PUBLIC_KEY` / `LIQPAY_PRIVATE_KEY`). LiqPay's test pair always starts
+with `sandbox_`, and that prefix is the sandbox switch - there is no flag to
+forget. Two guards, as for Paddle: a public and a private key from different
+pairs throw `GatewayNotConfiguredException`; on a test pair only the people
+`SandboxTesters` lets through may pay.
+
+Fiscal receipts: with `liqpay.rro_product_id` (env `LIQPAY_RRO_PRODUCT_ID`) - the
+product registered in the LiqPay cabinet under RRO → Каса → Товари - the checkout
+carries `rro_info` with one line at the purchase's price and the buyer's email,
+for LiqPay's own cash register to send the receipt. Unset, nothing is sent.
+
+A notification that never arrived: LiqPay's documentation does not say whether
+it retries. `php artisan larafoundry:credits-liqpay-sync` asks LiqPay about the
+pending LiqPay purchases opened 10 minutes to 2 days ago (`--minutes`, `--days`)
+and credits the paid ones, once like any confirmation. Schedule it in the host.
+
 ### Any other gateway
 
 `CreditPurchaseService` is the one place payments turn into credits:

@@ -116,6 +116,25 @@ return [
     |           `paddle.product_id` is the ONE Paddle catalog product every
     |           credit transaction is priced against inline. Nothing is on sale
     |           by default.
+    |
+    |           `currencies` (v0.58.0) - price lists in other currencies, keyed by
+    |           the ISO 4217 code, each with its own `bundles` and `custom` (custom
+    |           amounts are on sale only with an explicit `cents_per_credit` - the
+    |           credit's value above is in the main currency). Read by the default
+    |           CreditPriceLists; a host with admin-set prices binds its own.
+    |
+    |           `routes` (v0.58.0) - which gateway a buyer pays through, by the
+    |           country they connect from (RequestCountry). `default` is everyone
+    |           not listed (and an unknown country); `countries` maps an ISO 3166-1
+    |           alpha-2 code to `gateway`, `currency` (null = the main one) and
+    |           `bonus_percent` (extra credits on top of the pack). Empty by default:
+    |           everyone pays through `default`. A host with admin-set routes binds
+    |           its own CreditPurchaseRoutes.
+    |
+    |           `liqpay` (v0.58.0) - the LiqPay keys. A test pair always starts with
+    |           `sandbox_`, and that prefix IS the sandbox switch. `rro_product_id`
+    |           is the product registered in the LiqPay cabinet (RRO → Каса →
+    |           Товари) a fiscal receipt names; unset, no receipt data is sent.
     */
     'credits' => [
         'unit_cents' => env('LARAFOUNDRY_CREDITS_UNIT_CENTS', 1),
@@ -128,10 +147,33 @@ return [
                 'max' => 0,
                 'cents_per_credit' => null,
             ],
+            'currencies' => [],
+            'routes' => [
+                'default' => ['gateway' => 'paddle'],
+                'countries' => [],
+            ],
             'paddle' => [
                 'product_id' => env('LARAFOUNDRY_CREDITS_PADDLE_PRODUCT_ID'),
             ],
+            'liqpay' => [
+                'public_key' => env('LIQPAY_PUBLIC_KEY'),
+                'private_key' => env('LIQPAY_PRIVATE_KEY'),
+                'rro_product_id' => env('LIQPAY_RRO_PRODUCT_ID'),
+            ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request country (v0.58.0)
+    |--------------------------------------------------------------------------
+    | The header a proxy in front of the site writes the visitor's country into
+    | (Cloudflare: `CF-IPCountry`, an ISO 3166-1 alpha-2 code). Read by
+    | RequestCountry. ⚠️ Trust it only behind that proxy: a site reachable
+    | directly takes the header from whoever sends the request. Empty = off.
+    */
+    'request_country' => [
+        'header' => env('LARAFOUNDRY_COUNTRY_HEADER', 'CF-IPCountry'),
     ],
 
     /*

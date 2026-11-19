@@ -16,10 +16,23 @@ use Dmitryisaenko\LaraFoundry\Credits\Contracts\CreditUnitValue;
  *   - `custom.max` - the largest custom amount; 0 turns custom amounts off;
  *   - `custom.cents_per_credit` - the custom price per credit, by default the
  *     credit's own value (CreditUnitValue). Rounded up to a whole cent.
+ *
+ * Since v0.58.0 the same reader serves a list in another currency
+ * (`larafoundry.credits.purchases.currencies.<CODE>`, see ConfigCreditPriceLists).
+ * Such a list never falls back to the credit's value - that is in the main
+ * currency - so its custom amounts are on sale only with its own
+ * `cents_per_credit`.
  */
 class ConfigCreditPriceList implements CreditPriceList
 {
-    public function __construct(private readonly CreditUnitValue $unitValue) {}
+    /**
+     * @param  array<string, mixed>|null  $settings  another currency's list; null = the main one
+     */
+    public function __construct(
+        private readonly CreditUnitValue $unitValue,
+        private readonly ?array $settings = null,
+        private readonly ?string $currencyCode = null,
+    ) {}
 
     public function priceCents(int $credits): ?int
     {
@@ -38,9 +51,15 @@ class ConfigCreditPriceList implements CreditPriceList
             return null;
         }
 
+        $perCredit = $this->centsPerCredit();
+
+        if ($perCredit === null) {
+            return null;
+        }
+
         // Rounded to 6 places first: 100 * 0.07 is 7.000000000000001 in floats, and
         // a bare ceil() would charge a cent more than the price says.
-        $cents = (int) ceil(round($credits * $this->centsPerCredit(), 6));
+        $cents = (int) ceil(round($credits * $perCredit, 6));
 
         return $cents > 0 ? $cents : null;
     }
@@ -57,7 +76,7 @@ class ConfigCreditPriceList implements CreditPriceList
 
     public function currency(): string
     {
-        return strtoupper((string) config('larafoundry.credits.purchases.currency', 'USD'));
+        return strtoupper($this->currencyCode ?? (string) $this->setting('currency', 'USD'));
     }
 
     /** @return list<array{credits: int, price_cents: int}> */
@@ -65,7 +84,7 @@ class ConfigCreditPriceList implements CreditPriceList
     {
         $bundles = [];
 
-        foreach ((array) config('larafoundry.credits.purchases.bundles', []) as $bundle) {
+        foreach ((array) $this->setting('bundles', []) as $bundle) {
             $credits = is_array($bundle) ? (int) ($bundle['credits'] ?? 0) : 0;
 
             // The first of two bundles of one size wins - the one priceCents()
@@ -84,18 +103,29 @@ class ConfigCreditPriceList implements CreditPriceList
 
     private function min(): int
     {
-        return max(1, (int) config('larafoundry.credits.purchases.custom.min', 1));
+        return max(1, (int) $this->setting('custom.min', 1));
     }
 
     private function max(): int
     {
-        return (int) config('larafoundry.credits.purchases.custom.max', 0);
+        return (int) $this->setting('custom.max', 0);
     }
 
-    private function centsPerCredit(): float
+    private function centsPerCredit(): ?float
     {
-        $configured = config('larafoundry.credits.purchases.custom.cents_per_credit');
+        $configured = $this->setting('custom.cents_per_credit');
 
-        return is_numeric($configured) ? (float) $configured : $this->unitValue->cents();
+        if (is_numeric($configured)) {
+            return (float) $configured;
+        }
+
+        return $this->settings === null ? $this->unitValue->cents() : null;
+    }
+
+    private function setting(string $key, mixed $default = null): mixed
+    {
+        return $this->settings === null
+            ? config('larafoundry.credits.purchases.'.$key, $default)
+            : data_get($this->settings, $key, $default);
     }
 }

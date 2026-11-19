@@ -113,14 +113,20 @@ class CreditPurchaseService
      * the row - another currency, or less paid than the price set: the row then
      * stays pending and a warning is logged, because money was taken and a person
      * has to look.
+     *
+     * `$meta` (v0.58.0) is what the confirmation itself told about the payment (the
+     * card's country, the way it was paid): merged into the row's `meta` when the
+     * confirmation settles it, left out on a repeat.
+     *
+     * @param  array<string, mixed>  $meta
      */
-    public function confirm(string $gateway, string $reference, int $paidCents, string $currency): ?CreditPurchase
+    public function confirm(string $gateway, string $reference, int $paidCents, string $currency, array $meta = []): ?CreditPurchase
     {
         $this->assertKeys($gateway, $reference);
 
         // Only ever READS an existing row (no insert follows), so its locking read
         // cannot deadlock against another buyer's insert.
-        [$purchase, $credit, $fresh] = DB::transaction(function () use ($gateway, $reference, $paidCents, $currency) {
+        [$purchase, $credit, $fresh] = DB::transaction(function () use ($gateway, $reference, $paidCents, $currency, $meta) {
             $row = $this->purchases($gateway)->where('reference', $reference)->lockForUpdate()->first();
 
             if ($row === null) {
@@ -142,6 +148,11 @@ class CreditPurchaseService
                 }
 
                 $row->amount_cents = $paidCents;
+
+                if ($meta !== []) {
+                    // Recursive: a gateway adds to its own section, not replaces it.
+                    $row->meta = array_replace_recursive((array) ($row->meta ?? []), $meta);
+                }
             }
 
             return $this->settle($row);
