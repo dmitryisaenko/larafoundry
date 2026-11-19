@@ -11,6 +11,7 @@
  * Blade template (`larafoundry-legal.public.view`), which an Inertia visit cannot
  * open, and the reader keeps this screen to come back to.
  */
+import { watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { AppBaseLayout, LogoutForm } from '@dmitryisaenko/larafoundry';
 
@@ -21,6 +22,13 @@ const props = defineProps({
 });
 
 const form = useForm({ version: props.version });
+
+// ⚠️ Terms published while this screen was open: the server sends the screen back with the new
+// version, but a post keeps the form's state - it would go on sending the old number and land here
+// again for ever. The screen now stands for the new version, so the form takes it.
+watch(() => props.version, (version) => {
+    form.version = version;
+});
 
 function accept() {
     form.post('/terms/accept', { preserveScroll: true });

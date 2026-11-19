@@ -119,6 +119,7 @@ everywhere - URL, cookie, database, translations - with no parallel `ua` /
 `SetLocale` picks the active locale from the first candidate that passes the
 allow-list, in this order:
 
+0. While an operator acts as somebody else (`ActingAsSomeoneElse` says so): the language they chose for this visit (v0.57.0, see "Switching language").
 1. The authenticated user's stored preference (via `HasLocalePreference`) - authoritative, no redirect.
 2. The session (`locale` key).
 3. The cookie (the configured `cookie` name).
@@ -133,7 +134,9 @@ chosen locale is applied inline with `App::setLocale()` - there is no redirect
 and no client-side reload. The choice is persisted (always to the session, plus a
 year-long cookie when it was freshly detected) so the next request is stable. For
 an authenticated user whose stored preference differs from the resolved locale,
-the middleware writes it back through `setPreferredLocale()`.
+the middleware writes it back through `setPreferredLocale()` - except while an
+operator acts as somebody else: what was detected is then the operator's browser
+language, not the person's (v0.57.0).
 
 ### Switching language
 
@@ -147,6 +150,10 @@ applies it on the next request.
 - Authenticated users: the above plus the stored DB preference. Persisting the DB
   value is what stops the old preference (authoritative in `SetLocale`, step 1)
   from bouncing the choice back on the very next request.
+- An operator acting as somebody else (v0.57.0): the session and the cookie, plus
+  `SetLocale::ACTING_SESSION_KEY`, which `SetLocale` reads first while the visit
+  lasts and ignores once it ends. The person's stored preference is NOT written,
+  so their mails and screens keep their language after the visit.
 
 The submitted locale is validated with the `ValidLocale` rule, so no untrusted
 string reaches the session, cookie, or database.

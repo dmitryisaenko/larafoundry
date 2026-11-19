@@ -33,8 +33,22 @@ function submit() {
         onSuccess: () => {
             open.value = false;
         },
+        onError: takeTheNewerTerms,
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
+}
+
+// ⚠️ Terms published while the form was open: the server answers "read and tick again" and sends
+// the new version in the page props, but a post keeps this form's state - it would go on sending
+// the old number and get the same refusal until a reload. The box is cleared: it was ticked under
+// the old text.
+function takeTheNewerTerms() {
+    const current = page.props?.consent?.terms_version ?? null;
+
+    if (current !== null && current !== form.terms_version) {
+        form.terms_version = current;
+        form.terms = false;
+    }
 }
 </script>
 

@@ -57,6 +57,30 @@ it('creates a brand-new, email-verified, authenticated user (case a)', function 
         ->and(Auth::id())->toBe($user->id);
 });
 
+/**
+ * A host model as the docs build it: `$fillable` from the trait, so `email_verified_at` is NOT
+ * mass-assignable (the fixture's `$guarded = []` hid that create() dropped it - review 2026-11-19).
+ */
+class OAuthStrictFillableUser extends User
+{
+    public function __construct(array $attributes = [])
+    {
+        $this->fillable = $this->laraFoundryFillable();
+        $this->guarded = ['*'];
+
+        parent::__construct($attributes);
+    }
+}
+
+it('verifies a new account even when the host keeps email_verified_at out of $fillable', function () {
+    config()->set('auth.providers.users.model', OAuthStrictFillableUser::class);
+    fakeSocialiteReturns(socialUser('gid-strict', 'strict@x.test'));
+
+    $this->get(route('larafoundry.oauth.callback', ['provider' => 'google']))->assertRedirect();
+
+    expect(User::where('email', 'strict@x.test')->value('email_verified_at'))->not->toBeNull();
+});
+
 it('logs the same linked user back in without creating a duplicate (case b)', function () {
     $existing = User::create([
         'name' => 'Existing',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dmitryisaenko\LaraFoundry\Http\Middleware;
 
 use Closure;
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Contracts\LocaleGeoResolver;
 use Illuminate\Http\Request;
@@ -42,6 +43,12 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SetLocale
 {
+    /**
+     * The language an operator signed in as somebody else chose for their own screen (owner,
+     * 2026-11-19): read first while the visit lasts, never written to the account.
+     */
+    public const ACTING_SESSION_KEY = 'larafoundry.locale.acting';
+
     public function handle(Request $request, Closure $next): Response
     {
         $available = (array) config('larafoundry.locale.available', ['en']);
@@ -49,6 +56,19 @@ class SetLocale
         $cookieName = (string) config('larafoundry.locale.cookie', 'locale');
 
         $user = $request->user();
+        $acting = $user !== null && app(ActingAsSomeoneElse::class)->active($request);
+
+        // 0. An operator visiting as this person: their own choice for this visit, if they made one.
+        //    Ignored once the visit is over - the session key may outlive it, the rule does not.
+        if ($acting) {
+            $chosen = $request->session()->get(self::ACTING_SESSION_KEY);
+
+            if ($this->isAllowed($chosen, $available)) {
+                App::setLocale($chosen);
+
+                return $next($request);
+            }
+        }
 
         // 1. Stored user preference — authoritative, no redirect needed.
         if ($user instanceof HasLocalePreference) {
@@ -92,7 +112,8 @@ class SetLocale
         App::setLocale($resolved);
         $request->session()->put('locale', $resolved);
 
-        if ($user instanceof HasLocalePreference && $user->preferredLocale() !== $resolved) {
+        // ⚠️ Not while an operator visits: what was detected is THEIR browser's language.
+        if (! $acting && $user instanceof HasLocalePreference && $user->preferredLocale() !== $resolved) {
             $user->setPreferredLocale($resolved);
         }
 

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
+use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
 use Dmitryisaenko\LaraFoundry\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -79,4 +81,29 @@ it('does not redirect to an external url even with a forged referer', function (
     $location = $response->headers->get('Location');
 
     expect($location)->not->toContain('evil.example');
+});
+
+// Owner 2026-11-19: an operator's language must not outlive the visit on the person's account.
+it('keeps an operators choice in the session while they act as somebody else', function () {
+    $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'secret-pass', 'locale' => 'en']);
+
+    $response = $this->actingAs($user)
+        ->withSession([ImpersonateController::SESSION_KEY => 999])
+        ->from('/dashboard')
+        ->post(route('larafoundry.language.switch'), ['locale' => 'uk']);
+
+    $response->assertRedirect('/dashboard');
+    $response->assertSessionHas(SetLocale::ACTING_SESSION_KEY, 'uk');
+
+    expect($user->fresh()->preferredLocale())->toBe('en');
+});
+
+it('does not write the acting key for the person themselves', function () {
+    $user = User::create(['name' => 'A', 'email' => 'a@x.test', 'password' => 'secret-pass', 'locale' => 'en']);
+
+    $this->actingAs($user)
+        ->post(route('larafoundry.language.switch'), ['locale' => 'uk'])
+        ->assertSessionMissing(SetLocale::ACTING_SESSION_KEY);
+
+    expect($user->fresh()->preferredLocale())->toBe('uk');
 });

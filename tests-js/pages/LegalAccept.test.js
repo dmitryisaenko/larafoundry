@@ -52,4 +52,15 @@ describe('Legal/Accept page', () => {
 
         expect(post).toHaveBeenCalledWith('/terms/accept', { preserveScroll: true });
     });
+
+    // Review 2026-11-19: a post keeps the form, so after "the terms changed again" it went on
+    // sending the old number and the screen came back for ever.
+    it('takes the newer version the server sends the screen back with', async () => {
+        const wrapper = mount(Accept, { props: { terms_url, version: 3 } });
+        const form = useForm.mock.results.at(-1).value;
+
+        await wrapper.setProps({ version: 4 });
+
+        expect(form.version).toBe(4);
+    });
 });

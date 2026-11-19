@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { reactive } from 'vue';
 
+const page = vi.hoisted(() => ({ props: { flash: {}, consent: { terms_required: true, terms_version: 4 } } }));
+
 vi.mock('@inertiajs/vue3', () => {
     const form = reactive({
         name: '',
@@ -15,7 +17,7 @@ vi.mock('@inertiajs/vue3', () => {
     });
     return {
         useForm: () => form,
-        usePage: () => ({ props: { flash: {}, consent: { terms_required: true } } }),
+        usePage: () => page,
         router: { visit: vi.fn() },
         Link: {
             name: 'Link',
@@ -60,5 +62,24 @@ describe('Register page', () => {
 
         expect(form.post).toHaveBeenCalled();
         expect(form.post.mock.calls[0][0]).toBe('/register');
+    });
+
+    // Review 2026-11-19: a post keeps the form, so after "the terms changed" it went on sending the
+    // old number and got the same refusal until a reload.
+    it('takes the newer terms version after a refusal and clears the box ticked under the old one', async () => {
+        const { useForm } = await import('@inertiajs/vue3');
+        const form = useForm();
+        form.post.mockClear();
+
+        const wrapper = mount(Register);
+        form.terms_version = 4;
+        form.terms = true;
+        await wrapper.find('form').trigger('submit.prevent');
+
+        page.props.consent.terms_version = 5;
+        form.post.mock.calls[0][1].onError({ terms: 'changed' });
+
+        expect(form.terms_version).toBe(5);
+        expect(form.terms).toBe(false);
     });
 });

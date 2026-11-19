@@ -19,6 +19,12 @@ composer require dmitryisaenko/larafoundry
 
 ## What's in the package
 
+### `v0.57.x` An operator's language stays with the operator
+
+An operator signed in as somebody else (the core's impersonation, or a host's own way registered with `ActingAsSomeoneElse::addCheck()`) who switches the language now switches it for their own screen only: the choice is kept in the session under `SetLocale::ACTING_SESSION_KEY`, read first while the visit lasts and ignored once it ends. The person's account is never written, neither by the switch nor by the browser-language detection, so their mails and screens keep their own language after the visit. See [docs/multilanguage.md](docs/multilanguage.md).
+
+Also in `v0.57.0`: the sign-up form and the re-accept screen take the newer Terms version the server answers with, instead of resending the old number and being refused until a reload (the sign-up box is cleared, since it was ticked under the old text); an account created through an OAuth provider is stamped verified outside `create()`, as the magic link has been since `v0.53.0`; and `larafoundry:help-load-guide` says, per article and in total, which translations a re-run removes because they are in the database but not in the files, the dry run included.
+
 ### `v0.56.x` A help guide that can be translated in parts
 
 `larafoundry:help-load-guide` now requires only the source language. Every other language is either whole in a file or absent; an absent one reads as the source text with the "not translated" note, and the run says how many articles each language still lacks. A save from the help editor, or a guide loaded by an installation that speaks fewer languages than the tables hold, no longer drops the translations it cannot see: languages outside the installation's list are carried over as stored. See [docs/help.md](docs/help.md).

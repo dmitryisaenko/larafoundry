@@ -142,12 +142,19 @@ class OAuthController extends Controller
             [
                 'name' => $social->getName() ?: $social->getNickname() ?: $social->getEmail(),
                 'email' => $social->getEmail(),
-                'email_verified_at' => now(),
                 'avatar' => $social->getAvatar(),
                 'locale' => config('larafoundry.locale.default', 'en'),
             ],
             $this->providerAttributes($provider, $social),
         ));
+
+        // ⚠️ Outside create(), as the magic link does: a host's $fillable rightly keeps
+        // `email_verified_at` out (nobody may verify themselves through a form), and create()
+        // dropped it silently - an account the provider had just verified came out unverified,
+        // stuck on "verify your email" (review 2026-11-19).
+        if ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
 
         return ['status' => 'ok', 'user' => $user];
     }

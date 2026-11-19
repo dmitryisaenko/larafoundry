@@ -93,8 +93,10 @@ class LoadHelpGuideCommand extends Command
         $source = HelpText::sourceLocale();
         $added = 0;
         $updated = 0;
+        // Languages a re-run takes away: translated in the database, absent from the file.
+        $dropped = [];
 
-        $write = function () use ($loaded, $section, $existing, $dry, $editor, $source, &$added, &$updated): void {
+        $write = function () use ($loaded, $section, $existing, $dry, $editor, $source, &$added, &$updated, &$dropped): void {
             foreach ($loaded as $position => $article) {
                 $row = $existing->get($position);
                 $fields = [
@@ -118,6 +120,16 @@ class LoadHelpGuideCommand extends Command
 
                 if ($row && $was !== $heading) {
                     $this->warn(sprintf('      replaces «%s»', $was));
+                }
+
+                // ⚠️ A file is the whole truth for this installation's languages, so a language it
+                // lacks is REMOVED from the row - and a translation written in the editor alone
+                // went with no word said, in the dry run too (review 2026-11-19). Said per article.
+                foreach ($article['missing'] as $locale) {
+                    if ($row && trim((string) ($row->body_translations[$locale] ?? '')) !== '') {
+                        $dropped[$locale] = ($dropped[$locale] ?? 0) + 1;
+                        $this->warn(sprintf('      %s its %s translation (it is in the database, not in the file)', $dry ? 'would remove' : 'removes', $locale));
+                    }
                 }
 
                 $row ? $updated++ : $added++;
@@ -168,6 +180,15 @@ class LoadHelpGuideCommand extends Command
 
         foreach ($missing as $locale => $count) {
             $this->warn(sprintf('  not translated into %s: %d of %d articles (readers get %s with a note)', $locale, $count, count($loaded), $source));
+        }
+
+        foreach ($dropped as $locale => $count) {
+            $this->warn(sprintf(
+                '  %s the %s translation of %d article(s): put it in the files first to keep it',
+                $dry ? 'WOULD REMOVE' : 'REMOVED',
+                $locale,
+                $count,
+            ));
         }
 
         $this->info(sprintf(

@@ -140,6 +140,40 @@ it('leaves the languages this installation does not speak, and drops the ones it
         ->and($row->mobile_body_translations)->toBe(['de' => '<p>md</p>']);
 });
 
+// Review 2026-11-19: a translation written in the editor alone went without a word, dry run included.
+it('says which translations a re-run removes, in the dry run first', function () {
+    $this->section->articles()->create([
+        'heading_translations' => ['uk' => 'Стара', 'en' => 'Old'],
+        'body_translations' => ['uk' => '<p>u</p>', 'en' => '<p>e</p>'],
+        'position' => 10,
+    ]);
+    guideFile($this->guide, '01-first.php', ['heading' => ['uk' => 'Нова'], 'body' => ['uk' => '<p>new</p>']]);
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start', '--dry-run' => true])
+        ->expectsOutputToContain('would remove its en translation')
+        ->expectsOutputToContain('WOULD REMOVE the en translation of 1 article(s)')
+        ->assertSuccessful();
+
+    expect(HelpArticle::query()->firstOrFail()->body_translations['en'])->toBe('<p>e</p>');
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start'])
+        ->expectsOutputToContain('REMOVED the en translation of 1 article(s)')
+        ->assertSuccessful();
+});
+
+it('says nothing is removed when the file carries every language the row had', function () {
+    $this->section->articles()->create([
+        'heading_translations' => ['uk' => 'Стара', 'en' => 'Old'],
+        'body_translations' => ['uk' => '<p>u</p>', 'en' => '<p>e</p>'],
+        'position' => 10,
+    ]);
+    guideFile($this->guide, '01-first.php', guideArticle('Нова'));
+
+    $this->artisan('larafoundry:help-load-guide', ['section' => 'start', '--dry-run' => true])
+        ->doesntExpectOutputToContain('REMOVE')
+        ->assertSuccessful();
+});
+
 it('refuses a section whose articles share a position', function () {
     guideFile($this->guide, '01-first.php', guideArticle('Перша'));
     $this->section->articles()->create(['heading_translations' => [], 'body_translations' => [], 'position' => 10]);

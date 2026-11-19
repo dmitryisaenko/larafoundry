@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Dmitryisaenko\LaraFoundry\Admin\Http\Controllers\ImpersonateController;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -194,4 +195,41 @@ it('does not overwrite a locale cookie the downstream response already set', fun
     // Exactly one locale cookie, and it carries the downstream choice, not 'en'.
     expect($cookies)->toHaveCount(1);
     expect($cookies->first()->getValue())->toBe('uk');
+});
+
+// Owner 2026-11-19: while an operator acts as somebody else their own choice shows, and the
+// person's account is never written - not even with the operator's browser language.
+it('shows an acting operator their own choice over the persons stored locale', function () {
+    $request = localeRequest();
+    $request->session()->put(ImpersonateController::SESSION_KEY, 999);
+    $request->session()->put(SetLocale::ACTING_SESSION_KEY, 'de');
+    $person = userWithLocale('uk');
+    $request->setUserResolver(fn () => $person);
+
+    (new SetLocale)->handle($request, localeNext());
+
+    expect(App::getLocale())->toBe('de')
+        ->and($person->saved)->toBeNull();
+});
+
+it('ignores the acting choice once the visit is over', function () {
+    $request = localeRequest();
+    $request->session()->put(SetLocale::ACTING_SESSION_KEY, 'de');
+    $request->setUserResolver(fn () => userWithLocale('uk'));
+
+    (new SetLocale)->handle($request, localeNext());
+
+    expect(App::getLocale())->toBe('uk');
+});
+
+it('does not give the person the acting operators browser language', function () {
+    $request = localeRequest(server: ['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9']);
+    $request->session()->put(ImpersonateController::SESSION_KEY, 999);
+    $person = userWithLocale(null);
+    $request->setUserResolver(fn () => $person);
+
+    (new SetLocale)->handle($request, localeNext());
+
+    expect(App::getLocale())->toBe('de')
+        ->and($person->saved)->toBeNull();
 });

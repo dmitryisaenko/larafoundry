@@ -159,6 +159,8 @@ The number is the article's position (`03-` is 30) and its identity: a re-run up
 
 Languages (v0.56.0): the source language is required; every other language the installation speaks is either whole in a file (heading, body, and the phone text when the file has one) or absent. A half-translated article is a broken file. An absent language is loaded as absent, so its readers get the source text with the "not translated" note, and the run prints how many articles each language is missing. A guide can therefore go out in the source language first and gain its translations file by file. A file is the whole truth only for the languages this installation speaks: languages it does not speak are left as stored (see below).
 
+Because the file is the whole truth for those languages, a translation that exists only in the database (written in the editor) is removed by a re-run. Since v0.57.0 the run says so per article ("would remove its es translation") and in total ("WOULD REMOVE the es translation of 3 article(s)"), in the dry run too: put such a translation in the files first to keep it.
+
 ## API reference
 
 ### `Help\Support\HelpBook` (singleton)

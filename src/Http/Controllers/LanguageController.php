@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dmitryisaenko\LaraFoundry\Http\Controllers;
 
+use Dmitryisaenko\LaraFoundry\Admin\Support\ActingAsSomeoneElse;
 use Dmitryisaenko\LaraFoundry\Contracts\HasLocalePreference;
 use Dmitryisaenko\LaraFoundry\Http\Middleware\SetLocale;
 use Dmitryisaenko\LaraFoundry\Rules\ValidLocale;
@@ -46,6 +47,19 @@ class LanguageController extends Controller
         $cookieName = (string) config('larafoundry.locale.cookie', 'locale');
 
         $request->session()->put('locale', $locale);
+
+        /*
+         * ⚠️ AN OPERATOR SIGNED IN AS SOMEBODY ELSE CHOOSES FOR THEIR OWN SCREEN ONLY (owner,
+         * 2026-11-19). Written to the account, the operator's language outlived the visit: the
+         * person's mails and screens came in it afterwards. Kept in this session instead, which
+         * SetLocale reads first while the visit lasts; the account keeps its own.
+         */
+        if (app(ActingAsSomeoneElse::class)->active($request)) {
+            $request->session()->put(SetLocale::ACTING_SESSION_KEY, $locale);
+
+            return Redirect::to($this->safeReturnUrl($request))
+                ->withCookie(cookie($cookieName, $locale, 60 * 24 * 365));
+        }
 
         $user = $request->user();
         if ($user instanceof HasLocalePreference) {
