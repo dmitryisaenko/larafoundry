@@ -65,4 +65,11 @@ return [
     */
     'guide_path' => null,
 
+    /*
+    | Links between articles, laid as the help is READ (see HelpLinks): another
+    | article's heading met in a text, and the first mention of a term a glossary
+    | defines, lead to that article. Off = the texts exactly as written.
+    */
+    'links' => env('LARAFOUNDRY_HELP_LINKS', true),
+
 ];

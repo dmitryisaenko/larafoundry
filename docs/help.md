@@ -48,6 +48,7 @@ npm install @tiptap/vue-3 @tiptap/starter-kit @tiptap/extension-image @tiptap/ex
 | `pictures.default_width` | `700` | The desktop ceiling of a picture that sets none (200..2000). |
 | `pictures.max_upload_kb` | `4096` | Upload limit. |
 | `guide_path` | `null` (= `resource_path('help')`) | Where `larafoundry:help-load-guide` looks for article files. |
+| `links` | `true` | Links between articles, laid as the help is read (see [Links between articles](#links-between-articles)). Off - the texts exactly as written. |
 
 The help's languages are `larafoundry.locale.available`, the source first.
 
@@ -91,6 +92,15 @@ Upload a picture in the editor (a button on the Pictures tab, or the picture but
 `width`: 200..2000, or `small` (300), `medium` (500), `large` (700), `full` (no ceiling). `align`: `left`, `center`, `right`. The text's width beats the picture's own, which beats the default. A value that makes no sense is ignored, and a reference nobody defined renders nothing. On a phone a picture is always full width.
 
 A png or jpeg upload is re-encoded as webp when that is smaller (gif and webp are kept).
+
+### Links between articles
+
+Since v0.60.0 the reader links the articles of a section to each other as the help is READ - nothing is written into the stored texts, so a translator never sees a link and every language gets its links from its own words:
+
+- **A heading.** Another article's heading met word for word in a text becomes a link to it, once per paragraph or list item.
+- **A term.** A glossary is a list whose items read `<li><strong>Term</strong> - what it is. More: Heading of an article.</li>` - the item ENDS with another article's heading, after a colon. Each such item teaches the section a term, and the term's first mention in every other article links to the article its item names. A term of several words is matched with its first letter in either case; a one-word term only as a name - in quotes (`«Level»`, `"Level"`) or an abbreviation in capitals (`SOS`), because a lone word is ordinary speech as often as it is the name. An article that defines terms is a glossary and gets no term links.
+
+Never inside a link, a heading or a figure; never to the article the text belongs to. A link is `<a href="?section=<key>&article=<n>" class="help-link" data-help-section="<key>" data-help-article="<n>">` - `n` counted from 1 among the published articles - a query of whichever page shows the help; a page holding every text in hand can intercept the click by the two data attributes and switch without a request.
 
 ### Host markers (fillers)
 

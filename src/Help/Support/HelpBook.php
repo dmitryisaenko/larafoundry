@@ -11,7 +11,8 @@ use Dmitryisaenko\LaraFoundry\Help\Models\HelpSection;
 
 /**
  * The help, ready to show: the published sections and articles in one language,
- * with the host's markers filled and the pictures resolved.
+ * with the host's markers filled, the links between articles laid ({@see HelpLinks},
+ * `larafoundry-help.links`) and the pictures resolved.
  *
  * The one reader of the help tables - the core's page uses it, and so does a host
  * that draws the help on screens of its own. Shape (public API):
@@ -32,7 +33,12 @@ final class HelpBook
     /** @var list<HelpTextFiller|Closure(): HelpTextFiller> */
     private array $fillers = [];
 
-    public function __construct(private readonly HelpPictures $pictures) {}
+    private readonly HelpLinks $links;
+
+    public function __construct(private readonly HelpPictures $pictures, ?HelpLinks $links = null)
+    {
+        $this->links = $links ?? new HelpLinks;
+    }
 
     /**
      * A filler, or a factory making one. A factory is called afresh for every reading of the help,
@@ -72,7 +78,15 @@ final class HelpBook
             ];
         }
 
-        return $this->pictures->fill($this->filled($pages, $locale), $locale);
+        $pages = $this->filled($pages, $locale);
+
+        // Links before pictures: a caption is no place for one, and the markers are
+        // still plain text here, which a heading or a term never spells.
+        if (config('larafoundry-help.links', true)) {
+            $pages = $this->links->link($pages);
+        }
+
+        return $this->pictures->fill($pages, $locale);
     }
 
     /**
