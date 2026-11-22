@@ -72,6 +72,7 @@ point at them) and each banner now points forward to its accurate page.
 | Credits by the buyer's country (LiqPay, routes, price lists per currency, `RequestCountry`) | v0.58.0 | [credits.md](credits.md#liqpay-v0580) |
 | Credits through WayForPay | v0.59.0 | [credits.md](credits.md#wayforpay-v0590) |
 | Help (sections, articles, pictures, editor, translation seam, guide from files) | v0.48.0 | [help.md](help.md) |
+| Links between help articles (headings and glossary terms, laid as the help is read) | v0.60.0 | [help.md](help.md#links-between-articles) |
 | SEO kit | 5.x | [seo.md](seo.md) |
 | Onboarding checklist | 5.x | [onboarding.md](onboarding.md) |
 | First-login setup wizard (steps by part, skip until next login, host steps and parts) | v0.49.0 | [setup-wizard.md](setup-wizard.md) |
