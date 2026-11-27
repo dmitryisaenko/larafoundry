@@ -245,7 +245,8 @@ final class HelpLinks
                 continue;
             }
 
-            $parts[$at] = (string) preg_replace_callback(
+            // `?? $part`: on bytes that are not UTF-8 the call gives null, and the paragraph read as empty.
+            $parts[$at] = preg_replace_callback(
                 $pattern,
                 function (array $m) use ($section, $number, $headings, $terms, &$headingsHere, &$termsUsed): string {
                     $text = $m[0];
@@ -274,7 +275,7 @@ final class HelpLinks
                     return self::anchor($text, $section, $target);
                 },
                 $part,
-            );
+            ) ?? $part;
         }
 
         return implode('', $parts);

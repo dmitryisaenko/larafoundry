@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Dmitryisaenko\LaraFoundry\Help\Models\HelpImage;
 use Dmitryisaenko\LaraFoundry\Help\Models\HelpSection;
 use Dmitryisaenko\LaraFoundry\Help\Support\HelpBook;
+use Dmitryisaenko\LaraFoundry\Help\Support\HelpLinks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -154,4 +155,16 @@ it('lays no links when switched off', function () {
     linksArticle($section, 20, 'Notes', '<p>See Prices.</p>');
 
     expect(linkedItems()[1]['body'])->toBe('<p>See Prices.</p>');
+});
+
+it('keeps a paragraph whose bytes are not UTF-8 rather than emptying it', function () {
+    $section = linksSection();
+    linksArticle($section, 10, 'Prices', '<p>-</p>');
+
+    $body = app(HelpLinks::class);
+    $method = new ReflectionMethod($body, 'inBody');
+
+    $out = $method->invoke($body, "<p>Prices \xC3\x28 here</p>", 'study', 2, '/Prices/u', ['Prices' => 1], []);
+
+    expect($out)->toBe("<p>Prices \xC3\x28 here</p>");
 });
